@@ -1,0 +1,5 @@
+# Allow all web crawlers to access all content
+User-agent: *
+Allow: /
+# Point crawlers to the sitemap for better indexing
+Sitemap: https://www.saumyaverma.com/sitemap.xml
