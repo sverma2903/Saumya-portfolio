@@ -1,69 +1,125 @@
 ---
-import '../styles/global.css';
-import Nav from '../components/Nav.astro';
-import Footer from '../components/Footer.astro';
+/**
+ * Base.astro · P0 (shared). Every page renders through this layout (SPEC §4, §7.3, §8.6 P0 task 4).
+ *
+ * <head>: meta / canonical / OG / Twitter / JSON-LD from props, the three <Font>s (serif roman + sans preloaded),
+ *         the synchronous head script (§4.8), Speculation Rules (prefetch only, §4.9), favicon, and exactly one
+ *         preloaded `lcpImage` (fetchpriority=high) when the page passes one.
+ *         The head script is SPEC §4.8's script, minified (≤ 700 bytes): it sets html[data-motion|theme|view|keys|gl]
+ *         and html.js before first paint (localStorage 'sv:*' first, then the OS; ?view=section wins for one load).
+ * <body>: HatchDefs · SkipLink · TitleBar · <main id="main"> · EndSheet · BottomBar · .vt-cutline · DetailViewer ·
+ *         Palette · the hidden "opens in a new tab" description (#sv-newtab, see lib/rich.ts) · core/boot.
+ * <html> carries data-page={page.kind} (keys scoping, CSS) and the per-case accent custom properties (so the
+ * :root-level --hatch-acc resolves with them).
+ */
+import { Font } from 'astro:assets';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/transitions.css';
+import '../styles/print.css';
+import HatchDefs from '../components/symbols/HatchDefs.astro';
+import SkipLink from '../components/chrome/SkipLink.astro';
+import TitleBar from '../components/chrome/TitleBar.astro';
+import EndSheet from '../components/chrome/EndSheet.astro';
+import BottomBar from '../components/chrome/BottomBar.astro';
+import DetailViewer from '../components/chrome/DetailViewer.astro';
+import Palette from '../components/chrome/Palette.astro';
+import { chrome } from '../data/chrome';
+import { NEWTAB_ID } from '../lib/rich';
 
-interface Props {
-  title?: string;
-  description?: string;
-  current?: string;
-  image?: string;
-  footerHeading?: string;
-  autohide?: boolean;
-  style?: string;
+import type { PageMeta } from '../lib/page';
+export interface Props {
+  /** the full <title> (compose it in the page: `${metaTitle} — Saumya Verma`) */
+  title: string;
+  description: string;
+  page: PageMeta;
+  /** '/', '/about', '/cloudflare'… (canonical + og:url). Omit on 404. */
+  canonicalPath?: string;
+  ogType?: 'website' | 'article';
+  /** root-relative or absolute */
+  ogImage?: string;
+  ogImageAlt?: string;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  /** the page's ONE LCP image (root-relative src) → <link rel=preload as=image fetchpriority=high> */
+  lcpImage?: string;
+  noindex?: boolean;
+  /** inline custom properties for <html>, e.g. accentStyle('cloudflare') from data/sheets.ts */
+  accentStyle?: string;
+  /** end-sheet heading: 'connect' ("I'd love to connect with you!") or 'closing' (case pages) */
+  endHeading?: 'connect' | 'closing';
 }
+
 const {
-  title = 'Saumya Verma',
-  description = 'Saumya Verma is a product designer working on complex tools and AI-assisted workflows.',
-  current = '',
-  image = '/media/xVY62d93p5rA2uqmmKmIQwjR8I.gif',
-  footerHeading,
-  autohide = false,
-  style,
+  title,
+  description,
+  page,
+  canonicalPath,
+  ogType = 'website',
+  ogImage,
+  ogImageAlt = '',
+  jsonLd,
+  lcpImage,
+  noindex = false,
+  accentStyle,
+  endHeading = page.kind === 'case' ? 'closing' : 'connect',
 } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site);
-const fullTitle = title === 'Saumya Verma' ? 'Saumya Verma — Product Designer' : `${title} — Saumya Verma`;
+
+const site = Astro.site ?? new URL('https://www.saumya-verma.com');
+const canonical = canonicalPath ? new URL(canonicalPath, site).href : undefined;
+const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
+const speculation = JSON.stringify({
+  prefetch: [
+    {
+      where: { and: [{ href_matches: '/*' }, { not: { href_matches: '/media/*' } }, { not: { href_matches: '/*.json' } }] },
+      eagerness: 'moderate',
+    },
+  ],
+});
+const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
 ---
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="en" data-page={page.kind} style={accentStyle}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>{fullTitle}</title>
+    <script is:inline>(()=>{const d=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch{return null}};const m=g('sv:motion');const r=m?m==='reduce':matchMedia('(prefers-reduced-motion: reduce)').matches;d.dataset.motion=r?'reduce':'full';if(g('sv:theme')==='dusk')d.dataset.theme='dusk';const q=new URLSearchParams(location.search).get('view');d.dataset.view=q==='section'?'section':(g('sv:view')==='plan'?'plan':'section');d.dataset.keys=g('sv:keys')==='off'?'off':'on';const c=navigator.connection,w=(c&&c.saveData)||(navigator.deviceMemory||8)<=2;d.dataset.gl=('WebGL2RenderingContext' in window&&!r&&!w)?'maybe':'no';d.classList.add('js')})();</script>
+    <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    <meta name="theme-color" content="#120b08" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#EEEBE3" />
     <meta name="color-scheme" content="light" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/media/ACwkGtncbgGidk0PGO4wEAjBQ4.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={fullTitle} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={new URL(image, Astro.site)} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    {ogImageUrl && <meta property="og:image:alt" content={ogImageAlt} />}
     <meta name="twitter:card" content="summary_large_image" />
-    <script is:inline>
-      (function () {
-        var d = document.documentElement;
-        d.classList.remove('no-js');
-        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          d.classList.add('js-anim');
-          setTimeout(function () {
-            if (!d.classList.contains('app-ready')) d.classList.remove('js-anim');
-          }, 4000);
-        }
-      })();
-    </script>
+    <Font cssVariable="--font-serif" preload={[{ style: 'normal' }]} />
+    <Font cssVariable="--font-sans" preload />
+    <Font cssVariable="--font-mono" />
+    {lcpImage && <link rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
+    <script type="speculationrules" is:inline set:html={speculation} />
+    {ld && <script type="application/ld+json" is:inline set:html={ld} />}
   </head>
-  <body style={style}>
-    <a class="sr-only" href="#main">Skip to content</a>
-    <Nav current={current} autohide={autohide} />
+  <body>
+    <HatchDefs />
+    <SkipLink />
+    <TitleBar page={page} />
     <main id="main">
       <slot />
     </main>
-    <Footer heading={footerHeading} />
+    <EndSheet heading={endHeading} page={page} />
+    <BottomBar page={page} />
+    <div class="vt-cutline" aria-hidden="true"></div>
+    <DetailViewer />
+    <Palette />
+    <span id={NEWTAB_ID} hidden>{chrome.p0.opensInNewTab}</span>
     <script>
-      import '../scripts/app.ts';
+      import '../scripts/core/boot';
     </script>
   </body>
 </html>

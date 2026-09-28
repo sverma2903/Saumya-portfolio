@@ -1,0 +1,42 @@
+---
+/**
+ * Block · P0 (shared). The dispatcher: switch (block.t) → component (SPEC §6.1).
+ * Every block component takes exactly `{ block: Extract<Block, { t: 'X' }>; ctx: BlockCtx }`.
+ * Feature RUNS (WalkthroughPhone / WalkthroughPlayer) are grouped by the Chapter (lib/features.ts →
+ * groupFeatures) and rendered by <FeatureRun>; a single feature comes through here.
+ */
+import type { Block } from '../../lib/blocks';
+import type { BlockCtx } from '../../lib/blocks-ctx';
+import Heading from './Heading.astro';
+import SubHeading from './SubHeading.astro';
+import Lede from './Lede.astro';
+import Para from './Para.astro';
+import Small from './Small.astro';
+import List from './List.astro';
+import Stats from './Stats.astro';
+import Cta from './Cta.astro';
+import Callout from './Callout.astro';
+import Cards from './Cards.astro';
+import Stories from './Stories.astro';
+import Timeline from './Timeline.astro';
+import Insights from './Insights.astro';
+import Split from './Split.astro';
+import Tabs from './Tabs.astro';
+import Concept from './Concept.astro';
+import Spacer from './Spacer.astro';
+import Media from './Media.astro';
+import Feature from './Feature.astro';
+
+interface Props {
+  block: Block;
+  ctx: BlockCtx;
+}
+const { block, ctx } = Astro.props;
+const COMPONENTS = {
+  h: Heading, h3: SubHeading, lede: Lede, p: Para, small: Small, list: List, stats: Stats, cta: Cta,
+  callout: Callout, cards: Cards, stories: Stories, timeline: Timeline, insights: Insights, split: Split,
+  tabs: Tabs, concept: Concept, spacer: Spacer, media: Media, feature: Feature,
+} as const;
+const Comp = COMPONENTS[block.t] as (props: { block: Block; ctx: BlockCtx }) => unknown;
+---
+<Comp block={block} ctx={ctx} />

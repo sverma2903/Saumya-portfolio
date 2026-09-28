@@ -1,0 +1,41 @@
+---
+/**
+ * CaseBody · OWNER: WP5 (P0 functional stub). The case reading grid (SPEC §2.5): rail · text (≤680px) · notes, with
+ * every chapter a subgrid and every block a subgrid row. The Levels rail sits in the rail column (≥1024).
+ */
+import type { CaseStudy } from '../../lib/blocks';
+import type { ChapterCtx } from '../../lib/blocks-ctx';
+import type { CaseReading } from '../../lib/reading';
+import Chapter from './Chapter.astro';
+import Levels from './Levels.astro';
+interface Props { cs: CaseStudy; chapters: ChapterCtx[]; reading: CaseReading; sheetNo: string; next: { href: string; no: string; title: string } }
+const { cs, chapters, reading, sheetNo, next } = Astro.props;
+---
+<div class="case-body">
+  <aside class="case-body__rail" style={`grid-row: 1 / span ${chapters.length}`}>
+    <Levels reading={reading} sheetNo={sheetNo} next={next} />
+  </aside>
+  {chapters.map((ch) => <Chapter cs={cs} chapter={ch} level={reading.sections[ch.index]} sheetNo={sheetNo} />)}
+</div>
+<style>
+  .case-body {
+    --rail: clamp(184px, 14vw, 224px);
+    --notes: clamp(208px, 17vw, 280px);
+    --gap: clamp(32px, 3vw, 56px);
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(var(--m), 1fr)
+      [rail-start] var(--rail) [rail-end] var(--gap)
+      [text-start] minmax(0, 680px) [text-end] var(--gap)
+      [notes-start] var(--notes) [notes-end]
+      minmax(var(--m), 1fr) [full-end];
+  }
+  .case-body__rail { grid-column: rail; }
+  @media (max-width: 1279.98px) {
+    .case-body { grid-template-columns: [full-start] var(--m) [rail-start] 168px [rail-end] 32px [text-start] minmax(0,1fr) [text-end notes-start notes-end] var(--m) [full-end]; }
+  }
+  @media (max-width: 1023.98px) {
+    .case-body { grid-template-columns: [full-start] var(--m) [rail-start rail-end text-start] minmax(0,1fr) [text-end notes-start notes-end] var(--m) [full-end]; }
+    .case-body__rail { display: none; }
+  }
+</style>

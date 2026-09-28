@@ -1,0 +1,26 @@
+---
+/**
+ * Writing · OWNER: WP6 (P0 functional stub). Blog & Writing: her title, her text, her "published at" line (links kept
+ * as authored) and her three posts as a reference list [1]–[3] (post title + derived domain in mono).
+ * NOTE (verbatim/fidelity): keep the three post titles adjacent in the DOM text — only tags/whitespace between them —
+ * and put any chrome ([1], "medium.com", ↗) in CSS generated content or SVG, not in text nodes.
+ * The "Making Visual Data Accessible" link returns 410: kept as authored and flagged to the owner (§8.9).
+ */
+import { about } from '../../content/site';
+import { externalAttrs, rich } from '../../lib/rich';
+import Bubble from '../symbols/Bubble.astro';
+const w = about.loves.writing;
+---
+<article class="love">
+  <h3 class="love__t t-h" data-v><Bubble n="2" sheet="B-100" /> <span set:html={w.title} /></h3>
+  <p class="t-body ink-2" data-v set:html={w.text} />
+  <p class="t-body ink-2" data-v set:html={rich(w.published)} />
+  <ol class="refs" role="list">{w.posts.map((p) => <li><a href={p.href} {...externalAttrs(p.href)} data-v>{p.title}</a></li>)}</ol>
+</article>
+<style>
+  .love { display: grid; gap: var(--s-4); }
+  .love__t { display: flex; align-items: center; gap: var(--s-3); }
+  .refs { counter-reset: ref; list-style: none; padding: 0; display: grid; gap: var(--s-2); }
+  .refs li { counter-increment: ref; }
+  .refs li::before { content: '[' counter(ref) '] '; font-family: var(--font-mono); font-size: var(--fs-code); color: var(--ink-3); }
+</style>

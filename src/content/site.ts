@@ -15,6 +15,16 @@ export const links = {
   architecture: 'https://issuu.com/saumyaverma7/docs/convert-jpg-to-pdf.net_2023-12-20_13-53-53_compres',
 };
 
+/** Her original labels, copied verbatim from her Framer pages (index, about, orbit, nav). */
+export const labels = {
+  selected: 'Selected Projects ↓',
+  story: 'My Story ↓',
+  loves: 'Things I love ↓',
+  architecture: 'Architecture Portfolio',
+  conceptAnalysis: 'Concept Analysis',
+  nav: { about: 'About', play: 'Play', resume: 'Resume' },
+};
+
 export const home = {
   headline: '<span class="hl">Saumya Verma</span> is a <em>product designer</em> working on complex tools and AI-assisted workflows',
   sub: 'Currently at <strong>Fulcrum GT</strong>, leading design and front-end build for Accio, an AI delivery platform for enterprise software implementations.',

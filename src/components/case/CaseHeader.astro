@@ -1,0 +1,56 @@
+---
+/**
+ * CaseHeader · OWNER: WP5 (P0 functional stub). The 6-second layer (§5.2.1): back link, her eyebrow (--acc), her title
+ * (h1), the deck (her description; for orbit/educademy the index line), the title block, the primary CTA (first `cta`
+ * in the first section; PFF's second CTA as a text link), the View toggle, and the 16:10 cover plate
+ * (view-transition-name plate-<slug>, fetchpriority high, bubble 0 / A-10x · COVER).
+ */
+import type { CaseStudy } from '../../lib/blocks';
+import type { CaseReading } from '../../lib/reading';
+import type { CoverPlate } from '../../data/sheets';
+import { plateLayers } from '../../data/sheets';
+import { chrome } from '../../data/chrome';
+import { alt } from '../../data/alt';
+import { externalAttrs, isExternal } from '../../lib/rich';
+import Plate from '../media/Plate.astro';
+import Bubble from '../symbols/Bubble.astro';
+import Icon from '../symbols/Icon.astro';
+import TitleBlock from './TitleBlock.astro';
+import ViewToggle from './ViewToggle.astro';
+interface Props { cs: CaseStudy; sheetNo: string; reading: CaseReading; deck: string; cover: CoverPlate }
+const { cs, sheetNo, reading, deck, cover } = Astro.props;
+const firstCta = cs.sections[0]?.blocks.find((b) => b.t === 'cta');
+const ctas = firstCta && firstCta.t === 'cta' ? firstCta.items : [];
+const layers = plateLayers(cover);
+const top = cover.layers[cover.layers.length - 1].file;
+---
+<header class="case-head shell">
+  <a class="case-head__back t-label" href="/#index"><Icon name="arrow-left" size={14} /> {chrome.wp5.case.back}</a>
+  <div class="case-head__grid">
+    <div class="case-head__text">
+      <p class="case-head__eyebrow t-label-lg" data-v>{cs.eyebrow}</p>
+      <h1 class="t-title" data-v>{cs.title}</h1>
+      <p class="case-head__deck t-deck ink-2" data-v>{deck}</p>
+      <TitleBlock cs={cs} sheetNo={sheetNo} reading={reading} />
+      <div class="case-head__actions">
+        {ctas[0] && <a class="btn" href={ctas[0].href} {...externalAttrs(ctas[0].href)} data-v>{ctas[0].label}<Icon name={isExternal(ctas[0].href) ? 'arrow-up-right' : 'arrow-down'} /></a>}
+        {ctas[1] && <a class="case-head__second t-label" href={ctas[1].href} {...externalAttrs(ctas[1].href)} data-v>{ctas[1].label}</a>}
+        <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} />
+      </div>
+    </div>
+    <figure class="case-head__plate">
+      <Plate layers={layers} stage={cover.stage} aspect={cover.aspect} vt={`plate-${cs.slug}`} priority="high" dims alt={alt(top)} frame="bare" />
+      <figcaption class="case-head__cap t-label ink-2"><Bubble n="0" sheet={sheetNo} size="sm" /> {chrome.wp5.case.cover}</figcaption>
+    </figure>
+  </div>
+</header>
+<style>
+  .case-head { padding-block: var(--s-6) var(--s-8); }
+  .case-head__back { display: inline-flex; align-items: center; gap: var(--s-1); text-decoration: none; margin-block-end: var(--s-6); }
+  .case-head__grid { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
+  @media (max-width: 1023.98px) { .case-head__grid { grid-template-columns: minmax(0, 1fr); } }
+  .case-head__eyebrow { color: var(--acc); margin-block-end: var(--s-3); }
+  .case-head__deck { margin-block-start: var(--s-4); }
+  .case-head__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); }
+  .case-head__cap { display: flex; align-items: center; gap: var(--s-2); margin-block-start: var(--s-2); }
+</style>

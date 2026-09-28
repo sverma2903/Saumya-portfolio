@@ -1,0 +1,5 @@
+/* ==========================================================================
+   print.css · OWNER: WP1 (stub created by P0 so Base.astro can import it).
+   Wrap every rule in @media print (SPEC §4.10). base.css already forces Section view
+   and expands omit-runs in print; this file hides chrome, sets @page, the running footer, etc.
+   ========================================================================== */

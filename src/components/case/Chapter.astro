@@ -1,0 +1,57 @@
+---
+/**
+ * Chapter · OWNER: WP5 (P0 functional stub). One level of the case: <section id={section.id}> (a subgrid of .case-body),
+ * the legacy anchors, the SectionMark, then the blocks — single blocks through <Block>, feature runs through
+ * <FeatureRun>, and consecutive Plan-view omissions wrapped in one <OmitRun>.
+ */
+import type { CaseStudy } from '../../lib/blocks';
+import type { ChapterCtx } from '../../lib/blocks-ctx';
+import type { SectionReading } from '../../lib/reading';
+import { omitLabel } from '../../lib/planview';
+import Block from '../blocks/Block.astro';
+import FeatureRun from '../blocks/FeatureRun.astro';
+import SectionMark from './SectionMark.astro';
+import OmitRun from './OmitRun.astro';
+import LegacyAnchors from './LegacyAnchors.astro';
+interface Props { cs: CaseStudy; chapter: ChapterCtx; level: SectionReading; sheetNo: string }
+const { cs, chapter, level, sheetNo } = Astro.props;
+const { section, ctxs, plan, groups } = chapter;
+type Item = { kind: 'block'; i: number } | { kind: 'run'; renderer: 'phone' | 'player'; indices: number[] } | { kind: 'omit'; indices: number[] };
+const items: Item[] = [];
+for (const g of groups) {
+  if (g.kind === 'run') { items.push({ kind: 'run', renderer: g.renderer, indices: g.indices }); continue; }
+  const last = items[items.length - 1];
+  if (plan[g.index].mode === 'omit') {
+    if (last && last.kind === 'omit') last.indices.push(g.index);
+    else items.push({ kind: 'omit', indices: [g.index] });
+  } else items.push({ kind: 'block', i: g.index });
+}
+---
+<section id={section.id} class="chapter" aria-labelledby={`${section.id}-h`}>
+  <LegacyAnchors slug={cs.slug} sectionId={section.id} />
+  <SectionMark index={chapter.index} id={section.id} label={section.label} sheet={sheetNo} elev={level.elev} minutes={level.minutes} />
+  {items.map((it) =>
+    it.kind === 'block' ? (
+      <Block block={section.blocks[it.i]} ctx={ctxs[it.i]} />
+    ) : it.kind === 'run' ? (
+      <FeatureRun blocks={it.indices.map((i) => section.blocks[i]) as never} ctxs={it.indices.map((i) => ctxs[i])} renderer={it.renderer} />
+    ) : (
+      <OmitRun label={omitLabel(it.indices.map((i) => plan[i]))}>
+        {it.indices.map((i) => <Block block={section.blocks[i]} ctx={ctxs[i]} />)}
+      </OmitRun>
+    ),
+  )}
+</section>
+<style>
+  /* A chapter is its OWN grid with the same named tracks as .case-body (text | gap | notes), NOT a subgrid:
+     content-visibility:auto applies layout containment, and an element with layout containment cannot be a subgrid
+     (CSS Grid 2 §9). Blocks inside stay subgrid rows of the chapter, so notes still align beside their block. */
+  .chapter {
+    grid-column: text-start / notes-end;
+    display: grid;
+    grid-template-columns: [text-start] minmax(0, 680px) [text-end] var(--gap) [notes-start] var(--notes) [notes-end];
+    align-content: start;
+  }
+  .chapter:not(:first-of-type) { content-visibility: auto; contain-intrinsic-size: auto 1400px; }
+  @media (max-width: 1279.98px) { .chapter { grid-column: text; display: block; } }
+</style>

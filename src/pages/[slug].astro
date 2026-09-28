@@ -1,91 +1,76 @@
 ---
+/**
+ * /cloudflare … /educademy · Sheets A-101…A-106 · OWNER: WP5. P0 minimal: the full component tree as stubs —
+ * CaseHeader (6 s) → KeyPlan + DecisionSchedule (60 s) → CaseBody (Levels + Chapters) → MatchLineNext → End sheet.
+ */
 import Base from '../layouts/Base.astro';
-import Blocks from '../components/Blocks.astro';
-import { cases, home } from '../content/site';
+import CaseHeader from '../components/case/CaseHeader.astro';
+import KeyPlan from '../components/case/KeyPlan.astro';
+import DecisionSchedule from '../components/case/DecisionSchedule.astro';
+import CaseBody from '../components/case/CaseBody.astro';
+import MatchLineNext from '../components/case/MatchLineNext.astro';
+import { cases, links } from '../content/site';
+import { COVERS, accentStyle, deckOf, nextCase, sheetBySlug } from '../data/sheets';
+import { decisions } from '../data/decisions';
+import { chrome } from '../data/chrome';
+import { chapterCtxs } from '../lib/blocks-ctx';
+import { keyplan } from '../lib/keyplan';
+import { reading } from '../lib/reading';
+import { srcOf } from '../lib/staging';
 import type { CaseStudy } from '../lib/blocks';
+import type { CaseSlug } from '../lib/verbatim';
+import type { PageMeta } from '../lib/page';
 
 export function getStaticPaths() {
-  return cases.map((cs, i) => ({
-    params: { slug: cs.slug },
-    props: { cs, next: cases[(i + 1) % cases.length] },
-  }));
+  return cases.map((cs) => ({ params: { slug: cs.slug }, props: { cs } }));
 }
-
-const { cs, next } = Astro.props as { cs: CaseStudy; next: CaseStudy };
-const pad = (n: number) => String(n + 1).padStart(2, '0');
-const [bg, fg] = cs.cover;
-const [nbg, nfg] = next.cover;
+interface Props { cs: CaseStudy }
+const { cs } = Astro.props;
+const slug = cs.slug as CaseSlug;
+const sheet = sheetBySlug(slug);
+const r = reading(cs);
+const deck = deckOf(slug);
+const next = sheetBySlug(nextCase(slug));
+const cover = COVERS[slug];
+const lcp = srcOf(cover.layers[cover.layers.length - 1].file);
+const chapters = chapterCtxs(cs, sheet.no);
+const stops = keyplan(cs);
+const page: PageMeta = {
+  kind: 'case', sheet: sheet.no, sheetTitle: cs.title, sheetTitleIsHers: true, slug,
+  levels: r.sections.map((s) => ({ id: s.id, label: s.label, elev: s.elev, minutes: s.minutes })),
+  next: { href: next.href, sheet: next.no, title: next.title.text },
+};
+const url = `https://www.saumya-verma.com/${slug}`;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org', '@type': 'CreativeWork', name: cs.title, description: deck.text, url,
+    author: { '@type': 'Person', name: chrome.p0.person, url: 'https://www.saumya-verma.com/', sameAs: [links.linkedin] },
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: chrome.wp1.titleBar.drawingIndex, item: 'https://www.saumya-verma.com/' },
+      { '@type': 'ListItem', position: 2, name: cs.metaTitle, item: url },
+    ],
+  },
+];
 ---
 <Base
-  title={cs.metaTitle}
-  description={cs.description}
-  image={(fg ?? bg).src}
-  footerHeading={home.closing}
-  autohide
-  style={`--accent: ${cs.accent}; --accent-soft: ${cs.accentSoft}`}
+  title={`${cs.metaTitle} — ${chrome.p0.person}`}
+  description={deck.text}
+  page={page}
+  canonicalPath={`/${slug}`}
+  ogType="article"
+  ogImage={lcp}
+  lcpImage={lcp}
+  accentStyle={accentStyle(slug)}
+  jsonLd={jsonLd}
 >
-  <div class="progress" aria-hidden="true"></div>
-  <article class="case">
-    <header class="wrap case-hero">
-      <p class="eyebrow mono" data-reveal>{cs.eyebrow}</p>
-      <h1 class="case-title" data-split data-immediate>{cs.title}</h1>
-      <dl class="titleblock" style={`--n: ${cs.meta.length + 1}`} data-reveal>
-        {cs.meta.map(([k, v]) => (
-          <div>
-            <dt class="mono">{k}</dt>
-            <dd>{v}</dd>
-          </div>
-        ))}
-        <div>
-          <dt class="mono">Sheet</dt>
-          <dd>{cs.sections.length} chapters</dd>
-        </div>
-      </dl>
-      <div class:list={['case-cover', { contain: cs.coverContain }]} style={cs.coverBg ? `background:${cs.coverBg}` : undefined}>
-        {bg.kind === 'video' ? null : <img src={bg.src} width={bg.w} height={bg.h} alt={fg ? '' : `${cs.metaTitle} cover`} fetchpriority="high" />}
-        {fg && <img class="fg" src={fg.src} width={fg.w} height={fg.h} alt={`${cs.metaTitle} cover`} fetchpriority="high" />}
-      </div>
-    </header>
-
-    <div class="wrap case-body">
-      <nav class="rail-nav" aria-label="Chapters">
-        <ol>
-          <i class="rail-fill"></i>
-          {cs.sections.map((s, i) => (
-            <li>
-              <a href={`#${s.id}`}>
-                <span>{pad(i)}</span>
-                {s.label}
-              </a>
-            </li>
-          ))}
-        </ol>
-        <p class="rail-meta mono">{cs.eyebrow}</p>
-      </nav>
-
-      <div class="content">
-        {cs.sections.map((s, i) => (
-          <section id={s.id} aria-labelledby={`${s.id}-h`}>
-            <div class="chapter">
-              <span class="num">{pad(i)}</span>
-              <h2 id={`${s.id}-h`} data-split>{s.label}</h2>
-              <i class="rule" />
-            </div>
-            <Blocks blocks={s.blocks} alt={cs.metaTitle} />
-          </section>
-        ))}
-
-        <a class="next" href={`/${next.slug}`} data-cursor="Next" style={`--next-accent: ${next.accent}; --next-soft: ${next.accentSoft}`}>
-          <p class="mono">Next case study →</p>
-          <div class="next-row">
-            <h2>{next.title}</h2>
-            <div class:list={['next-media', { contain: next.coverContain }]} style={next.coverBg ? `background:${next.coverBg}` : undefined}>
-              <img src={nbg.src} alt="" loading="lazy" />
-              {nfg && <img class="fg" src={nfg.src} alt="" loading="lazy" />}
-            </div>
-          </div>
-        </a>
-      </div>
-    </div>
+  <article class="case" data-case={slug}>
+    <CaseHeader cs={cs} sheetNo={sheet.no} reading={r} deck={deck.text} cover={cover} />
+    <KeyPlan stops={stops} seconds={r.sections.map((s) => s.sec)} />
+    <DecisionSchedule cs={cs} rows={decisions[slug] ?? []} />
+    <CaseBody cs={cs} chapters={chapters} reading={r} sheetNo={sheet.no} next={{ href: next.href, no: next.no, title: next.title.text }} />
+    <MatchLineNext next={next} />
   </article>
 </Base>

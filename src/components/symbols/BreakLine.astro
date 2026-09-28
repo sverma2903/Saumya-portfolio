@@ -1,0 +1,13 @@
+---
+/** BreakLine · P0 symbol. A straight line with one zig-zag (Plan-view omissions). Stretches to its box; 1px. */
+interface Props {
+  class?: string;
+}
+const { class: cls } = Astro.props;
+---
+<svg class:list={['sym', 'sym-breakline', cls]} viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+  <path d="M0 7H188l5-6 7 12 5-6H400" fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" />
+</svg>
+<style>
+  .sym-breakline { display: block; inline-size: 100%; block-size: 14px; }
+</style>

@@ -1,0 +1,33 @@
+---
+/**
+ * PinItem · OWNER: WP6 (P0 functional stub). One pinned plate on the Play board: her media on her stage (`tone`), a mini
+ * title block — her title, her tag, and the link (Devpost ↗ / Open sheet A-105 → / A-106 →, chrome labels).
+ */
+import { chrome } from '../../data/chrome';
+import { alt } from '../../data/alt';
+import { fileOf } from '../../lib/staging';
+import { externalAttrs, isExternal } from '../../lib/rich';
+import Plate from '../media/Plate.astro';
+import Icon from '../symbols/Icon.astro';
+import type { Media } from '../../lib/blocks';
+interface Props {
+  item: { title: string; tag: string; href?: string; media: Media[]; tone: string };
+  priority?: 'high' | 'auto' | 'lazy';
+}
+const { item, priority = 'lazy' } = Astro.props;
+const p = chrome.wp6.play;
+const linkLabel = item.href ? (isExternal(item.href) ? p.devpost : item.href === '/orbit' ? p.openA105 : item.href === '/educademy' ? p.openA106 : undefined) : undefined;
+const top = item.media[item.media.length - 1];
+---
+<li class="pin">
+  <Plate layers={item.media} stage={item.tone} aspect={item.media.length > 1 ? item.media[0].w / item.media[0].h : undefined} alt={alt(fileOf(top))} frame="bare" priority={priority} />
+  <h2 class="pin__t t-index" data-v>{item.title}</h2>
+  <p class="pin__tag t-label ink-2" data-v>{item.tag}</p>
+  {item.href && linkLabel && (
+    <a class="pin__link t-label rust" href={item.href} {...externalAttrs(item.href)}>{linkLabel}<Icon name={isExternal(item.href) ? 'arrow-up-right' : 'arrow-right'} size={14} /></a>
+  )}
+</li>
+<style>
+  .pin { display: grid; gap: var(--s-2); align-content: start; }
+  .pin__link { display: inline-flex; align-items: center; gap: var(--s-1); }
+</style>

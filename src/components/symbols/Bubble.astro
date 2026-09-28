@@ -1,0 +1,45 @@
+---
+/**
+ * Bubble · P0 symbol. The detail bubble: a 44px circle with a horizontal diameter; number on top (Plex Mono 12),
+ * sheet below (Plex Mono, 11.5 = the minimum text size). `size="sm"` (and every bubble below 768px) is 36px and
+ * shows the top number only. It is chrome: aria-hidden + data-chrome. Wrap it in a link with an aria-label when
+ * it is a permalink.
+ */
+interface Props {
+  n: string | number;
+  sheet?: string;
+  size?: 'md' | 'sm';
+  class?: string;
+}
+const { n, sheet, size = 'md', class: cls } = Astro.props;
+---
+<span class:list={['bubble', `bubble--${size}`, { 'bubble--solo': !sheet }, cls]} aria-hidden="true" data-chrome>
+  <span class="bubble__n">{n}</span>{sheet && <span class="bubble__s">{sheet}</span>}
+</span>
+<style>
+  .bubble {
+    --_d: 44px;
+    position: relative; flex: none;
+    display: inline-grid; grid-template-rows: 1fr 1fr; place-items: center;
+    inline-size: var(--_d); block-size: var(--_d);
+    border: var(--lw-border) solid currentColor; border-radius: var(--r-dot);
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1;
+    color: var(--ink); background: var(--sheet);
+  }
+  .bubble:not(.bubble--solo)::after {
+    content: ''; position: absolute; inset-inline: 0; inset-block-start: 50%;
+    border-block-start: var(--lw-object) solid currentColor;
+  }
+  .bubble__n { align-self: end; padding-block-end: 2px; font-size: var(--fs-code); font-weight: 500; }
+  .bubble__s { align-self: start; padding-block-start: 1px; font-size: var(--fs-code-sm); color: var(--ink-2); letter-spacing: -0.02em; }
+  .bubble--solo { grid-template-rows: 1fr; }
+  .bubble--solo .bubble__n { align-self: center; padding: 0; }
+  .bubble--sm { --_d: 36px; grid-template-rows: 1fr; }
+  .bubble--sm::after, .bubble--sm .bubble__s { display: none; }
+  .bubble--sm .bubble__n { align-self: center; padding: 0; }
+  @media (max-width: 767.98px) {
+    .bubble { --_d: 36px; grid-template-rows: 1fr; }
+    .bubble::after, .bubble__s { display: none; }
+    .bubble__n { align-self: center; padding: 0; }
+  }
+</style>

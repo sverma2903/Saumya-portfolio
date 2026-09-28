@@ -1,0 +1,34 @@
+---
+/**
+ * IndexRow · OWNER: WP3 (P0 functional stub). One Drawing-index row (SM2): the whole row is one link —
+ * sheet no. (mono), her title, her outcome line (italic), her tags, ≈ N min (chrome) and the readout repeated sr-only.
+ */
+import type { Sheet } from '../../data/sheets';
+import { chrome, fill } from '../../data/chrome';
+import { externalAttrs } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
+import Readout from './Readout.astro';
+interface Props { sheet: Sheet; minutes?: number; compact?: boolean }
+const { sheet, minutes, compact = false } = Astro.props;
+---
+<li class:list={['irow', { 'irow--compact': compact }]}>
+  <a class="irow__a" href={sheet.href} {...externalAttrs(sheet.href)} data-sheet={sheet.slug ?? sheet.kind}>
+    <span class="irow__no t-code">{sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} /> : sheet.no}</span>
+    <span class="irow__main">
+      <span class="irow__title t-index" data-v>{sheet.title.text}</span>
+      {!compact && sheet.line && <span class="irow__line t-deck ink-2" data-v>{sheet.line.text}</span>}
+      {!compact && sheet.domain && <span class="irow__line t-code ink-2">{sheet.domain}</span>}
+      {!compact && sheet.tags.length > 0 && (
+        <span class="irow__tags t-label ink-2">{sheet.tags.map((t, i) => <>{i > 0 && <span aria-hidden="true"> · </span>}<span data-v>{t.text}</span></>)}</span>
+      )}
+      {!compact && sheet.readout && <Readout readout={sheet.readout} srOnly />}
+    </span>
+    {minutes != null && <span class="irow__min t-label ink-2">{fill(chrome.wp3.index.minutes, { n: minutes })}</span>}
+  </a>
+</li>
+<style>
+  .irow { border-block-start: var(--lw-object) solid var(--line-2); }
+  .irow__a { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: var(--s-4); padding-block: var(--s-4); text-decoration: none; align-items: baseline; min-block-size: 44px; }
+  .irow__main { display: grid; gap: var(--s-2); }
+  .irow--compact .irow__a { padding-block: var(--s-2); }
+</style>

@@ -1,0 +1,22 @@
+---
+/**
+ * Cta · OWNER: WP4a (P0 functional stub). <a class="btn" data-v> with her label (her casing) and an Icon:
+ * ↗ external (new tab, described by #sv-newtab), ↓ in-page. Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { externalAttrs, isExternal } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
+interface Props { block: Extract<Block, { t: 'cta' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+---
+<div {...blkAttrs('cta', ctx)}>
+  <p class="blk__main cta-row">
+    {block.items.map((it) => (
+      <a class="btn" href={it.href} {...externalAttrs(it.href)} data-v>{it.label}<Icon name={isExternal(it.href) ? 'arrow-up-right' : 'arrow-down'} /></a>
+    ))}
+  </p>
+</div>
+<style>
+  .cta-row { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+</style>

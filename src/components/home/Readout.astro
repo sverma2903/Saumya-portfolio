@@ -1,0 +1,35 @@
+---
+/**
+ * Readout · OWNER: WP3 (P0 functional stub). Her real numbers for the Viewport (and sr-only inside each index row):
+ * value (big, --fs-readout) + label, each verbatim; `joined` lines render as two adjacent spans whose textContent is one
+ * verbatim run ("Two" + " of the gaps…"). Optional sub-line, PFF bars (15 : 6) and the "Cited from" line (chrome).
+ */
+import type { Readout as R } from '../../data/sheets';
+import { chrome } from '../../data/chrome';
+interface Props { readout: R; srOnly?: boolean }
+const { readout, srOnly = false } = Astro.props;
+---
+<div class:list={['readout', { 'sr-only': srOnly }]}>
+  {readout.lines.map((l) =>
+    l.joined ? (
+      <p class="readout__line" data-v><span class="readout__v">{l.value.text}</span><span class="readout__l">{l.label.text}</span></p>
+    ) : (
+      <p class="readout__line"><span class="readout__v" data-v>{l.value.text}</span> <span class="readout__l" data-v>{l.label.text}</span></p>
+    ),
+  )}
+  {readout.sub && <p class="readout__sub t-body-sm ink-2" data-v>{readout.sub.text}</p>}
+  {readout.bars && (
+    <div class="readout__bars">
+      <p class="readout__bar" style={`--_w: ${100}%`}><span data-v>{readout.bars.from.text}</span></p>
+      <p class="readout__bar readout__bar--to" style={`--_w: ${(readout.bars.ratio[1] / readout.bars.ratio[0]) * 100}%`}><span data-v>{readout.bars.to.text}</span></p>
+      <p class="t-caption ink-2" data-v>{readout.bars.caption.text}</p>
+    </div>
+  )}
+  {!srOnly && <p class="readout__cited t-label ink-2">{chrome.wp3.viewport.citedFrom} · {readout.cited.join(' · ')}</p>}
+</div>
+<style>
+  .readout { display: grid; gap: var(--s-2); }
+  .readout__v { font-size: 2rem; font-weight: 300; margin-inline-end: var(--s-2); }
+  .readout__bar { inline-size: var(--_w); background: var(--hatch-45); border: var(--lw-object) solid var(--line-2); padding: 2px 6px; }
+  .readout__bar--to { background: var(--rust); color: var(--paper); border-color: var(--rust); }
+</style>

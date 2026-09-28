@@ -1,0 +1,22 @@
+---
+/**
+ * Meditation · OWNER: WP6 (P0 functional stub). The stillest block on the site: her title, her one line, her 512px image
+ * shown at 200px on a quiet field. data-still: no hover effects, no motion.
+ */
+import { about } from '../../content/site';
+import { alt } from '../../data/alt';
+import { fileOf } from '../../lib/staging';
+import Plate from '../media/Plate.astro';
+import Bubble from '../symbols/Bubble.astro';
+const md = about.loves.meditation;
+---
+<article class="love love--still" data-still>
+  <h3 class="love__t t-h" data-v><Bubble n="3" sheet="B-100" /> <span>{md.title}</span></h3>
+  <p class="t-body ink-2" data-v set:html={md.text} />
+  <div class="still"><Plate layers={[md.img]} alt={alt(fileOf(md.img))} frame="bare" /></div>
+</article>
+<style>
+  .love { display: grid; gap: var(--s-4); }
+  .love__t { display: flex; align-items: center; gap: var(--s-3); }
+  .still { inline-size: 200px; }
+</style>

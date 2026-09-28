@@ -1,0 +1,16 @@
+---
+/**
+ * Placeholder · OWNER: WP4b (P0 stub). The drafting X shown while media is idle/loading/parked (SPEC §6.3):
+ * exact aspect (dims.json), --plate background, two 1px --line-2 diagonals, a centred mono label
+ * '2662 × 1716 · GIF · 6.2 MB' (data-chrome, aria-hidden). Fades out over 160ms when the pixels decode.
+ */
+import type { Media } from '../../lib/blocks';
+import { dimsLabel, facts } from '../../lib/staging';
+interface Props { media: Media }
+const { media } = Astro.props;
+const f = facts(media);
+---
+<span class="ph" style={`aspect-ratio: ${f.aspect}`} aria-hidden="true" data-chrome><span class="ph__l t-code-sm">{dimsLabel(media)}</span></span>
+<style>
+  .ph { display: grid; place-items: center; inline-size: 100%; background: var(--plate); color: var(--ink-3); }
+</style>

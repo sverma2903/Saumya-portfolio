@@ -1,0 +1,16 @@
+---
+/**
+ * PinBoard · OWNER: WP6 (P0 functional stub). Her five Play items in her order (matches her live page row by row),
+ * pinned plates with drafting-tape corners, ±0.6° rotations (0° on mobile).
+ */
+import { play } from '../../content/site';
+import PinItem from './PinItem.astro';
+---
+<section class="pinboard shell" aria-label="Play">
+  <ul class="pinboard__grid" role="list">
+    {play.items.map((it, i) => <PinItem item={it} priority={i === 1 ? 'high' : 'lazy'} />)}
+  </ul>
+</section>
+<style>
+  .pinboard__grid { list-style: none; padding: 0; display: grid; gap: var(--s-6); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); align-items: end; }
+</style>

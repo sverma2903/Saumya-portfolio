@@ -1,0 +1,27 @@
+---
+/**
+ * Heading (`h`) · OWNER: WP4a (P0 functional stub). The detail title (SPEC §6.2):
+ * <h3 id="<section>-<slug>" class="dt" data-v> with the permalink bubble `n / A-101`, her text and a rule.
+ * Always h3. Numbered 1…n within each chapter (ctx.headingNo). Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { headingId } from '../../lib/ids';
+import { chrome } from '../../data/chrome';
+import Bubble from '../symbols/Bubble.astro';
+interface Props { block: Extract<Block, { t: 'h' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const hid = ctx.headingId ?? headingId(ctx.chapter.id, block.text);
+---
+<div {...blkAttrs('h', ctx)}>
+  <h3 id={hid} class="dt t-h blk__main" data-v>
+    <a class="dt__bubble" href={`#${hid}`} aria-label={chrome.wp4a.permalink} data-chrome><Bubble n={ctx.headingNo ?? ''} sheet={ctx.sheet} /></a>
+    <span class="dt__t">{block.text}</span>
+    <i class="dt__rule" aria-hidden="true" data-chrome></i>
+  </h3>
+</div>
+<style>
+  .dt { display: flex; align-items: center; gap: var(--s-3); }
+  .dt__bubble { text-decoration: none; color: var(--ink); }
+  .dt__rule { flex: 1 1 auto; align-self: center; border-block-start: var(--lw-border) solid var(--ink); min-inline-size: var(--s-5); }
+</style>

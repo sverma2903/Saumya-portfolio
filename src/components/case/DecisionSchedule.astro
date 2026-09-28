@@ -1,0 +1,44 @@
+---
+/**
+ * DecisionSchedule · OWNER: WP5 (P0 functional stub). SM5b: a <table> NO. / CONSIDERED / DECIDED (↳) / LEVEL; every
+ * cell verbatim; LEVEL is her section label linking to the source block (first block containing `decided`, else
+ * `considered`; lib/verbatim.ts findBlock). Cloudflare D-04 lists her three bold lead-ins.
+ */
+import type { CaseStudy } from '../../lib/blocks';
+import type { Decision } from '../../data/decisions';
+import { THREE_CHANGES } from '../../data/decisions';
+import { chrome, fill } from '../../data/chrome';
+import { findBlock } from '../../lib/verbatim';
+import { pad2 } from '../../lib/text';
+import Icon from '../symbols/Icon.astro';
+interface Props { cs: CaseStudy; rows: Decision[] }
+const { cs, rows } = Astro.props;
+const d = chrome.wp5.decisions;
+const resolved = rows.map((row) => ({ row, at: findBlock(cs, row.decided) ?? findBlock(cs, row.considered) }));
+---
+<section class="decisions shell" aria-labelledby="decisions-h">
+  <h2 id="decisions-h" class="t-label-lg">{d.title} <span class="ink-2">· {d.sub}</span></h2>
+  <table class="decisions__t">
+    <thead class="t-label ink-2">
+      <tr><th scope="col">{d.no}</th><th scope="col">{d.considered}</th><th scope="col">{d.decided}</th><th scope="col">{d.level}</th></tr>
+    </thead>
+    <tbody>
+      {resolved.map(({ row, at }, i) => (
+        <tr>
+          <th scope="row" class="t-code">{fill(d.rowNo, { nn: pad2(i + 1) })}</th>
+          <td class="t-body-sm" data-v>{row.considered}</td>
+          <td class="t-body-sm">
+            <span class="rust" data-chrome><Icon name="return" size={14} /></span> <span data-v>{row.decided}</span>
+            {row.plus === 'three-changes' && <ul>{THREE_CHANGES.map((x) => <li data-v>{x}</li>)}</ul>}
+          </td>
+          <td class="t-label">{at && <a href={`#${at.id}`} data-v>{at.sectionLabel}</a>}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</section>
+<style>
+  .decisions { padding-block: var(--s-6); overflow-x: auto; }
+  .decisions__t { inline-size: 100%; margin-block-start: var(--s-3); }
+  .decisions__t th, .decisions__t td { text-align: start; vertical-align: top; padding: var(--s-2) var(--s-3); border-block-start: var(--lw-object) solid var(--line-2); }
+</style>

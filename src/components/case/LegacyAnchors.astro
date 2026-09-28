@@ -1,0 +1,7 @@
+---
+/** LegacyAnchors · OWNER: WP5 (P0 functional stub). Framer-era aliases: empty <span id> at the top of the chapter (§5.2.9). */
+import { aliasesFor } from '../../data/legacy-anchors';
+interface Props { slug: string; sectionId: string }
+const { slug, sectionId } = Astro.props;
+---
+{aliasesFor(slug, sectionId).map((a) => <span id={a} class="legacy-anchor" aria-hidden="true"></span>)}

@@ -1,0 +1,9 @@
+---
+/**
+ * Frame · OWNER: WP4b (P0 stub). The CSS frames of SPEC §6.3 (browser, phone, phone-baked, phone-video,
+ * bezel-dark, print, before). P0: a pass-through wrapper.
+ */
+interface Props { frame?: string }
+const { frame = 'plate' } = Astro.props;
+---
+<div class={`frame frame--${frame}`}><slot /></div>

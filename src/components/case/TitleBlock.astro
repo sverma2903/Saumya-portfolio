@@ -1,0 +1,43 @@
+---
+/**
+ * TitleBlock · OWNER: WP5 (P0 functional stub). The case title block <dl> (§5.2.1): her meta rows (Role/Team/Skills or
+ * Timeline/Context), REV. △1 when the case has an "Update" callout (links to that block), and SHEET
+ * `A-10x · n levels · ≈ N min` (chrome).
+ */
+import type { CaseStudy } from '../../lib/blocks';
+import type { CaseReading } from '../../lib/reading';
+import { blockId } from '../../lib/ids';
+import { chrome, fill } from '../../data/chrome';
+import RevDelta from '../symbols/RevDelta.astro';
+interface Props { cs: CaseStudy; sheetNo: string; reading: CaseReading }
+const { cs, sheetNo, reading } = Astro.props;
+let rev: { id: string; title: string; lede: string } | null = null;
+cs.sections.forEach((s) => s.blocks.forEach((b, i) => {
+  if (!rev && b.t === 'callout' && b.title === 'Update') rev = { id: blockId(s.id, i), title: b.title, lede: b.lede };
+}));
+const r = rev as { id: string; title: string; lede: string } | null;
+const c = chrome.wp5.case;
+---
+<dl class="titleblock">
+  {cs.meta.map(([k, v]) => (
+    <div class="titleblock__row"><dt class="t-label ink-2" data-v>{k}</dt><dd data-v>{v}</dd></div>
+  ))}
+  {r && (
+    <div class="titleblock__row">
+      <dt class="t-label ink-2">{c.rev}</dt>
+      <dd><a href={`#${r.id}`}><span class="rust" data-chrome><RevDelta n={1} size={18} /></span> <span data-v>{r.title}</span> — <span data-v set:html={r.lede} /></a></dd>
+    </div>
+  )}
+  <div class="titleblock__row">
+    <dt class="t-label ink-2">{c.sheet}</dt>
+    <dd><span class="t-code">{fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading.minutes })}</span></dd>
+  </div>
+</dl>
+<style>
+  .titleblock { border: var(--lw-border) solid var(--ink); margin-block: var(--s-5); }
+  .titleblock__row { display: grid; grid-template-columns: 96px 1fr; gap: var(--s-3); padding: var(--s-2) var(--s-3); }
+  .titleblock__row + .titleblock__row { border-block-start: var(--lw-object) solid var(--line-2); }
+  .titleblock dd { margin: 0; font-size: 1.0625rem; }
+  .titleblock a { text-decoration: none; }
+  .titleblock a span[data-chrome] { display: inline-block; vertical-align: -3px; }
+</style>

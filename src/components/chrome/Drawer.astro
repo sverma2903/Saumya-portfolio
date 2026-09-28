@@ -1,0 +1,42 @@
+---
+/**
+ * Drawer · OWNER: WP1 (P0 functional stub). <dialog class="drawer"> sliding up below 1024px (SPEC §4.2): handle + Close,
+ * search field (opens the Sheet list), Sheets, and on cases Levels + View toggle + Match line; Settings.
+ * P0: Close + the sheet list + (cases) the levels, opened by [data-drawer-open].
+ */
+import type { PageMeta } from '../../lib/page';
+import { chrome } from '../../data/chrome';
+import { sheets } from '../../data/sheets';
+import { externalAttrs } from '../../lib/rich';
+interface Props { page: PageMeta }
+const { page } = Astro.props;
+const t = chrome.wp1.drawer;
+---
+<dialog class="drawer" data-dialog="drawer" aria-label={t.title}>
+  <form method="dialog"><button class="drawer__close t-label" value="close">{t.close}</button></form>
+  <nav aria-label={t.sheets}>
+    <p class="t-label ink-2">{t.sheets}</p>
+    <ul role="list">
+      <li><a href="/"><span class="t-code">A-000</span> {chrome.wp1.titleBar.coverSheet}</a></li>
+      {sheets.map((s) => <li><a href={s.href} {...externalAttrs(s.href)}><span class="t-code">{s.no}</span> {s.title.text}</a></li>)}
+    </ul>
+  </nav>
+  {page.levels && (
+    <nav aria-label={t.levels}>
+      <p class="t-label ink-2">{t.levels}</p>
+      <ol role="list">{page.levels.map((l) => <li><a href={`#${l.id}`}>{l.label} <span class="t-code ink-2">{l.elev}</span></a></li>)}</ol>
+    </nav>
+  )}
+</dialog>
+<script>
+  const dlg = document.querySelector<HTMLDialogElement>('dialog.drawer');
+  document.querySelectorAll<HTMLElement>('[data-drawer-open]').forEach((b) => b.addEventListener('click', () => dlg?.showModal()));
+  dlg?.addEventListener('click', (e) => { if (e.target === dlg || (e.target as Element).closest('a')) dlg.close(); });
+</script>
+<style>
+  .drawer { inline-size: 100%; max-inline-size: 100%; margin-block: auto 0; padding: var(--s-5) var(--m); background: var(--sheet); border: 0; border-block-start: var(--lw-border) solid var(--ink); }
+  .drawer::backdrop { background: var(--scrim); }
+  .drawer ul, .drawer ol { list-style: none; padding: 0; display: grid; gap: var(--s-2); margin-block: var(--s-2) var(--s-5); }
+  .drawer a { text-decoration: none; }
+  .drawer__close { float: inline-end; min-block-size: 44px; padding-inline: var(--s-3); border: var(--lw-object) solid var(--line-3); }
+</style>

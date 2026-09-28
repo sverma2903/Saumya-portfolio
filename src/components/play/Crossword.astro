@@ -1,0 +1,29 @@
+---
+/**
+ * Crossword · OWNER: WP6 (P0 functional stub). LEGEND · DATA / DESIGN / NERDS: her original 5×6 tile grid (DESIGN down
+ * column 1, DATA across row 1, AI down column 4, NERDS across row 6), material tiles in her colours as hatches,
+ * "Re-lay tiles", roving focus. P0: the static grid of her letters.
+ */
+import { chrome } from '../../data/chrome';
+const p = chrome.wp6.play;
+const G = [
+  'DATA ', // row 1: D A T A ·
+  'E  I ', // row 2
+  'S    ',
+  'I    ',
+  'G    ',
+  'NERDS',
+];
+---
+<section class="legend shell" aria-labelledby="legend-h">
+  <h2 id="legend-h" class="t-label-lg ink-2">{p.legend}</h2>
+  <div class="xw" role="img" aria-label={p.gridLabel}>
+    {G.flatMap((row) => row.split('')).map((ch) => <span class:list={['xw__tile', { 'xw__tile--letter': ch !== ' ' }]} aria-hidden="true">{ch.trim()}</span>)}
+  </div>
+</section>
+<style>
+  .legend { padding-block: var(--s-7); }
+  .xw { display: grid; grid-template-columns: repeat(5, 52px); gap: 4px; margin-block-start: var(--s-4); }
+  .xw__tile { display: grid; place-items: center; aspect-ratio: 1; background: var(--hatch-45); outline: var(--lw-object) solid var(--line-2); font-weight: 500; font-size: 1.25rem; }
+  .xw__tile--letter { background: var(--plate); outline: var(--lw-border) solid var(--rust); }
+</style>

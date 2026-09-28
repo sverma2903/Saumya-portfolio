@@ -1,0 +1,55 @@
+---
+/**
+ * TitleBar · OWNER: WP1 (P0 functional stub). Desktop ≥1024 running head (SPEC §4.1):
+ * brand (Mark + "Saumya Verma") · <span class="sheetno"> + sheet title (+ current LEVEL on cases, from sv:level) ·
+ * Primary nav (Index, About, Play, Resume ↗) with aria-current · the Sheet list button (⌘K / Ctrl K).
+ * Props: { page: PageMeta } (see layouts/Base.astro).
+ */
+import type { PageMeta } from '../../lib/page';
+import { labels, links } from '../../content/site';
+import { chrome } from '../../data/chrome';
+import { externalAttrs } from '../../lib/rich';
+import Mark from '../symbols/Mark.astro';
+import Icon from '../symbols/Icon.astro';
+interface Props { page: PageMeta }
+const { page } = Astro.props;
+const t = chrome.wp1.titleBar;
+const current = page.kind === 'about' ? 'about' : page.kind === 'play' ? 'play' : page.kind === 'home' ? 'home' : null;
+---
+<header class="titlebar" role="banner">
+  <a class="titlebar__brand" href="/"><Mark size={22} construction class="rust" /><span class="titlebar__name">{chrome.p0.brand}</span></a>
+  <p class="titlebar__head t-label-lg ink-2">
+    <span class="sheetno t-code rust">{page.sheet}</span>
+    <span class="titlebar__sep" aria-hidden="true"> · </span>
+    {page.sheetTitleIsHers ? <span class="titlebar__title" data-v>{page.sheetTitle}</span> : <span class="titlebar__title">{page.sheetTitle}</span>}
+    <span class="titlebar__level rust" data-level></span>
+  </p>
+  <nav class="titlebar__nav t-label-lg" aria-label={t.primaryNav}>
+    <ul role="list">
+      <li><a href="/#index" aria-current={current === 'home' ? 'page' : undefined}>{t.index}</a></li>
+      <li><a href="/about" aria-current={current === 'about' ? 'page' : undefined} data-v>{labels.nav.about}</a></li>
+      <li><a href="/fun" aria-current={current === 'play' ? 'page' : undefined} data-v>{labels.nav.play}</a></li>
+      <li><a href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" size={14} /></a></li>
+    </ul>
+  </nav>
+  <button type="button" class="titlebar__list t-label" data-js-only data-palette-open>
+    <kbd class="t-code"><Icon name="keycap-cmd" size={12} />K</kbd><span>{t.sheetList}</span>
+  </button>
+</header>
+<style>
+  .titlebar {
+    position: sticky; inset-block-start: 0; z-index: var(--z-bar);
+    display: flex; align-items: center; gap: var(--s-5);
+    block-size: var(--bar); padding-inline: var(--m);
+    background: var(--sheet); border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .titlebar__brand { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; font-size: 1.125rem; font-weight: 420; white-space: nowrap; }
+  .titlebar__head { flex: 1 1 auto; min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  .titlebar__nav ul { display: flex; gap: var(--s-4); list-style: none; margin: 0; padding: 0; }
+  .titlebar__nav a { display: inline-flex; align-items: center; gap: var(--s-1); text-decoration: none; }
+  .titlebar__nav a[aria-current='page'] { text-decoration: underline 2px var(--rust); text-underline-offset: 6px; }
+  .titlebar__list { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: 32px; padding: 4px 10px; border: var(--lw-object) solid var(--line-3); }
+  .titlebar__list kbd { display: inline-flex; align-items: center; gap: 2px; }
+  @media (max-width: 1279.98px) { .titlebar__title, .titlebar__sep { display: none; } }
+  @media (max-width: 1023.98px) { .titlebar { display: none; } }
+</style>

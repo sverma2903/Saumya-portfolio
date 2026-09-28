@@ -1,0 +1,11 @@
+---
+/** Spacer · OWNER: WP4a (P0 functional stub). A 64px band. Plan view: omit. */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+interface Props { block: Extract<Block, { t: 'spacer' }>; ctx: BlockCtx }
+const { ctx } = Astro.props;
+---
+<div {...blkAttrs('spacer', ctx)} aria-hidden="true"><div class="blk__main spacer"></div></div>
+<style>
+  .spacer { block-size: var(--s-8); }
+</style>

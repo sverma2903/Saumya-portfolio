@@ -1,0 +1,48 @@
+---
+/**
+ * Media · OWNER: WP4b (P0 functional stub). <figure class="blk fig">: .blk__main holds the Plate(s); the
+ * <figcaption class="blk__note"> holds `FIG. c.n` (chrome, mono) + her caption (data-v, italic).
+ * A gallery (items > 1) is ONE figure, items lettered a b c…; frame 'soft' is a logo schedule.
+ * Plan view: keep only the first media block after the section start or after each `h` (else omitted by the Chapter).
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { fileOf, stagingOf } from '../../lib/staging';
+import { alt } from '../../data/alt';
+import type { Frame } from '../../data/media-staging';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'media' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const gallery = block.items.length > 1;
+const logos = block.frame === 'soft';
+const frameFor = (file: string): Frame | undefined => stagingOf(file).frame ?? (block.frame === 'soft' ? 'soft' : block.frame === 'bare' ? 'bare' : undefined);
+const fig = ctx.fig ? { no: ctx.fig, caption: block.caption } : undefined;
+---
+<figure {...blkAttrs('media', ctx, gallery ? 'fig fig--gallery' : 'fig')}>
+  <div class="blk__main">
+    {gallery ? (
+      <ul class:list={['gallery', { 'gallery--logos': logos }]} style={`--cols: ${block.cols ?? block.items.length}`} role="list">
+        {block.items.map((mm, i) => (
+          <li class="gallery__item">
+            <Plate layers={[mm]} alt={alt(fileOf(mm))} frame={frameFor(fileOf(mm))} fig={fig && !logos ? { no: `${fig.no}${ctx.figLetters?.[i] ?? ''}`, caption: block.caption } : undefined} />
+            {ctx.figLetters?.[i] && <span class="gallery__letter t-code-sm ink-3" data-chrome>{ctx.figLetters[i]}</span>}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <Plate layers={block.items} alt={alt(fileOf(block.items[0]))} frame={frameFor(fileOf(block.items[0]))} fig={fig} />
+    )}
+  </div>
+  <figcaption class="blk__note fig__cap">
+    {ctx.fig && <span class="fig__no t-code ink-2" data-chrome>{ctx.fig}</span>}
+    {block.caption && <span class="fig__caption t-caption ink-2" data-v set:html={rich(block.caption)} />}
+  </figcaption>
+</figure>
+<style>
+  .gallery { list-style: none; padding: 0; display: grid; gap: var(--s-4); align-items: start; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+  @media (max-width: 767.98px) { .gallery:not(.gallery--logos) { grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 1fr)); } }
+  .gallery--logos .gallery__item { display: grid; place-items: center; aspect-ratio: 1; padding: 20%; background: var(--plate); outline: var(--lw-object) solid var(--line-2); }
+  .gallery__item { display: grid; gap: var(--s-1); }
+  .fig__cap { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: baseline; margin-block-start: var(--s-2); }
+</style>

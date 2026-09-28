@@ -1,0 +1,25 @@
+---
+/**
+ * Split · OWNER: WP4a (P0 functional stub). grid-template-columns: her ratio; children render as nested blocks
+ * (plain block layout, ctx.inSplit, ids `${id}-l${j}` / `-r${j}`). Mobile stacks. Plan view: recurse; omitted if both
+ * sides are omitted.
+ */
+import type { Block as B } from '../../lib/blocks';
+import { blkAttrs, splitChildCtx, type BlockCtx } from '../../lib/blocks-ctx';
+import { caseBySlug } from '../../lib/verbatim';
+import Block from './Block.astro';
+interface Props { block: Extract<B, { t: 'split' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const cs = caseBySlug(ctx.slug);
+const ratio = block.ratio ?? '1fr 1fr';
+---
+<div {...blkAttrs('split', ctx)}>
+  <div class="blk__main split" style={`--_ratio: ${ratio}`}>
+    <div class="split__side">{block.left.map((c, j) => <Block block={c} ctx={splitChildCtx(cs, ctx, 'l', j)} />)}</div>
+    <div class="split__side">{block.right.map((c, j) => <Block block={c} ctx={splitChildCtx(cs, ctx, 'r', j)} />)}</div>
+  </div>
+</div>
+<style>
+  .split { display: grid; grid-template-columns: var(--_ratio); gap: var(--s-7); align-items: center; }
+  @media (max-width: 767.98px) { .split { grid-template-columns: minmax(0, 1fr); } }
+</style>

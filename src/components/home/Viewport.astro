@@ -1,0 +1,33 @@
+---
+/**
+ * Viewport · OWNER: WP3 (P0 functional stub). The sticky master/detail preview beside the index (≥1024; SM2):
+ * header `VIEWPORT · A-101` + ⤢, the cover plate on its stage (16:10), the title block (her meta), the Readout, and
+ * `Open sheet A-101 →`. aria-hidden + inert (every piece of it exists in the rows). Default A-101.
+ */
+import type { Sheet } from '../../data/sheets';
+import type { CaseStudy } from '../../lib/blocks';
+import { plateLayers } from '../../data/sheets';
+import { chrome, fill } from '../../data/chrome';
+import Plate from '../media/Plate.astro';
+import Readout from './Readout.astro';
+import Icon from '../symbols/Icon.astro';
+interface Props { sheet: Sheet; cs: CaseStudy }
+const { sheet, cs } = Astro.props;
+const v = chrome.wp3.viewport;
+const no = String(sheet.no);
+---
+<aside class="viewport" aria-hidden="true" inert>
+  <p class="viewport__head t-label ink-2">{v.viewport} · <span class="t-code">{no}</span></p>
+  {sheet.plate && <Plate layers={plateLayers(sheet.plate)} stage={sheet.plate.stage} aspect={sheet.plate.aspect} vt={sheet.slug ? `plate-${sheet.slug}` : undefined} alt="" frame="bare" priority="lazy" />}
+  <dl class="viewport__tb">
+    {cs.meta.map(([k, val]) => <div><dt class="t-label ink-2" data-v>{k}</dt><dd data-v>{val}</dd></div>)}
+  </dl>
+  {sheet.readout && <Readout readout={sheet.readout} />}
+  <a class="btn" href={sheet.href} tabindex="-1">{fill(v.open, { no })}<Icon name="arrow-right" /></a>
+</aside>
+<style>
+  .viewport { position: sticky; inset-block-start: calc(var(--bar) + 32px); display: grid; gap: var(--s-4); align-content: start; }
+  .viewport__tb div { display: grid; grid-template-columns: 5rem 1fr; gap: var(--s-3); padding-block: var(--s-1); border-block-start: var(--lw-object) solid var(--line-2); }
+  .viewport__tb dd { margin: 0; }
+  @media (max-width: 1023.98px) { .viewport { display: none; } }
+</style>

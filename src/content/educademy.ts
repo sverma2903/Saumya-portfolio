@@ -13,7 +13,7 @@ const cs: CaseStudy = {
   cover: [m('J07qObGcr5c64oNlhZc7sblQE.png')],
   accent: '#6A55D8',
   accentSoft: '#E6E1FA',
-  coverBg: '#4c6971',
+  coverBg: '#bbb3fa',
   coverContain: true,
   sections: [
     {

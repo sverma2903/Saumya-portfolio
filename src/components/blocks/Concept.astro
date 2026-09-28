@@ -1,0 +1,44 @@
+---
+/**
+ * Concept · OWNER: WP4a (P0 functional stub). Design option sheets (Orbit): her title (h{ctx.hl}), her media in a row
+ * with captions[i] beneath and letters a. b. c. (chrome); "Concept Analysis" (her label, site.ts labels) + her lines
+ * only where analysis exists. Her leading +/− stay in the text. Plan view: title + first image.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { fileOf } from '../../lib/staging';
+import { alt } from '../../data/alt';
+import { labels } from '../../content/site';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'concept' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('concept', ctx)}>
+  <div class="blk__main concept">
+    <Tag class="concept__t t-h" data-v set:html={rich(block.title)} />
+    <ol class="concept__row" role="list">
+      {block.media.map((mm, i) => (
+        <li class:list={['concept__item', { 'plan-hide': i > 0 }]}>
+          <Plate layers={[mm]} alt={alt(fileOf(mm))} />
+          <p class="concept__cap t-caption">
+            {ctx.figLetters?.[i] && <span class="t-code ink-3" data-chrome>{`${ctx.figLetters[i]}. `}</span>}
+            {block.captions[i] && <span data-v set:html={rich(block.captions[i])} />}
+          </p>
+        </li>
+      ))}
+    </ol>
+    {block.analysis && block.analysis.length > 0 && (
+      <div class="concept__analysis plan-hide">
+        <p class="t-label" data-v>{labels.conceptAnalysis}</p>
+        <ul class="t-body-sm ink-2">{block.analysis.map((a) => <li data-v set:html={rich(a)} />)}</ul>
+      </div>
+    )}
+  </div>
+</div>
+<style>
+  .concept { display: grid; gap: var(--s-4); }
+  .concept__row { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-4); align-items: flex-start; }
+  .concept__item { flex: 1 1 12rem; max-inline-size: 24rem; display: grid; gap: var(--s-2); }
+</style>

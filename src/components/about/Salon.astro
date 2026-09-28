@@ -1,0 +1,31 @@
+---
+/**
+ * Salon · OWNER: WP6 (P0 functional stub). Sketching: her title, her text and seven sketches in rows justified BY
+ * HEIGHT (never cropped): scans on paper mounts, photos as prints; all open in Enlarged detail. Optional narrative
+ * caption (gated, chrome.wp6.about.sketchCaption).
+ */
+import { about } from '../../content/site';
+import { alt } from '../../data/alt';
+import { narrative, chrome } from '../../data/chrome';
+import { facts, fileOf } from '../../lib/staging';
+import Plate from '../media/Plate.astro';
+import Bubble from '../symbols/Bubble.astro';
+const s = about.loves.sketching;
+const cap = narrative(chrome.wp6.about.sketchCaption);
+---
+<article class="love">
+  <h3 class="love__t t-h" data-v><Bubble n="4" sheet="B-100" /> <span>{s.title}</span></h3>
+  <p class="t-body ink-2" data-v set:html={s.text} />
+  <ul class="salon" role="list">
+    {s.sketches.map((sk) => <li style={`--a: ${facts(sk).aspect}`}><Plate layers={[sk]} alt={alt(fileOf(sk))} frame="bare" /></li>)}
+  </ul>
+  {cap && <p class="t-caption ink-2">{cap}</p>}
+</article>
+<style>
+  .love { display: grid; gap: var(--s-4); }
+  .love__t { display: flex; align-items: center; gap: var(--s-3); }
+  .salon { --row-h: 300px; list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 20px; }
+  .salon > li { aspect-ratio: var(--a); flex: calc(var(--a) * 1000) 1 calc(var(--a) * var(--row-h)); margin: 0; }
+  .salon::after { content: ''; flex: 100000 1 0; }
+  @media (max-width: 767.98px) { .salon { --row-h: 180px; gap: 12px; } }
+</style>

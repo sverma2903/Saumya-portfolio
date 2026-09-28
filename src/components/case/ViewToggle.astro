@@ -1,0 +1,31 @@
+---
+/**
+ * ViewToggle · OWNER: WP5 (P0 functional stub). Section · full text / Plan · bold only, each with its minutes
+ * (SM5c). role="radiogroup" with two role="radio" buttons; persisted via core/prefs (sv:view); `V` key (WP5);
+ * hidden without JS (data-js-only). Appears in the header, the Levels rail and the drawer.
+ */
+import { chrome, fill } from '../../data/chrome';
+interface Props { minutes: number; planMinutes: number; class?: string }
+const { minutes, planMinutes, class: cls } = Astro.props;
+const v = chrome.wp5.view;
+---
+<div class:list={['viewtoggle', 't-label', cls]} role="radiogroup" aria-label={v.label} data-js-only data-viewtoggle>
+  <button type="button" role="radio" aria-checked="true" data-view-value="section">{v.section} <span class="ink-2">{fill(chrome.wp3.index.minutes, { n: minutes })}</span></button>
+  <button type="button" role="radio" aria-checked="false" data-view-value="plan">{v.plan} <span class="ink-2">{fill(chrome.wp3.index.minutes, { n: planMinutes })}</span></button>
+</div>
+<script>
+  import { get, set } from '../../scripts/core/prefs';
+  import { listen } from '../../scripts/core/bus';
+  const sync = () => document.querySelectorAll<HTMLElement>('[data-view-value]').forEach((b) => b.setAttribute('aria-checked', String(get('view') === b.dataset.viewValue)));
+  document.querySelectorAll<HTMLElement>('[data-view-value]').forEach((b) =>
+    b.addEventListener('click', () => set('view', b.dataset.viewValue === 'plan' ? 'plan' : 'section')),
+  );
+  listen('sv:view', sync);
+  sync();
+</script>
+<style>
+  .viewtoggle { display: inline-flex; flex-wrap: wrap; border: var(--lw-object) solid var(--line-3); }
+  .viewtoggle button { min-block-size: 44px; padding: 6px 12px; }
+  .viewtoggle button[aria-checked='true'] { background: var(--ink); color: var(--paper); }
+  .viewtoggle button[aria-checked='true'] .ink-2 { color: inherit; }
+</style>

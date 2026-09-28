@@ -1,0 +1,31 @@
+---
+/**
+ * CoverSheet · OWNER: WP2 (P0 functional stub). Sheet A-000 (SM1): eyebrow "A-000 ─── COVER SHEET", her headline
+ * (the LCP; <span class="hl"> in rust-2, followed by the ✦ Ornament), her sub, CTA 1 "Selected Projects ↓" (her label →
+ * #index), CTA 2 her connect line (→ email); the live site plan + section on the right (WebGL2, settle-and-stop), with
+ * SitePlanFallback. P0: the text column + the static fallback.
+ */
+import { home, labels, links } from '../../content/site';
+import { chrome } from '../../data/chrome';
+import Ornament from '../symbols/Ornament.astro';
+import SitePlanFallback from './SitePlanFallback.astro';
+---
+<section class="cover shell" aria-labelledby="cover-h">
+  <div class="cover__text">
+    <p class="cover__eyebrow t-label-lg ink-2"><span class="t-code rust">A-000</span> <span aria-hidden="true">───</span> {chrome.wp2.hero.coverSheet}</p>
+    <h1 id="cover-h" class="cover__h t-cover" data-v><Fragment set:html={home.headline} /> <Ornament /></h1>
+    <p class="cover__sub t-body-md ink-2" data-v set:html={home.sub} />
+    <p class="cover__ctas">
+      <a class="btn" href="#index" data-v>{labels.selected}</a>
+      <a class="cover__connect t-body" href={links.email} data-v>{home.connect}</a>
+    </p>
+  </div>
+  <div class="cover__drawing"><SitePlanFallback /></div>
+</section>
+<style>
+  .cover { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; padding-block: var(--s-7); }
+  @media (max-width: 1023.98px) { .cover { grid-template-columns: minmax(0, 1fr); } }
+  .cover__text { display: grid; gap: var(--s-4); }
+  .cover__h :global(.hl) { color: var(--rust-2); }
+  .cover__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); }
+</style>

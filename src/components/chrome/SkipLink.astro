@@ -1,0 +1,13 @@
+---
+/** SkipLink · OWNER: WP1 (P0 functional stub). The first focusable element; visible on focus; targets #main. */
+import { chrome } from '../../data/chrome';
+---
+<a class="skip t-label-lg" href="#main">{chrome.p0.skip}</a>
+<style>
+  .skip {
+    position: fixed; z-index: var(--z-skip); inset-block-start: var(--s-2); inset-inline-start: var(--s-2);
+    padding: var(--s-3) var(--s-4); background: var(--sheet); color: var(--ink); border: var(--lw-border) solid var(--ink);
+    text-decoration: none; transform: translateY(-200%);
+  }
+  .skip:focus-visible, .skip:focus { transform: none; }
+</style>

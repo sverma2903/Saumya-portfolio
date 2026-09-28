@@ -1,0 +1,41 @@
+---
+/**
+ * Cards · OWNER: WP4a (P0 functional stub). <ul class="cards cards--{variant}" style="--cols:{cols}">:
+ * plain = schedule (marks 01…, optional image well, kicker, title, html) · icon = icon well + title + html ·
+ * numbered = boxed numeral + title + html. Titles use h{ctx.hl}. Plan view: titles + kickers only (html → .plan-hide).
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { fileOf } from '../../lib/staging';
+import { pad2 } from '../../lib/text';
+import { alt } from '../../data/alt';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'cards' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const variant = block.variant ?? 'plain';
+const cols = block.cols ?? block.items.length;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('cards', ctx)}>
+  <div class="blk__main">
+    <ul class={`cards cards--${variant}`} style={`--cols: ${cols}`} role="list">
+      {block.items.map((it, i) => (
+        <li class="card">
+          {variant !== 'icon' && <span class="card__no t-code ink-3" data-chrome aria-hidden="true">{pad2(i + 1)}</span>}
+          {it.img && <div class="card__well"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} frame="bare" /></div>}
+          {it.kicker && <p class="card__kicker t-label rust" data-v>{it.kicker}</p>}
+          <Tag class="card__title t-index" data-v set:html={rich(it.title)} />
+          {it.html && <p class="card__html t-body-sm ink-2 plan-hide" data-v set:html={rich(it.html)} />}
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+<style>
+  .cards { list-style: none; padding: 0; display: grid; gap: var(--s-5); grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+  @media (max-width: 1023.98px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767.98px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+  .card { display: grid; gap: var(--s-2); align-content: start; border-block-start: var(--lw-object) solid var(--line-1); padding-block-start: var(--s-3); }
+  .card__well { max-inline-size: 112px; }
+</style>

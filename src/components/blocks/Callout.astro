@@ -1,0 +1,26 @@
+---
+/**
+ * Callout · OWNER: WP4a (P0 functional stub). title === 'Update' → <RevisionCloud> (SM6b); otherwise a General note:
+ * a --lw-border box, her title (label, rust), her lede (Newsreader 420 · 20px), her html (body, ink-2). Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import RevisionCloud from './RevisionCloud.astro';
+interface Props { block: Extract<Block, { t: 'callout' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+---
+{block.title === 'Update' ? (
+  <RevisionCloud block={block} ctx={ctx} />
+) : (
+  <div {...blkAttrs('callout', ctx, 'note')}>
+    <div class="blk__main callout">
+      <p class="callout__t t-label-lg rust" data-v>{block.title}</p>
+      <p class="callout__lede" data-v set:html={rich(block.lede)} />
+      <p class="callout__html t-body ink-2" data-v set:html={rich(block.html)} />
+    </div>
+  </div>
+)}
+<style>
+  .callout { border: var(--lw-border) solid var(--ink); padding: var(--s-5); }
+</style>

@@ -1,0 +1,34 @@
+---
+/**
+ * BottomBar · OWNER: WP1 (P0 functional stub). Below 1024px (SPEC §4.2): Mark (home) · centre cell ("SHEETS", or on
+ * cases ▼ LEVEL + elevation; opens the Sheet drawer) · sheet number. 2px rust progress hairline on its top edge.
+ * Props: { page: PageMeta }.
+ */
+import type { PageMeta } from '../../lib/page';
+import { chrome } from '../../data/chrome';
+import Mark from '../symbols/Mark.astro';
+import Drawer from './Drawer.astro';
+interface Props { page: PageMeta }
+const { page } = Astro.props;
+const t = chrome.wp1.bottomBar;
+---
+<nav class="bottombar" aria-label={t.label}>
+  <a class="bottombar__home" href="/" aria-label={t.home}><Mark size={22} class="rust" /></a>
+  <button type="button" class="bottombar__centre t-label-lg" data-drawer-open aria-haspopup="dialog" data-js-only>{t.sheets}</button>
+  <a class="bottombar__centre bottombar__centre--nojs t-label-lg" href="/#index">{t.sheets}</a>
+  <span class="bottombar__sheet t-code">{page.sheet}</span>
+</nav>
+<Drawer page={page} />
+<style>
+  .bottombar {
+    position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bar);
+    display: grid; grid-template-columns: 56px 1fr auto; align-items: center;
+    block-size: calc(var(--bar) + env(safe-area-inset-bottom)); padding-block-end: env(safe-area-inset-bottom); padding-inline-end: var(--m);
+    background: var(--sheet); border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .bottombar__home { display: grid; place-items: center; min-inline-size: 48px; min-block-size: 48px; }
+  .bottombar__centre { justify-self: center; min-block-size: 48px; padding-inline: var(--s-4); text-decoration: none; }
+  :global(html.js) .bottombar__centre--nojs { display: none; }
+  .bottombar__sheet { font-size: 1.125rem; }
+  @media (min-width: 1024px) { .bottombar { display: none; } }
+</style>

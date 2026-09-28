@@ -1,0 +1,25 @@
+---
+/**
+ * Shelf · OWNER: WP6 (P0 functional stub). Historical Fiction: her title (h3, bubble 1 / B-100), her text, and the three
+ * book covers flat and unaltered on a shelf (CSS spine + page edge; lift on hover; click → Enlarged detail).
+ */
+import { about } from '../../content/site';
+import { alt } from '../../data/alt';
+import { facts, fileOf } from '../../lib/staging';
+import Plate from '../media/Plate.astro';
+import Bubble from '../symbols/Bubble.astro';
+const f = about.loves.fiction;
+---
+<article class="love">
+  <h3 class="love__t t-h" data-v><Bubble n="1" sheet="B-100" /> <span set:html={f.title} /></h3>
+  <p class="t-body ink-2" data-v set:html={f.text} />
+  <ul class="shelf" role="list">{f.books.map((b) => <li class="shelf__book" style={`--a: ${facts(b).aspect}`}><Plate layers={[b]} alt={alt(fileOf(b))} frame="bare" /></li>)}</ul>
+</article>
+<style>
+  .love { display: grid; gap: var(--s-4); }
+  .love__t { display: flex; align-items: center; gap: var(--s-3); }
+  .shelf { list-style: none; padding: 0; display: flex; gap: var(--s-4); align-items: flex-end; }
+  .shelf { --_h: 160px; }
+  .shelf__book { inline-size: calc(var(--_h) * var(--a)); max-inline-size: 410px; flex: none; }
+  @media (max-width: 767.98px) { .shelf { --_h: 120px; } }
+</style>

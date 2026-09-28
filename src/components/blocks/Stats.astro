@@ -1,0 +1,28 @@
+---
+/**
+ * Stats · OWNER: WP4a (P0 functional stub). Dimensioned specimens: value <p class="stat__v" data-v> (typographic
+ * split via lib/text.ts splitStat — textContent must equal her value) and <p class="stat__html" data-v>. Sidenotes
+ * for "Source:" lines are WP4a. Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+interface Props { block: Extract<Block, { t: 'stats' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+---
+<div {...blkAttrs('stats', ctx)}>
+  <div class="blk__main">
+    <ul class="stats" role="list">
+      {block.items.map((it) => (
+        <li class="stat">
+          <p class="stat__v t-stat" data-v set:html={it.v} />
+          <p class="stat__html t-body-sm ink-2" data-v set:html={rich(it.html)} />
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+<style>
+  .stats { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); }
+  @media (max-width: 559.98px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+</style>

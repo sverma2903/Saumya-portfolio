@@ -1,0 +1,196 @@
+/* ==========================================================================
+   base.css · P0 (shared). Reset, page, typographic roles, links/focus/selection,
+   layout primitives (.shell, .cols, the .blk subgrid), Plan/Section visibility
+   (SM5c), the reduced-motion kill-switch, Dusk and forced-colors.
+   Values come from tokens.css only.
+   ========================================================================== */
+
+/* ---------- reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body, h1, h2, h3, h4, h5, h6, p, figure, figcaption, blockquote, dl, dd, ol, ul { margin: 0; }
+ol, ul { padding-inline-start: 1.25em; }
+img, picture, video, canvas, svg { display: block; max-inline-size: 100%; }
+img, video { block-size: auto; }
+input, button, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+table { border-collapse: collapse; border-spacing: 0; }
+dialog { color: inherit; }
+[hidden] { display: none !important; }
+
+/* ---------- scrolling (§4.9: native, no smooth-scroll library, bars accounted for) ---------- */
+html {
+  scroll-behavior: auto;
+  scroll-padding-top: calc(var(--bar) + 16px);
+}
+@media (max-width: 1023.98px) {
+  html { scroll-padding-top: 16px; scroll-padding-bottom: 72px; }
+  body { padding-bottom: calc(var(--bar) + env(safe-area-inset-bottom)); } /* the fixed bottom title bar (§4.2) */
+}
+
+/* ---------- the page: vellum + fibre, graphite ink, Newsreader ---------- */
+body {
+  min-block-size: 100svh;
+  background-color: var(--paper);
+  background-image: var(--paper-texture);
+  background-blend-mode: multiply;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: var(--fs-body);
+  font-weight: var(--wt-body);
+  line-height: var(--lh-body);
+  font-optical-sizing: auto;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+}
+h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: var(--wt-h); line-height: var(--lh-h); text-wrap: balance; }
+h1 { font-size: var(--fs-title); font-weight: var(--wt-title); line-height: var(--lh-title); letter-spacing: var(--tr-title); }
+h2, h3 { font-size: var(--fs-h); letter-spacing: var(--tr-h); }
+h4 { font-size: 1.25rem; }
+p, li, dd, figcaption { text-wrap: pretty; }
+
+/* Her emphasis (§2.2): <strong> 620 in ink, <em> italic in the same weight, <mark> the ochre band */
+strong, b { font-weight: 620; color: var(--ink); }
+em, i { font-style: italic; }
+mark {
+  color: inherit;
+  background: linear-gradient(transparent 58%, var(--mark) 58% 92%, transparent 92%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-inline: .06em;
+}
+
+/* ---------- typographic roles (§2.2) ---------- */
+.t-cover    { font-family: var(--font-serif); font-size: var(--fs-cover);    font-weight: var(--wt-cover);    line-height: var(--lh-cover);    letter-spacing: var(--tr-cover); }
+.t-title    { font-family: var(--font-serif); font-size: var(--fs-title);    font-weight: var(--wt-title);    line-height: var(--lh-title);    letter-spacing: var(--tr-title); }
+.t-chapter  { font-family: var(--font-serif); font-size: var(--fs-chapter);  font-weight: var(--wt-chapter);  line-height: var(--lh-chapter);  letter-spacing: var(--tr-chapter); }
+.t-h        { font-family: var(--font-serif); font-size: var(--fs-h);        font-weight: var(--wt-h);        line-height: var(--lh-h);        letter-spacing: var(--tr-h); }
+.t-index    { font-family: var(--font-serif); font-size: var(--fs-index);    font-weight: var(--wt-index);    line-height: var(--lh-index);    letter-spacing: var(--tr-index); }
+.t-lede-lg  { font-family: var(--font-serif); font-size: var(--fs-lede-lg);  font-weight: var(--wt-lede-lg);  line-height: var(--lh-lede-lg);  letter-spacing: var(--tr-lede-lg); }
+.t-lede     { font-family: var(--font-serif); font-size: var(--fs-lede);     font-weight: var(--wt-lede);     line-height: var(--lh-lede);     letter-spacing: var(--tr-lede); }
+.t-lede-sm  { font-family: var(--font-serif); font-size: var(--fs-lede-sm);  font-weight: var(--wt-lede-sm);  line-height: var(--lh-lede-sm);  letter-spacing: var(--tr-lede-sm); }
+.t-deck     { font-family: var(--font-serif); font-size: var(--fs-deck);     font-weight: var(--wt-deck);     line-height: var(--lh-deck);     letter-spacing: var(--tr-deck); font-style: italic; }
+.t-stat     { font-family: var(--font-serif); font-size: var(--fs-stat);     font-weight: var(--wt-stat);     line-height: var(--lh-stat);     letter-spacing: var(--tr-stat); font-variant-numeric: tabular-nums; }
+.t-readout  { font-family: var(--font-serif); font-size: var(--fs-readout);  font-weight: var(--wt-readout);  line-height: var(--lh-readout);  letter-spacing: var(--tr-readout); font-variant-numeric: tabular-nums; }
+.t-body-md  { font-family: var(--font-serif); font-size: var(--fs-body-md);  font-weight: var(--wt-body-md);  line-height: var(--lh-body-md);  letter-spacing: var(--tr-body-md); }
+.t-body     { font-family: var(--font-serif); font-size: var(--fs-body);     font-weight: var(--wt-body);     line-height: var(--lh-body);     letter-spacing: var(--tr-body); }
+.t-body-sm  { font-family: var(--font-serif); font-size: var(--fs-body-sm);  font-weight: var(--wt-body-sm);  line-height: var(--lh-body-sm);  letter-spacing: var(--tr-body-sm); }
+.t-caption  { font-family: var(--font-serif); font-size: var(--fs-caption);  font-weight: var(--wt-caption);  line-height: var(--lh-caption);  letter-spacing: var(--tr-caption); font-style: italic; }
+.t-ui       { font-family: var(--font-sans);  font-size: var(--fs-ui);       font-weight: var(--wt-ui);       line-height: var(--lh-ui);       letter-spacing: var(--tr-ui); font-variation-settings: var(--wdth-ui); }
+.t-label    { font-family: var(--font-sans);  font-size: var(--fs-label);    font-weight: var(--wt-label);    line-height: var(--lh-label);    letter-spacing: var(--tr-label); font-variation-settings: var(--wdth-label); text-transform: uppercase; }
+.t-label-lg { font-family: var(--font-sans);  font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); line-height: var(--lh-label-lg); letter-spacing: var(--tr-label-lg); font-variation-settings: var(--wdth-label); text-transform: uppercase; }
+.t-code     { font-family: var(--font-mono);  font-size: var(--fs-code);     font-weight: var(--wt-code);     line-height: var(--lh-code);     letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums; }
+.t-code-sm  { font-family: var(--font-mono);  font-size: var(--fs-code-sm);  font-weight: var(--wt-code-sm);  line-height: var(--lh-code-sm);  letter-spacing: var(--tr-code-sm); font-variant-numeric: tabular-nums; }
+/* Labels keep her casing when the text is hers and must not be uppercased (e.g. CTA labels): */
+.t-case-as-is { text-transform: none; }
+.ink-2 { color: var(--ink-2); }
+.ink-3 { color: var(--ink-3); }
+.rust  { color: var(--rust); }
+
+/* ---------- links, focus, selection (§4.13) ---------- */
+a {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--line-3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--dur-1) var(--ease-ui), text-decoration-color var(--dur-1) var(--ease-ui);
+}
+a:hover { color: var(--rust); text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+::selection { background: var(--blush); color: var(--ink); }
+
+/* ---------- primitives ---------- */
+.sr-only {
+  position: absolute !important; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.shell { max-inline-size: var(--maxw); margin-inline: auto; padding-inline: var(--m); }
+.cols  { display: grid; grid-template-columns: repeat(var(--cols, 12), minmax(0, 1fr)); column-gap: var(--g); }
+.measure { max-inline-size: var(--measure); }
+.flow > * + * { margin-block-start: var(--flow, 1em); }
+
+/* Shared button (the §6.2 cta look). Her labels keep her casing. */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  min-block-size: 44px; padding: 13px 18px;
+  font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
+  font-variation-settings: var(--wdth-label); letter-spacing: .04em; line-height: 1.2;
+  color: var(--ink); background: var(--sheet);
+  border: var(--lw-border) solid var(--ink); border-radius: var(--r-0);
+  text-decoration: none;
+}
+.btn:hover { color: var(--rust-deep); }
+.btn svg { flex: none; }
+
+/* No-JS contract (§4.8): anything that needs script is hidden until html.js is set by the head script. */
+html:not(.js) [data-js-only] { display: none !important; }
+
+/* ---------- the case reading grid rows (§2.5) ----------
+   .case-body (WP5) defines the named lines; every chapter is a subgrid, every block is a subgrid row. */
+.blk { grid-column: text-start / notes-end; display: grid; grid-template-columns: subgrid; min-inline-size: 0; }
+.blk > .blk__main { grid-column: text; min-inline-size: 0; }
+.blk > .blk__note { grid-column: notes; align-self: start; min-inline-size: 0; }
+.blk.is-wide > .blk__main { grid-column: text-start / notes-end; }
+/* Nested blocks (split children, feature-run members rendered as parts) use plain block layout. */
+.blk.blk--nested, .blk--nested > .blk__main, .blk--nested > .blk__note { display: block; grid-column: auto; }
+@media (max-width: 1279.98px) {  /* lg: rail stays, notes fold under their block */
+  .blk { grid-column: text; display: block; }
+  .blk__note { margin-top: var(--flow-s); }
+}
+
+/* Vertical rhythm on .blk (§6.1; WP4a/WP5 refine) */
+.blk + .blk { margin-block-start: var(--flow-m); }
+.blk + .blk--h { margin-block-start: var(--flow-xl); }
+.blk + .blk--h3 { margin-block-start: var(--flow-l); }
+.blk--h + .blk { margin-block-start: var(--flow-m); }
+.blk + .blk--lede { margin-block-start: var(--flow-s); }
+.blk--lede + .blk { margin-block-start: var(--flow-l); }
+.blk + :is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split) { margin-block-start: var(--flow-l); }
+:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split) + .blk { margin-block-start: var(--flow-xl); }
+.blk + .blk--cta { margin-block-start: var(--flow-m); }
+
+/* ---------- Plan / Section (SM5c) ----------
+   Both versions are in the DOM. .full/.skim pairs only exist where a block is skimmed. */
+html[data-view="plan"] .full { display: none; }
+html:not([data-view="plan"]) .skim { display: none; }
+html[data-view="plan"] .plan-hide { display: none; }                      /* e.g. card html, feature html/items */
+html[data-view="plan"] .omit-run:not(.is-open) > .omit-run__body { display: none; }
+html:not([data-view="plan"]) .omit-run > .breakline { display: none; }
+@media print {
+  .skim, .breakline { display: none !important; }
+  .full, .plan-hide, .omit-run__body { display: revert !important; }
+}
+
+/* ---------- reduced motion: the kill-switch (§2.7 law 6) ---------- */
+:root[data-motion="reduce"] *, :root[data-motion="reduce"] *::before, :root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion]) *, :root:not([data-motion]) *::before, :root:not([data-motion]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- forced colors: no texture, hatches become borders, SVG follows currentColor ---------- */
+@media (forced-colors: active) {
+  body { background-image: none; }
+  :root { --hatch-45: none; --hatch-x: none; --hatch-acc: none; --hatch-blush: none; --paper-texture: none; }
+  [data-hatch] { border: 1px solid CanvasText; }
+  mark { background: Mark; color: MarkText; forced-color-adjust: none; }
+}
+
+/* ---------- print: the texture never prints (print.css, WP1, does the rest) ---------- */
+@media print {
+  body { background: #fff; }
+}

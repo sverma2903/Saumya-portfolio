@@ -1,0 +1,107 @@
+---
+/**
+ * Plate · P0 minimal → WP4b completes (SPEC §6.3). The box every piece of her media sits in.
+ *
+ * interface PlateProps {
+ *   layers: Media[];            // bottom → top (Orbit: backdrop, laptop). A layer may carry its own `pad`/`fit`
+ *                               //   (LayerMedia = Media & { pad?: number; fit?: 'contain' | 'fill' }; see plateLayers()).
+ *   stage?: string;             // CSS background (her stage), default none
+ *   aspect?: number;            // box w/h; default = first layer's native aspect
+ *   fit?: 'contain' | 'fill';   // 'fill' only for a layer whose native aspect == box aspect
+ *   pad?: number;               // % inset for contained layers (stage margin); default 0
+ *   frame?: Frame;              // default from media-staging.ts, else 'plate'
+ *   vt?: string;                // view-transition-name
+ *   dims?: boolean;             // hover/focus dimension strings (covers only) — WP4b
+ *   priority?: 'high' | 'auto' | 'lazy';
+ *   fig?: { no: string; caption?: string };   // enables the Enlarged-detail button + figure meta
+ *   alt: string;                // from data/alt.ts; '' only for decorative duplicates
+ * }
+ *
+ * P0 behaviour: staged plates (stage or aspect given, or several layers) are a fixed-aspect box with contained,
+ * padded layers; otherwise the media renders at its natural aspect. Every <img>/<video> carries width/height from
+ * dims.json. P0 gives GIFs/videos a real src (lazy) so pages are complete; WP4b replaces this with the managers
+ * (data-src + <noscript> twins, placeholders, pause controls).
+ */
+import type { Media } from '../../lib/blocks';
+import type { Frame } from '../../data/media-staging';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
+import { chrome, fill } from '../../data/chrome';
+import { stripHtml } from '../../lib/text';
+
+export type LayerMedia = Media & { pad?: number; fit?: 'contain' | 'fill' };
+interface Props {
+  layers: LayerMedia[];
+  stage?: string;
+  aspect?: number;
+  fit?: 'contain' | 'fill';
+  pad?: number;
+  frame?: Frame;
+  vt?: string;
+  dims?: boolean;
+  priority?: 'high' | 'auto' | 'lazy';
+  fig?: { no: string; caption?: string };
+  alt: string;
+  class?: string;
+}
+const { layers, stage, aspect, fit = 'contain', pad = 0, frame, vt, dims = false, priority = 'lazy', fig, alt, class: cls } = Astro.props;
+const first = layers[0];
+const staged = !!stage || aspect != null || layers.length > 1;
+const f0 = facts(first);
+const boxAspect = aspect ?? f0.aspect;
+const resolvedFrame: Frame = frame ?? stagingOf(first).frame ?? 'plate';
+const cap = !staged ? stagingOf(first).cap : undefined;
+const loading = priority === 'lazy' ? 'lazy' : 'eager';
+const styles = [
+  staged ? `aspect-ratio: ${boxAspect}` : '',
+  stage ? `background: ${stage}` : '',
+  vt ? `view-transition-name: ${vt}` : '',
+  cap ? `max-inline-size: ${cap}px` : '',
+].filter(Boolean).join('; ');
+const enlargeLabel = fig ? fill(chrome.wp4b.media.enlargeLabel, { fig: fig.no }) + (fig.caption ? `: ${stripHtml(fig.caption)}` : alt ? `: ${alt}` : '') : undefined;
+---
+<div class:list={['plate', `plate--${resolvedFrame}`, { 'plate--staged': staged, 'plate--natural': !staged }, cls]} style={styles || undefined} data-plate data-file={fileOf(first)} data-dims={dims ? '' : undefined}>
+  {layers.map((layer, i) => {
+    const f = facts(layer);
+    const lp = layer.pad ?? pad;
+    const lf = layer.fit ?? fit;
+    const isTop = i === layers.length - 1;
+    const layerStyle = staged ? `inset: ${lp}%; inline-size: ${100 - 2 * lp}%; block-size: ${100 - 2 * lp}%; object-fit: ${lf === 'fill' ? 'fill' : 'contain'}` : undefined;
+    return f.kind === 'video' ? (
+      <video
+        class:list={['plate__media', { plate__layer: staged }]}
+        style={layerStyle}
+        src={f.remote ? f.src : `${f.src}#t=0.001`}
+        width={f.w}
+        height={f.h}
+        muted={!stagingOf(layer).video?.audio}
+        playsinline
+        controls
+        preload={f.remote ? 'none' : 'metadata'}
+        aria-label={isTop ? alt || undefined : undefined}
+      ></video>
+    ) : (
+      <img
+        class:list={['plate__media', { plate__layer: staged }]}
+        style={layerStyle}
+        src={f.src}
+        width={f.w}
+        height={f.h}
+        alt={isTop ? alt : ''}
+        loading={loading}
+        decoding="async"
+        fetchpriority={priority === 'high' && isTop ? 'high' : undefined}
+      />
+    );
+  })}
+  {fig && <button type="button" class="plate__open" data-fig data-js-only aria-label={enlargeLabel}></button>}
+</div>
+<style>
+  .plate { position: relative; min-inline-size: 0; }
+  .plate--staged { inline-size: 100%; }
+  .plate__layer { position: absolute; }
+  .plate--natural > .plate__media { inline-size: 100%; block-size: auto; }
+  .plate--plate { background-color: var(--plate); outline: var(--lw-object) solid var(--line-2); outline-offset: -1px; }
+  .plate--print { background: var(--plate); padding: 8px; box-shadow: var(--shadow-plate); }
+  .plate--before { background: var(--before); padding: 16px; }
+  .plate__open { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; cursor: zoom-in; background: transparent; }
+</style>

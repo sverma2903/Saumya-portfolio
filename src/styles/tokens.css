@@ -1,0 +1,173 @@
+/* ==========================================================================
+   tokens.css · P0 (shared). THE design tokens of "Drawn to Scale" (SPEC §2).
+   Components must not hard-code colours, sizes, radii, durations or z-indices.
+   Need a new token? Ask the P0 owner (SPEC §8.3).
+
+   NOTE: --font-serif / --font-sans / --font-mono are emitted on :root by the
+   Astro Fonts API (<Font> in Base.astro). Do not redeclare them here.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   §2.2 Type scale. Fluid values interpolate 390px → 1440px.
+   Each role: --fs-* (size) · --lh-* (line-height) · --tr-* (tracking) · --wt-* (weight)
+   -------------------------------------------------------------------------- */
+:root {
+  --fs-cover: clamp(2.5rem, 1.664rem + 3.429vw, 4.75rem);           --lh-cover: 1.02;    --tr-cover: -0.022em;  --wt-cover: 320;
+  --fs-title: clamp(2.375rem, 1.679rem + 2.857vw, 4.25rem);         --lh-title: 1.02;    --tr-title: -0.02em;   --wt-title: 340;
+  --fs-chapter: clamp(2.75rem, 1.543rem + 4.952vw, 6rem);           --lh-chapter: 0.95;  --tr-chapter: -0.03em; --wt-chapter: 300;
+  --fs-h: clamp(1.5625rem, 1.4rem + 0.667vw, 2rem);                 --lh-h: 1.12;        --tr-h: -0.01em;       --wt-h: 440;
+  --fs-index: clamp(1.375rem, 1.236rem + 0.571vw, 1.75rem);         --lh-index: 1.15;    --tr-index: -0.01em;   --wt-index: 420;
+  --fs-lede-lg: clamp(1.75rem, 1.379rem + 1.524vw, 2.75rem);        --lh-lede-lg: 1.12;  --tr-lede-lg: -0.015em; --wt-lede-lg: 330;
+  --fs-lede: clamp(1.3125rem, 1.127rem + 0.762vw, 1.8125rem);       --lh-lede: 1.3;      --tr-lede: -0.005em;   --wt-lede: 380;
+  --fs-lede-sm: clamp(1.1875rem, 1.095rem + 0.381vw, 1.4375rem);    --lh-lede-sm: 1.35;  --tr-lede-sm: 0;       --wt-lede-sm: 380;
+  --fs-deck: clamp(1.25rem, 1.0875rem + 0.667vw, 1.6875rem);        --lh-deck: 1.35;     --tr-deck: 0;          --wt-deck: 380;      /* italic */
+  --fs-stat: clamp(2.5rem, 2.036rem + 1.905vw, 3.75rem);            --lh-stat: 1.0;      --tr-stat: -0.02em;    --wt-stat: 300;      /* tnum */
+  --fs-readout: clamp(3rem, 2.443rem + 2.286vw, 4.5rem);            --lh-readout: 0.95;  --tr-readout: -0.03em; --wt-readout: 300;   /* tnum */
+  --fs-body-md: clamp(1.1875rem, 1.118rem + 0.286vw, 1.375rem);     --lh-body-md: 1.55;  --tr-body-md: 0;       --wt-body-md: 400;
+  --fs-body: clamp(1.125rem, 1.079rem + 0.19vw, 1.25rem);           --lh-body: 1.62;     --tr-body: 0;          --wt-body: 400;
+  --fs-body-sm: clamp(1rem, 0.977rem + 0.095vw, 1.0625rem);         --lh-body-sm: 1.55;  --tr-body-sm: 0;       --wt-body-sm: 400;
+  --fs-caption: clamp(0.9375rem, 0.926rem + 0.048vw, 0.96875rem);   --lh-caption: 1.45;  --tr-caption: 0;       --wt-caption: 400;   /* italic */
+  --fs-ui: 0.9375rem;                                               --lh-ui: 1.4;        --tr-ui: 0;            --wt-ui: 450;        /* Plex Sans wdth 100 */
+  --fs-label: 0.75rem;                                              --lh-label: 1.3;     --tr-label: 0.12em;    --wt-label: 560;     /* Plex Sans wdth 85 UPPER */
+  --fs-label-lg: 0.8125rem;                                         --lh-label-lg: 1.3;  --tr-label-lg: 0.1em;  --wt-label-lg: 560;  /* Plex Sans wdth 85 UPPER */
+  --fs-code: 0.75rem;                                               --lh-code: 1.3;      --tr-code: 0.04em;     --wt-code: 500;      /* Plex Mono tnum */
+  --fs-code-sm: 0.71875rem;                                         --lh-code-sm: 1.3;   --tr-code-sm: 0.04em;  --wt-code-sm: 400;   /* the minimum any text may be */
+
+  /* Plex Sans condensed lettering. The generated @font-face has no font-stretch range, so use the axis. */
+  --wdth-label: "wdth" 85;
+  --wdth-ui: "wdth" 100;
+  /* Body measure (≈ 66–68 characters) */
+  --measure: 680px;
+}
+
+/* --------------------------------------------------------------------------
+   §2.3 Colour. Vellum is the default and only automatic theme.
+   Dusk is opt-in (end sheet / palette), persisted, and never follows the OS.
+   -------------------------------------------------------------------------- */
+:root {
+  --paper:   #EEEBE3;  /* drafting vellum — page */
+  --paper-2: #E6E1D6;  /* wells, index hover base */
+  --sheet:   #F5F3EE;  /* title blocks, bars, panels */
+  --plate:   #FBFAF7;  /* mats for her white artefacts (edge reads as a print margin) */
+  --before:  #E3E0D8;  /* surround for intentionally dated "before" material */
+  --ink:     #211E19;  /* 13.9:1 on paper */
+  --ink-2:   #4A453C;  /* 8.0:1  — body, secondary */
+  --ink-3:   #655F54;  /* 5.3:1  — the lightest text colour allowed */
+  --line-1:  rgb(33 30 25 / .14);   /* hairlines, hatch */
+  --line-2:  rgb(33 30 25 / .30);   /* dimension/extension lines, dashed hidden lines */
+  --line-3:  rgb(33 30 25 / .55);   /* 3.6:1 — UI component boundaries (1.4.11) */
+  --rust:      #A63D00;  /* THE redline: current state, focus, datum, revisions. 5.4:1 */
+  --rust-deep: #8C3300;  /* hover/pressed text, 6.8:1 */
+  --rust-2:    #B0591A;  /* her name colour — ≥24px only (4.1:1) */
+  --clay:    #C27D70;    /* leader lines, centre lines, dot terminals — decorative only */
+  --blush:   #F2DACD;    /* selection, hover hatch, revision-cloud fill */
+  --mark:    rgb(214 150 62 / .38);  /* her <mark>: the ochre swash of her 2015 signature */
+  --focus:   var(--rust);
+  --detail-bg: #16110E;  /* Enlarged detail surround (warm black) */
+  --scrim:   rgb(22 17 14 / .64);
+  /* per-case accent (overridden on case pages via inline style on <html>; see sheets.ts) */
+  --acc: var(--rust); --acc-mark: var(--rust); --acc-soft: var(--blush); --stage: var(--paper-2);
+  color-scheme: light;
+}
+
+:root[data-theme="dusk"] {           /* from her Space Plasticity dusk render — not near-black */
+  --paper: #1D1614; --paper-2: #231B18; --sheet: #261D1A;
+  --plate: #FBFAF7;                  /* prints pinned on a dark wall — NEVER inverted */
+  --before: #2E2522;
+  --ink: #EDE4D8; --ink-2: #C9BCAD; --ink-3: #A39684;      /* 14.2 / 9.6 / 6.2 : 1 */
+  --line-1: rgb(237 228 216 / .16); --line-2: rgb(237 228 216 / .32); --line-3: rgb(237 228 216 / .58);
+  --rust: #E07A3F; --rust-deep: #F09A62; --rust-2: #E48A55; --clay: #B77C70;
+  --blush: #3A2621; --mark: rgb(214 150 62 / .30); --focus: #E07A3F;
+  color-scheme: dark;
+}
+
+/* Hatch materials: all fills in the system are hatches, never flat tints. They never touch her images.
+   (Custom properties that reference other custom properties resolve where they are declared; because the
+   per-case accents are set on <html> itself, --hatch-acc picks them up.) */
+:root {
+  --hatch-45:  repeating-linear-gradient(-45deg, var(--line-2) 0 0.8px, transparent 0.8px 6px);
+  --hatch-x:   var(--hatch-45), repeating-linear-gradient(45deg, var(--line-1) 0 0.8px, transparent 0.8px 6px);
+  --hatch-acc: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--acc-mark) 55%, transparent) 0 1px, transparent 1px 5px);
+  --hatch-blush: repeating-linear-gradient(-45deg, var(--blush) 0 2px, transparent 2px 7px);
+
+  /* Paper texture: a static feTurbulence fibre tile (220px, baseFrequency .8, 2 octaves, ≈7% alpha), multiplied
+     onto --paper by body. Never animated, never over media; removed in print and under forced-colors (base.css). */
+  --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .13 0 0 0 0 .12 0 0 0 0 .1 .14 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   §2.4 Spacing, radii, line weights, shadows
+   -------------------------------------------------------------------------- */
+:root {
+  /* 8px base */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 24px;
+  --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px; --s-10: 128px; --s-11: 192px;
+  /* vertical rhythm for the case body */
+  --flow-xs: 8px; --flow-s: 16px; --flow-m: 24px; --flow-l: 40px; --flow-xl: 64px; --flow-xxl: 96px;
+  --space-chapter: clamp(96px, 10vw, 160px);
+  /* radii — drafting is square */
+  --r-0: 0; --r-1: 2px; --r-frame: 6px; --r-dot: 999px;
+  /* line weights — a real drafting hierarchy */
+  --lw-cut: 2px;       /* section cut lines, section-mark line */
+  --lw-border: 1.25px; /* title blocks, detail-title rules, buttons */
+  --lw-object: 1px;    /* object lines, table rules */
+  --lw-dim: 1px;       /* dimension/extension lines (use --line-2 colour, never sub-pixel widths) */
+  --dash-center: 14 3 2 3;  /* long–short dash (SVG stroke-dasharray) */
+  --dash-hidden: 4 3;
+  /* shadows */
+  --shadow-plate: 0 1px 0 rgb(33 30 25 / .06), 0 14px 32px -20px rgb(33 30 25 / .30);
+  --shadow-lift:  0 18px 40px -22px rgb(33 30 25 / .38);
+  --shadow-dialog: 0 30px 80px -30px rgb(20 14 10 / .55);
+  --shadow-peel:  -12px 0 18px -10px rgb(33 30 25 / .40);
+}
+
+/* --------------------------------------------------------------------------
+   §2.5 Grid and breakpoints
+   xs <480 · sm 480–767 · md 768–1023 · lg 1024–1279 · xl 1280–1599 · 2xl ≥1600
+   (Custom properties cannot be used inside @media conditions; the breakpoints are
+   480 / 768 / 1024 / 1280 / 1600 and "below" queries use .98, e.g. max-width: 1023.98px.)
+   -------------------------------------------------------------------------- */
+:root { --bar: 56px; --maxw: 1488px; --cols: 4; --m: 16px; --g: 12px; }
+@media (min-width: 480px)  { :root { --cols: 6;  --m: 20px; --g: 16px; } }
+@media (min-width: 768px)  { :root { --cols: 8;  --m: 32px; --g: 20px; } }
+@media (min-width: 1024px) { :root { --cols: 12; --m: 40px; --g: 24px; } }
+@media (min-width: 1280px) { :root { --cols: 12; --m: 56px; --g: 24px; } }
+@media (min-width: 1600px) { :root { --cols: 12; --m: 24px; --g: 24px; } } /* content max 1488 = 1440 + 2×24; .shell centres it */
+
+/* --------------------------------------------------------------------------
+   §2.6 Z-index layers
+   -------------------------------------------------------------------------- */
+:root {
+  --z-base: 0; --z-raised: 1; --z-sticky: 20;  /* Levels rail, Viewport, walkthrough figure */
+  --z-vtline: 30;                              /* cut line during view transitions */
+  --z-bar: 40;                                 /* title bar / bottom bar */
+  --z-drawer: 60;                              /* mobile sheet drawer */
+  --z-dialog: 80;                              /* Sheet list palette, Enlarged detail (native <dialog> top layer anyway) */
+  --z-toast: 90; --z-skip: 100;
+}
+
+/* --------------------------------------------------------------------------
+   §2.7 Motion
+   -------------------------------------------------------------------------- */
+:root {
+  --ease-pen:    cubic-bezier(.2,.7,.1,1);    /* default: quick pen-down, long settle */
+  --ease-draft:  cubic-bezier(.65,.05,.25,1); /* line draws (section marks, clouds) */
+  --ease-ui:     cubic-bezier(.2,.8,.2,1);    /* UI state changes */
+  --ease-breath: cubic-bezier(.45,0,.25,1);   /* the only ambient curve (hero demo) */
+  --dur-1: 120ms;  /* hover colour */
+  --dur-2: 180ms;  /* UI toggles, plate fade-from-placeholder (160–180) */
+  --dur-3: 280ms;  /* drawers, dimension strings, hatch hover slide */
+  --dur-4: 520ms;  /* page cut + plate morph */
+  --dur-5: 900ms;  /* section-mark draft-across */
+  --dur-6: 1600ms; /* revision cloud draw */
+}
+/* Law 6: reduced motion. html[data-motion] is set by the head script (localStorage 'sv:motion' overrides the OS
+   both ways). Without JS there is no data-motion, so the OS preference applies directly. */
+:root[data-motion="reduce"] {
+  --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; --dur-4: 0.01ms; --dur-5: 0.01ms; --dur-6: 0.01ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion]) {
+    --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; --dur-4: 0.01ms; --dur-5: 0.01ms; --dur-6: 0.01ms;
+  }
+}

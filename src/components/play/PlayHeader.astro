@@ -1,0 +1,18 @@
+---
+/**
+ * PlayHeader · OWNER: WP6 (P0 functional stub). C-100 ─── PLAY (chrome), her headline (h1, <em>side quests</em>) + the ✦
+ * Ornament (it is in her original h1), her sub.
+ */
+import { play } from '../../content/site';
+import { chrome } from '../../data/chrome';
+import Ornament from '../symbols/Ornament.astro';
+const p = chrome.wp6.play;
+---
+<header class="play-head shell">
+  <p class="t-label-lg ink-2"><span class="t-code rust">{p.sheet}</span> <span aria-hidden="true">───</span> {p.title}</p>
+  <h1 class="t-title" data-v><Fragment set:html={play.headline} /> <Ornament /></h1>
+  <p class="t-body-md ink-2" data-v set:html={play.sub} />
+</header>
+<style>
+  .play-head { display: grid; gap: var(--s-4); padding-block: var(--s-7); max-inline-size: calc(var(--maxw)); }
+</style>

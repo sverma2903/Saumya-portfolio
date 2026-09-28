@@ -1,0 +1,19 @@
+---
+/** ScaleBar · P0 symbol. A graphic scale: 5 alternating blocks, 0 … 50 M. currentColor; aria-hidden. */
+interface Props {
+  width?: number;
+  unit?: string;
+  class?: string;
+}
+const { width = 132, unit = '50 M', class: cls } = Astro.props;
+const blocks = [0, 1, 2, 3, 4];
+---
+<svg class:list={['sym', 'sym-scalebar', cls]} width={width} height={width * (28 / 132)} viewBox="0 0 132 28" fill="none" stroke="currentColor" aria-hidden="true" focusable="false">
+  {blocks.map((i) => <rect x={6 + i * 24} y="3" width="24" height="6" stroke-width="1" fill={i % 2 === 0 ? 'currentColor' : 'none'} />)}
+  <text x="6" y="24" text-anchor="middle" fill="currentColor" stroke="none" class="scalebar__t">0</text>
+  <text x="126" y="24" text-anchor="middle" fill="currentColor" stroke="none" class="scalebar__t">{unit}</text>
+</svg>
+<style>
+  .sym-scalebar { flex: none; overflow: visible; }
+  .scalebar__t { font-family: var(--font-mono); font-size: 11.5px; }
+</style>

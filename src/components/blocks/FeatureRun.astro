@@ -1,0 +1,27 @@
+---
+/**
+ * FeatureRun · OWNER: WP4b (P0 functional stub). A run of consecutive features grouped by lib/features.ts:
+ *   renderer 'phone'  → WalkthroughPhone (sticky phone on the --stage panel, steps beside it)
+ *   renderer 'player' → WalkthroughPlayer (vertical tablist of her full ledes + one BRW player)
+ * Props: { blocks, ctxs, renderer }. Each member keeps its own ctx.id. P0: the default stacked (no-JS) layout —
+ * each step with its media.
+ */
+import type { Block } from '../../lib/blocks';
+import type { BlockCtx } from '../../lib/blocks-ctx';
+import type { RunRenderer } from '../../lib/features';
+import Feature from './Feature.astro';
+interface Props {
+  blocks: Extract<Block, { t: 'feature' }>[];
+  ctxs: BlockCtx[];
+  renderer: RunRenderer;
+}
+const { blocks, ctxs, renderer } = Astro.props;
+---
+<div class="blk blk--run is-wide" data-block="run" data-renderer={renderer} data-plan="keep">
+  <div class="blk__main run">
+    {blocks.map((b, i) => <Feature block={b} ctx={{ ...ctxs[i], inRun: true }} renderer="split" />)}
+  </div>
+</div>
+<style>
+  .run { display: grid; gap: var(--flow-xl); }
+</style>

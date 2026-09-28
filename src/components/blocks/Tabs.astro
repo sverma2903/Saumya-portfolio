@@ -1,0 +1,30 @@
+---
+/**
+ * Tabs · OWNER: WP4a (P0 functional stub). CAD layout tabs (Educademy personas): full-width persona images with sheet
+ * tabs (role=tablist, roving tabindex) along the bottom edge; inactive panels hidden. P0 renders the no-JS version:
+ * every panel stacked with her label as its title. Print: all panels. Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { fileOf } from '../../lib/staging';
+import { alt } from '../../data/alt';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'tabs' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('tabs', ctx)}>
+  <div class="blk__main tabs">
+    {block.items.map((it, i) => (
+      <div class="tabs__panel">
+        <Tag class="tabs__label t-label-lg" data-v>{it.label}</Tag>
+        <Plate layers={[it.media]} alt={alt(fileOf(it.media))} fig={ctx.fig ? { no: `${ctx.fig}${ctx.figLetters?.[i] ?? ''}` } : undefined} />
+      </div>
+    ))}
+    {ctx.fig && <p class="t-code ink-3" data-chrome>{ctx.fig}</p>}
+  </div>
+</div>
+<style>
+  .tabs { display: grid; gap: var(--s-6); }
+  .tabs__panel { display: grid; gap: var(--s-3); }
+</style>

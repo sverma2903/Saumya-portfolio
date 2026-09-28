@@ -1,15 +1,47 @@
 ---
+/**
+ * 404 · "Sheet not in set" · OWNER: WP1. P0 minimal: the label h1 "Sheet not in set." (narrative lines stay off until
+ * approved), the path (3-line inline script; omitted without JS), the title block (SHEET 404 · TITLE — · REV. — ·
+ * DRAWN BY S. V.), the compact Drawing index, and the way back. Served with status 404 by Cloudflare
+ * (not_found_handling: "404-page").
+ */
 import Base from '../layouts/Base.astro';
+import DrawingIndex from '../components/home/DrawingIndex.astro';
+import Icon from '../components/symbols/Icon.astro';
+import { chrome, narrative } from '../data/chrome';
+import type { PageMeta } from '../lib/page';
+
+const nf = chrome.wp1.notFound;
+const page: PageMeta = { kind: '404', sheet: '404', sheetTitle: chrome.wp1.titleBar.notInSet };
+const cloud = narrative(nf.cloud);
+const rev = narrative(nf.revFinal);
 ---
-<Base title="Not found">
-  <section class="lost" data-nav="dark" data-field-host>
-    <div class="gl-fallback"></div>
-    <canvas class="gl" data-field data-shade="0.3" data-seed="3.1" aria-hidden="true"></canvas>
-    <div style="position:relative; z-index:2; padding: 0 16px">
-      <p class="mono">Off the drawing board</p>
-      <h1>404</h1>
-      <p>This page isn't part of the plan.</p>
-      <a class="btn light" href="/">Back home <span class="arrow">→</span></a>
+<Base title={`${chrome.wp1.titleBar.notInSet} — ${chrome.p0.person}`} description={nf.h1} page={page} noindex>
+  <section class="nf shell" aria-labelledby="nf-h">
+    <p class="t-label-lg ink-2">{nf.sheet}</p>
+    <h1 id="nf-h" class="t-title">{nf.h1}</h1>
+    <div class="nf__cloud">
+      {cloud && <p>{cloud}</p>}
+      <p class="nf__path t-code" data-path hidden></p>
     </div>
+    <dl class="nf__tb">
+      <div><dt class="t-label ink-2">{nf.sheetKey}</dt><dd class="t-code">{nf.sheetValue}</dd></div>
+      <div><dt class="t-label ink-2">{nf.titleKey}</dt><dd>{nf.titleValue}</dd></div>
+      <div><dt class="t-label ink-2">{nf.revKey}</dt><dd>{rev ?? nf.revValue}</dd></div>
+      <div><dt class="t-label ink-2">{nf.drawnByKey}</dt><dd>{nf.drawnByValue}</dd></div>
+    </dl>
   </section>
+  <DrawingIndex variant="compact" />
+  <p class="shell"><a class="t-label" href="/#index"><Icon name="arrow-left" size={14} /> {nf.back}</a></p>
+  <script is:inline>
+    (() => { const p = document.querySelector('[data-path]'); if (p) { p.textContent = location.pathname; p.hidden = false; } })();
+  </script>
 </Base>
+<style>
+  .nf { display: grid; gap: var(--s-4); padding-block: var(--s-7); }
+  .nf__cloud { border: var(--lw-border) solid var(--rust); padding: var(--s-4); overflow-wrap: anywhere; }
+  .nf__tb { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border: var(--lw-border) solid var(--ink); }
+  .nf__tb div { padding: var(--s-2) var(--s-3); }
+  .nf__tb div + div { border-inline-start: var(--lw-object) solid var(--line-2); }
+  .nf__tb dd { margin: 0; }
+</style>

@@ -1,0 +1,29 @@
+---
+/**
+ * Levels · OWNER: WP5 (P0 functional stub). The building-section rail (SM4): floors with heights ∝ minutes, a rust
+ * datum ▼ and the reading trace (scripts/case/levels.ts). No-JS baseline (this stub): a static <nav aria-label="Levels">
+ * list of floors with elevations, the View toggle and the match line.
+ */
+import type { CaseReading } from '../../lib/reading';
+import { chrome, fill } from '../../data/chrome';
+import ViewToggle from './ViewToggle.astro';
+interface Props { reading: CaseReading; sheetNo: string; next: { href: string; no: string; title: string } }
+const { reading, sheetNo, next } = Astro.props;
+const l = chrome.wp5.levels;
+---
+<nav class="levels" aria-label={l.title}>
+  <p class="t-label ink-2">{l.title} · {sheetNo} · {fill(chrome.wp3.index.minutes, { n: reading.minutes })}</p>
+  <ol class="levels__floors" role="list">
+    {reading.sections.map((s) => (
+      <li><a href={`#${s.id}`}><span class="t-label" data-v>{s.label}</span><span class="levels__elev t-caption ink-2">{s.elev}</span></a></li>
+    ))}
+  </ol>
+  <p class="t-label ink-2">{l.view}</p>
+  <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} class="levels__view" />
+  <p class="levels__match t-label"><span class="ink-2">{l.matchLine}</span> <a href={next.href}>{next.no}</a></p>
+</nav>
+<style>
+  .levels { position: sticky; inset-block-start: calc(var(--bar) + 24px); display: grid; gap: var(--s-3); }
+  .levels__floors { list-style: none; padding: 0; display: grid; gap: var(--s-2); border-inline-start: var(--lw-dim) dashed var(--line-2); padding-inline-start: var(--s-4); }
+  .levels__floors a { display: grid; text-decoration: none; }
+</style>

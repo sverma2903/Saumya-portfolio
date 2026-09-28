@@ -1,0 +1,12 @@
+---
+/**
+ * IndexCard · OWNER: WP3 (P0 stub). Below 1024px the index rows become cards (SM2): tag line `A-101 · PERSONAL PROJECT
+ * · MAR 2026`, the 16:10 plate (lazy, view-transition-name plate-<slug>), title, italic outcome line, a one-line
+ * readout, `≈ 13 min · Open →`. Never rendered together with the Viewport plate (VT names must be unique).
+ * P0: not mounted yet (the rows serve every width).
+ */
+import type { Sheet } from '../../data/sheets';
+interface Props { sheet: Sheet; minutes?: number }
+const { sheet } = Astro.props;
+---
+<li class="icard"><a href={sheet.href}><span data-v>{sheet.title.text}</span></a></li>

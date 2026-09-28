@@ -1,0 +1,18 @@
+---
+/**
+ * Portrait · OWNER: WP6 (P0 functional stub). Her 904×904 portrait PNG (tilted rust card baked in): no extra rotation,
+ * no clipping, no second card. 460px desktop, ≤360px mobile, the compass construction behind it (Ø 904 PX on hover).
+ * LCP → preloaded by the page (lcpImage) + fetchpriority=high.
+ */
+import { about } from '../../content/site';
+import { alt } from '../../data/alt';
+import { fileOf } from '../../lib/staging';
+import Plate from '../media/Plate.astro';
+---
+<figure class="portrait">
+  <Plate layers={[about.portrait]} alt={alt(fileOf(about.portrait))} frame="bare" priority="high" />
+</figure>
+<style>
+  .portrait { max-inline-size: 460px; justify-self: center; inline-size: 100%; }
+  @media (max-width: 767.98px) { .portrait { max-inline-size: 360px; } }
+</style>

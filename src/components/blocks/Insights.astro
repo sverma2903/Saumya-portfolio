@@ -1,0 +1,39 @@
+---
+/**
+ * Insights · OWNER: WP4a (P0 functional stub). Rows (PFF Test): keynote 01 (chrome), her title, her sub (italic),
+ * her items (leader list), her evidence crop on a plate. Plan view: title + sub only (items/img → .plan-hide).
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { fileOf } from '../../lib/staging';
+import { pad2 } from '../../lib/text';
+import { alt } from '../../data/alt';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'insights' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('insights', ctx)}>
+  <div class="blk__main">
+    <ol class="insights" role="list">
+      {block.items.map((it, i) => (
+        <li class="insight">
+          <div class="insight__text">
+            <span class="insight__no t-code ink-3" data-chrome aria-hidden="true">{pad2(i + 1)}</span>
+            <Tag class="insight__t t-index" data-v set:html={rich(it.title)} />
+            {it.sub && <p class="insight__sub t-deck ink-2" data-v set:html={rich(it.sub)} />}
+            <ul class="leaders t-body ink-2 plan-hide">{it.items.map((x) => <li data-v set:html={rich(x)} />)}</ul>
+          </div>
+          {it.img && <div class="insight__img plan-hide"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} /></div>}
+        </li>
+      ))}
+    </ol>
+  </div>
+</div>
+<style>
+  .insights { list-style: none; padding: 0; display: grid; gap: var(--s-7); }
+  .insight { display: grid; gap: var(--s-5); grid-template-columns: 7fr 5fr; align-items: start; }
+  @media (max-width: 767.98px) { .insight { grid-template-columns: minmax(0, 1fr); } }
+  .insight__img { max-inline-size: 420px; }
+</style>

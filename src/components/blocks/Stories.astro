@@ -1,0 +1,41 @@
+---
+/**
+ * Stories · OWNER: WP4a (P0 functional stub). Occupant data sheets (PFF): avatar, her title, a ruled <dl> of her rows
+ * ("As a" / "I want to" / "So that"). Plan view: omit (counted as "user-story set").
+ * Her original rows read "<strong>As a</strong>, Financial Analyst": the ", " between key and value is her punctuation,
+ * but the content model's [k, v] rows do not carry it — keep the comma in the DOM text (a data-chrome span) so the
+ * page text still reads as her original (the fidelity checker requires "As a , Financial Analyst").
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { fileOf } from '../../lib/staging';
+import { alt } from '../../data/alt';
+import Plate from '../media/Plate.astro';
+interface Props { block: Extract<Block, { t: 'stories' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('stories', ctx)}>
+  <div class="blk__main">
+    <ul class="stories" role="list">
+      {block.items.map((it) => (
+        <li class="story">
+          <div class="story__avatar"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} frame="bare" /></div>
+          <Tag class="story__t t-index" data-v>{it.title}</Tag>
+          <dl class="story__rows">
+            {it.rows.map(([k, v]) => (
+              <div class="story__row"><dt class="t-label ink-2" data-v>{k}<span class="story__comma" data-chrome aria-hidden="true">,</span></dt><dd data-v>{v}</dd></div>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+<style>
+  .stories { list-style: none; padding: 0; display: grid; gap: var(--s-5); grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 1279.98px) { .stories { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767.98px) { .stories { grid-template-columns: minmax(0, 1fr); } }
+  .story__avatar { inline-size: 112px; }
+  .story__row { padding-block: var(--s-2); border-block-start: var(--lw-object) solid var(--line-1); }
+</style>

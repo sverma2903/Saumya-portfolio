@@ -1,0 +1,37 @@
+---
+/**
+ * MatchLineNext · OWNER: WP5 (P0 functional stub). End of case (§5.2.4): MATCH LINE ─·─ SEE SHEET A-102, the next
+ * sheet's 16:10 plate (view-transition-name plate-<next>), its title + index line, "Open sheet A-102 →", and
+ * "↑ A-000 Drawing index". Next = the following case in site.ts `cases`, cycling.
+ */
+import type { Sheet } from '../../data/sheets';
+import { plateLayers } from '../../data/sheets';
+import { chrome, fill } from '../../data/chrome';
+import MatchLine from '../symbols/MatchLine.astro';
+import Icon from '../symbols/Icon.astro';
+import Plate from '../media/Plate.astro';
+interface Props { next: Sheet }
+const { next } = Astro.props;
+const l = chrome.wp5.levels;
+const no = String(next.no);
+---
+<section class="matchline shell" aria-labelledby="matchline-h">
+  <p class="matchline__rule t-label ink-2" aria-hidden="true"><span>{l.matchLine}</span><MatchLine /><span>{fill(l.seeSheet, { no })}</span></p>
+  <a class="matchline__card" href={next.href}>
+    {next.plate && <Plate layers={plateLayers(next.plate)} stage={next.plate.stage} aspect={next.plate.aspect} vt={`plate-${next.slug}`} alt="" frame="bare" />}
+    <span class="matchline__text">
+      <span class="t-label ink-2">{no} · {l.nextSheet}</span>
+      <span id="matchline-h" class="t-index" data-v>{next.title.text}</span>
+      {next.line && <span class="t-deck ink-2" data-v>{next.line.text}</span>}
+      <span class="btn">{fill(l.open, { no })}<Icon name="arrow-right" /></span>
+    </span>
+  </a>
+  <a class="matchline__up t-label" href="/#index">↑ {l.toIndex}</a>
+</section>
+<style>
+  .matchline { padding-block: var(--space-chapter) var(--s-6); display: grid; gap: var(--s-5); }
+  .matchline__rule { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--s-3); }
+  .matchline__card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); text-decoration: none; align-items: center; }
+  @media (max-width: 767.98px) { .matchline__card { grid-template-columns: minmax(0, 1fr); } }
+  .matchline__text { display: grid; gap: var(--s-3); justify-items: start; }
+</style>

@@ -1,0 +1,50 @@
+---
+/**
+ * Icon · P0 symbol. UI arrows and symbols as inline SVG — the three latin font subsets lack → ← ↗ ▼ △ ✦ ⌘ ↳ ≈ (§2.1).
+ * 24×24 drawings with a 1px non-scaling stroke in currentColor; aria-hidden unless `label` is given.
+ */
+export type IconName =
+  | 'arrow-right' | 'arrow-left' | 'arrow-down' | 'arrow-up' | 'arrow-up-right' | 'return' | 'enlarge'
+  | 'play' | 'pause' | 'restart' | 'sound-on' | 'sound-off' | 'close' | 'plus' | 'minus' | 'fit' | 'one-to-one'
+  | 'sun' | 'search' | 'copy' | 'check' | 'keycap-cmd' | 'drag';
+interface Props {
+  name: IconName;
+  size?: number;
+  label?: string;
+  class?: string;
+}
+const { name, size = 16, label, class: cls } = Astro.props;
+const P: Record<IconName, { d: string; fill?: boolean }> = {
+  'arrow-right': { d: 'M3.5 12h17M14.5 6l6 6-6 6' },
+  'arrow-left': { d: 'M20.5 12h-17M9.5 6l-6 6 6 6' },
+  'arrow-down': { d: 'M12 3.5v17M6 14.5l6 6 6-6' },
+  'arrow-up': { d: 'M12 20.5v-17M6 9.5l6-6 6 6' },
+  'arrow-up-right': { d: 'M6 18 18 6M9 6h9v9' },
+  return: { d: 'M6 3.5V12a4 4 0 0 0 4 4h10.5M15.5 11l5 5-5 5' },
+  enlarge: { d: 'M14 3.5h6.5V10M20.5 3.5 13 11M10 20.5H3.5V14M3.5 20.5 11 13' },
+  play: { d: 'M7.5 4.5v15l12-7.5z', fill: true },
+  pause: { d: 'M7.5 4.5h3v15h-3zM13.5 4.5h3v15h-3z', fill: true },
+  restart: { d: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 3.5v3.7h3.7' },
+  'sound-on': { d: 'M3.5 9.5v5h4l5 4v-13l-5 4zM16 9a4.2 4.2 0 0 1 0 6M18.6 6.4a8 8 0 0 1 0 11.2' },
+  'sound-off': { d: 'M3.5 9.5v5h4l5 4v-13l-5 4zM16.5 9.5l5 5M21.5 9.5l-5 5' },
+  close: { d: 'M5.5 5.5l13 13M18.5 5.5l-13 13' },
+  plus: { d: 'M12 4.5v15M4.5 12h15' },
+  minus: { d: 'M4.5 12h15' },
+  fit: { d: 'M3.5 9V3.5H9M15 3.5h5.5V9M20.5 15v5.5H15M9 20.5H3.5V15' },
+  'one-to-one': { d: 'M6.5 6.5v11M4.5 8.5l2-2M17.5 6.5v11M15.5 8.5l2-2M12 9.5v.5M12 14v.5' },
+  sun: { d: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8' },
+  search: { d: 'M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5.5 5.5' },
+  copy: { d: 'M8.5 8.5h11v12h-11zM5.5 15.5h-1v-12h11v1' },
+  check: { d: 'M4.5 12.5l5 5 10-11' },
+  'keycap-cmd': { d: 'M9 9V6.8A2.3 2.3 0 1 0 6.8 9H9zm0 0h6m-6 0v6m6-6V6.8A2.3 2.3 0 1 1 17.2 9H15zm0 0v6m0 0H9m6 0v2.2a2.3 2.3 0 1 0 2.2-2.2H15zm-6 0H6.8A2.3 2.3 0 1 0 9 17.2V15z' },
+  drag: { d: 'M3.5 12h17M7.5 8l-4 4 4 4M16.5 8l4 4-4 4' },
+};
+const p = P[name];
+const a11y = label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': 'true' };
+---
+<svg class:list={['sym', 'icon', `icon--${name}`, cls]} width={size} height={size} viewBox="0 0 24 24" focusable="false" {...a11y}>
+  <path d={p.d} fill={p.fill ? 'currentColor' : 'none'} stroke={p.fill ? 'none' : 'currentColor'} stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" vector-effect="non-scaling-stroke" />
+</svg>
+<style>
+  .icon { flex: none; display: inline-block; vertical-align: -0.125em; overflow: visible; }
+</style>

@@ -1,0 +1,41 @@
+---
+/**
+ * KeyPlan · OWNER: WP5 (P0 functional stub). The 60-second layer (SM5a): KEY PLAN · One line per level, verbatim;
+ * a proportional strip (segments ∝ chapter minutes); one stop per chapter: her label, the italic elevation, ONE of her
+ * sentences (lib/keyplan.ts; " · " joiners are chrome, aria-hidden) and "Go ↓" (aria-label "Go to <label>").
+ */
+import type { KeyStop } from '../../lib/keyplan';
+import { chrome, fill } from '../../data/chrome';
+import { rich } from '../../lib/rich';
+interface Props { stops: KeyStop[]; seconds: number[] }
+const { stops, seconds } = Astro.props;
+const k = chrome.wp5.keyPlan;
+---
+<section class="keyplan shell" aria-labelledby="keyplan-h">
+  <h2 id="keyplan-h" class="keyplan__h t-label-lg">{k.title} <span class="ink-2">· {k.sub}</span></h2>
+  <div class="keyplan__strip" aria-hidden="true">{seconds.map((s) => <span style={`flex-grow: ${s}`}></span>)}</div>
+  <ol class="keyplan__stops" role="list">
+    {stops.map((s) => (
+      <li class="keyplan__stop">
+        <p class="t-label" data-v>{s.label}</p>
+        <p class="keyplan__elev t-caption ink-2">{s.elev}</p>
+        <p class="keyplan__line t-body-sm">
+          {s.kind === 'html' && <span data-v set:html={rich(s.html)} />}
+          {s.kind === 'text' && <span data-v>{s.text}</span>}
+          {s.kind === 'parts' && s.parts?.map((p, i) => <>{i > 0 && <span class="ink-3" data-chrome aria-hidden="true"> · </span>}<span data-v>{p}</span></>)}
+          {s.kind === 'stat' && s.stat && <><span class="keyplan__stat" data-v set:html={s.stat.v} /> <span data-v set:html={s.stat.html} /></>}
+        </p>
+        <a class="t-label" href={s.anchor} aria-label={fill(k.goLabel, { label: s.label })}>{k.go}</a>
+      </li>
+    ))}
+  </ol>
+</section>
+<style>
+  .keyplan { padding-block: var(--s-6); }
+  .keyplan__h { margin-block-end: var(--s-3); }
+  .keyplan__strip { display: flex; gap: 2px; block-size: 10px; margin-block-end: var(--s-4); }
+  .keyplan__strip span { background: var(--hatch-45); outline: var(--lw-object) solid var(--line-2); outline-offset: -1px; }
+  .keyplan__stops { list-style: none; padding: 0; display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+  .keyplan__stop { display: grid; gap: var(--s-2); align-content: start; border-block-start: var(--lw-object) solid var(--line-2); padding-block-start: var(--s-2); }
+  .keyplan__stat { font-size: 1.5rem; font-weight: 300; }
+</style>

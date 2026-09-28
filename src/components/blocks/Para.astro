@@ -1,0 +1,30 @@
+---
+/**
+ * Para (`p`) · OWNER: WP4a (P0 functional stub). <p class="p full" data-v> plus, when ctx.plan.mode === 'skim',
+ * <p class="p skim"> holding ONLY her <strong> pieces (each <strong data-v>) joined by a chrome ⋯ (aria-hidden).
+ * Sizes: default --fs-body ink-2 · md --fs-body-md ink · sm --fs-body-sm.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+interface Props { block: Extract<Block, { t: 'p' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const size = block.size ?? 'default';
+const role = size === 'md' ? 't-body-md' : size === 'sm' ? 't-body-sm' : 't-body ink-2';
+const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
+---
+<div {...blkAttrs('p', ctx)}>
+  <div class="blk__main">
+    <p class:list={['p', `p--${size}`, role, { full: !!skim }]} data-v set:html={rich(block.html)} />
+    {skim && (
+      <p class={`p skim ${role}`}>
+        {skim.map((s, i) => (
+          <>{i > 0 && <span class="skim__join" data-chrome aria-hidden="true"> ⋯ </span>}<strong data-v set:html={s} /></>
+        ))}
+      </p>
+    )}
+  </div>
+</div>
+<style>
+  .skim__join { color: var(--clay); }
+</style>

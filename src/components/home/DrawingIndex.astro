@@ -1,0 +1,62 @@
+---
+/**
+ * DrawingIndex · OWNER: WP3 (P0 functional stub). The cover sheet's sheet index (SM2): detail bubble 2 / A-000,
+ * "Drawing index", the computed summary `6 SHEETS · 2023–2026 · ≈ 65 MIN IN FULL`, rows grouped as Selected Projects
+ * (her phrase) / Further projects / Also in the set, and the Viewport beside the list (≥1024).
+ * Props: { variant?: 'full' | 'compact' } — 'compact' (404): rows with sheet no. + title only, no Viewport.
+ */
+import { cases, labels } from '../../content/site';
+import { sheets, type SheetGroup } from '../../data/sheets';
+import { chrome, fill } from '../../data/chrome';
+import { reading, setMinutes } from '../../lib/reading';
+import Bubble from '../symbols/Bubble.astro';
+import IndexRow from './IndexRow.astro';
+import Viewport from './Viewport.astro';
+interface Props { variant?: 'full' | 'compact'; headingLevel?: 2 | 3 }
+const { variant = 'full', headingLevel = 2 } = Astro.props;
+const compact = variant === 'compact';
+const H = `h${headingLevel}` as 'h2' | 'h3';
+const G = `h${headingLevel + 1}` as 'h3' | 'h4';
+const ix = chrome.wp3.index;
+const minutesOf = (slug?: string) => {
+  const cs = cases.find((c) => c.slug === slug);
+  return cs ? reading(cs).minutes : undefined;
+};
+const groups: { key: SheetGroup; title: string; hers: boolean }[] = [
+  { key: 'selected', title: labels.selected.replace(/\s*↓$/, ''), hers: true },
+  { key: 'further', title: ix.further, hers: false },
+  { key: 'also', title: ix.also, hers: false },
+];
+const caseCount = sheets.filter((s) => s.kind === 'case').length;
+const first = sheets[0];
+const firstCs = cases.find((c) => c.slug === first.slug)!;
+---
+<section id="index" class:list={['dindex', 'shell', { 'dindex--compact': compact }]} aria-labelledby="index-h">
+  <div class="dindex__head">
+    {!compact && <Bubble n="2" sheet="A-000" />}
+    <H id="index-h" class="t-h">{ix.drawingIndex}</H>
+    {!compact && <p class="dindex__summary t-label ink-2">{fill(ix.summary, { n: caseCount, m: setMinutes(cases) })}</p>}
+  </div>
+  <div class="dindex__grid">
+    <div class="dindex__list">
+      {groups.map((g) => (
+        <div class="dindex__group">
+          {g.hers ? <G class="t-label ink-2" data-v>{g.title}</G> : <G class="t-label ink-2">{g.title}</G>}
+          <ol role="list">
+            {sheets.filter((s) => s.group === g.key).map((s) => <IndexRow sheet={s} minutes={minutesOf(s.slug)} compact={compact} />)}
+          </ol>
+        </div>
+      ))}
+    </div>
+    {!compact && <Viewport sheet={first} cs={firstCs} />}
+  </div>
+</section>
+<style>
+  .dindex { padding-block: var(--s-7); }
+  .dindex__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); margin-block-end: var(--s-5); }
+  .dindex__summary { margin-inline-start: auto; }
+  .dindex__grid { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); align-items: start; }
+  .dindex--compact .dindex__grid, .dindex__grid:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+  @media (max-width: 1023.98px) { .dindex__grid { grid-template-columns: minmax(0, 1fr); } }
+  .dindex__group ol { list-style: none; padding: 0; margin-block: var(--s-2) var(--s-5); }
+</style>

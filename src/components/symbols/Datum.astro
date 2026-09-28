@@ -1,0 +1,15 @@
+---
+/** Datum · P0 symbol. The filled ▼ (current level, "you are here") or the outline ▽. Default 10px, rust. */
+interface Props {
+  filled?: boolean;
+  size?: number;
+  class?: string;
+}
+const { filled = true, size = 10, class: cls } = Astro.props;
+---
+<svg class:list={['sym', 'sym-datum', cls]} width={size} height={size * 0.866} viewBox="0 0 10 8.66" aria-hidden="true" focusable="false">
+  <path d="M0.6 0.5 H9.4 L5 8.1 Z" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1" stroke-linejoin="round" />
+</svg>
+<style>
+  .sym-datum { flex: none; display: inline-block; color: var(--rust); overflow: visible; }
+</style>

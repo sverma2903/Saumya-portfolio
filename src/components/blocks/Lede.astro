@@ -1,0 +1,19 @@
+---
+/**
+ * Lede · OWNER: WP4a (P0 functional stub). <p class="lede lede--{sm|md|lg}" data-v>; her <mark> is the ochre band.
+ * Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+interface Props { block: Extract<Block, { t: 'lede' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const size = block.size ?? 'md';
+const role = size === 'lg' ? 't-lede-lg' : size === 'sm' ? 't-lede-sm' : 't-lede';
+---
+<div {...blkAttrs('lede', ctx)}>
+  <p class={`lede lede--${size} ${role} blk__main`} data-v set:html={rich(block.html)} />
+</div>
+<style>
+  .lede--lg { max-inline-size: 20ch; }
+</style>

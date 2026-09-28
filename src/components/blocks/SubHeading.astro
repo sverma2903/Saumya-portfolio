@@ -1,0 +1,19 @@
+---
+/**
+ * SubHeading (`h3` block) · OWNER: WP4a (P0 functional stub). Her sub-level label: <h{ctx.hl} class="sublevel" data-v>
+ * in --fs-label-lg uppercase (her short labels only), preceded by a rust ▼. Plan view: keep.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import Datum from '../symbols/Datum.astro';
+interface Props { block: Extract<Block, { t: 'h3' }>; ctx: BlockCtx }
+const { block, ctx } = Astro.props;
+const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+---
+<div {...blkAttrs('h3', ctx)}>
+  <Tag class="sublevel t-label-lg blk__main" data-v><span class="sublevel__datum" data-chrome><Datum /></span><span set:html={rich(block.html)} /></Tag>
+</div>
+<style>
+  .sublevel { display: flex; align-items: center; gap: var(--s-2); }
+</style>

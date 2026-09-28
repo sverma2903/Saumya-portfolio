@@ -1,0 +1,25 @@
+---
+/**
+ * AboutHeader · OWNER: WP6 (P0 functional stub). B-100 ─── ABOUT (chrome), her headline (h1, <em>move metrics</em>),
+ * the "Architecture Portfolio" CTA (her label → links.architecture ↗). The Portrait sits beside it (≥1024).
+ */
+import { about, labels, links } from '../../content/site';
+import { chrome } from '../../data/chrome';
+import { externalAttrs } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
+import Portrait from './Portrait.astro';
+const a = chrome.wp6.about;
+---
+<header class="about-head shell">
+  <div class="about-head__text">
+    <p class="t-label-lg ink-2"><span class="t-code rust">{a.sheet}</span> <span aria-hidden="true">───</span> {a.title}</p>
+    <h1 class="t-title" data-v set:html={about.headline} />
+    <p><a class="btn" href={links.architecture} {...externalAttrs(links.architecture)} data-v>{labels.architecture}<Icon name="arrow-up-right" /></a></p>
+  </div>
+  <Portrait />
+</header>
+<style>
+  .about-head { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: center; padding-block: var(--s-7); }
+  @media (max-width: 1023.98px) { .about-head { grid-template-columns: minmax(0, 1fr); } }
+  .about-head__text { display: grid; gap: var(--s-5); }
+</style>

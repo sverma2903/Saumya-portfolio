@@ -1,0 +1,23 @@
+---
+/**
+ * HatchDefs · P0 symbol. Shared SVG <pattern> fills, rendered once per page by Base.astro:
+ *   url(#hatch45) 45° graphite hatch · url(#hatchX) cross-hatch · url(#pocheRust) rust poché (45°, 7px pitch)
+ */
+---
+<svg class="hatchdefs" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="hatch45" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" style="stroke: var(--line-2); stroke-width: 0.8" />
+    </pattern>
+    <pattern id="hatchX" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" style="stroke: var(--line-2); stroke-width: 0.8" />
+      <line x1="0" y1="3" x2="6" y2="3" style="stroke: var(--line-1); stroke-width: 0.8" />
+    </pattern>
+    <pattern id="pocheRust" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="7" style="stroke: var(--rust); stroke-width: 1; stroke-opacity: 0.35" />
+    </pattern>
+  </defs>
+</svg>
+<style>
+  .hatchdefs { position: absolute; inline-size: 0; block-size: 0; overflow: hidden; }
+</style>

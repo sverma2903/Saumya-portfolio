@@ -1,0 +1,14 @@
+---
+/** MatchLine · P0 symbol. The heavy long–short dash (--lw-cut, --dash-center) used at a case end and in Levels. */
+interface Props {
+  class?: string;
+}
+const { class: cls } = Astro.props;
+---
+<svg class:list={['sym', 'sym-matchline', cls]} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+  <line x1="0" y1="50%" x2="100%" y2="50%" />
+</svg>
+<style>
+  .sym-matchline { display: block; inline-size: 100%; block-size: 6px; overflow: visible; }
+  .sym-matchline line { stroke: currentColor; stroke-width: var(--lw-cut); stroke-dasharray: var(--dash-center); }
+</style>

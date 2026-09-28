@@ -1,0 +1,5 @@
+/* ==========================================================================
+   transitions.css · OWNER: WP1 (stub created by P0 so Base.astro can import it).
+   SM3 "Cut to sheet": native cross-document View Transitions (see SPEC SM3 for the exact CSS).
+   The .vt-cutline element already exists in Base.astro (an empty, zero-height div until WP1 styles it).
+   ========================================================================== */

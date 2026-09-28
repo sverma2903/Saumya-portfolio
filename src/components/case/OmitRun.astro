@@ -1,0 +1,37 @@
+---
+/**
+ * OmitRun · OWNER: WP5 (P0 functional stub). Consecutive Plan-view omissions, coalesced into one counted break line
+ * (SM5c): <div class="omit-run" data-omit-run><div class="omit-run__body">…</div><button class="breakline"
+ * aria-expanded="false">BreakLine · "Omitted: 3 paragraphs · 1 figure" · Show</button></div>.
+ * The body is visible in Section view; hidden in Plan view unless the run is open (base.css).
+ */
+import { chrome } from '../../data/chrome';
+import BreakLine from '../symbols/BreakLine.astro';
+interface Props { label: string }
+const { label } = Astro.props;
+---
+<div class="omit-run" data-omit-run>
+  <div class="omit-run__body"><slot /></div>
+  <button type="button" class="breakline t-label ink-2" aria-expanded="false" data-js-only data-chrome data-show={chrome.wp5.plan.show} data-hide={chrome.wp5.plan.hide}>
+    <BreakLine /><span class="breakline__label">{label}</span><span class="breakline__act">{chrome.wp5.plan.show}</span>
+  </button>
+</div>
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.omit-run > .breakline').forEach((b) =>
+    b.addEventListener('click', () => {
+      const run = b.closest('.omit-run');
+      const open = !run?.classList.contains('is-open');
+      run?.classList.toggle('is-open', open);
+      b.setAttribute('aria-expanded', String(open));
+      const act = b.querySelector('.breakline__act');
+      if (act) act.textContent = (open ? b.dataset.hide : b.dataset.show) ?? '';
+    }),
+  );
+</script>
+<style>
+  .omit-run, .omit-run__body { grid-column: text-start / notes-end; display: grid; grid-template-columns: subgrid; }
+  .breakline { grid-column: text; display: grid; grid-template-columns: minmax(2rem, 1fr) auto auto; align-items: center; gap: var(--s-3); min-block-size: 44px; text-align: start; }
+  @media (max-width: 1279.98px) {
+    .omit-run, .omit-run__body { grid-column: text; display: block; }
+  }
+</style>

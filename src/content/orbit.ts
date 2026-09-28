@@ -218,20 +218,20 @@ const cs: CaseStudy = {
           n: '02',
           title: 'Target Setting',
           items: ['Set targets for the semester', 'Tailored Recommendations and Tips'],
-          media: ['4cDvhWA7JE4bextXrBLRBQdpEA.jpg', 'ZVMS4gWWFcgYSxAXkq84aodtr4.jpg'],
+          media: ['4cDvhWA7JE4bextXrBLRBQdpEA.jpg'],
           flip: true,
         }),
         feature({
           n: '03',
           title: 'All Activities',
           items: ['AI Assistant suggests activities to log based on connected sources', 'Manually add activities via web tool or mobile application', 'Filter to view activities and select which ones to add in the final report'],
-          media: ['4M9BD5r6146YwptlmP9ZPNgnjo.jpg'],
+          media: ['ZVMS4gWWFcgYSxAXkq84aodtr4.jpg'],
         }),
         feature({
           n: '04',
           title: 'Add Activities to Report',
           items: ['Select key activities to add to the final report'],
-          media: [],
+          media: ['4M9BD5r6146YwptlmP9ZPNgnjo.jpg'],
           flip: true,
         }),
         feature({

@@ -1,0 +1,29 @@
+---
+/**
+ * SectionMark · OWNER: WP5 (P0 functional stub). The chapter opener: a long–short dash cut line with bubbles
+ * `02 / A-101` at both ends (drafts across once at ≥30% visibility), her label as <h2> (--fs-chapter, tabindex=-1 for
+ * J/K focus) and the meta `LEVEL 02 · +00:36 · ≈ 2 MIN`.
+ */
+import { chrome, fill } from '../../data/chrome';
+import { pad2 } from '../../lib/text';
+import Bubble from '../symbols/Bubble.astro';
+import MatchLine from '../symbols/MatchLine.astro';
+interface Props { index: number; id: string; label: string; sheet: string; elev: string; minutes: number }
+const { index, id, label, sheet, elev, minutes } = Astro.props;
+const nn = pad2(index + 1);
+---
+<div class="section-mark">
+  <div class="section-mark__line" aria-hidden="true" data-chrome>
+    <Bubble n={nn} sheet={sheet} /><MatchLine /><Bubble n={nn} sheet={sheet} />
+  </div>
+  <div class="section-mark__head">
+    <h2 id={`${id}-h`} class="t-chapter" tabindex="-1" data-v>{label}</h2>
+    <p class="section-mark__meta t-label ink-2">{fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes })}</p>
+  </div>
+</div>
+<style>
+  .section-mark { grid-column: text-start / notes-end; margin-block: var(--space-chapter) var(--flow-l); }
+  .section-mark__line { display: flex; align-items: center; gap: var(--s-2); color: var(--ink); margin-block-end: var(--s-5); }
+  .section-mark__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+  @media (max-width: 1279.98px) { .section-mark { grid-column: text; } }
+</style>

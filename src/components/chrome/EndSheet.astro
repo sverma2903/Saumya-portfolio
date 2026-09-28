@@ -1,0 +1,77 @@
+---
+/**
+ * EndSheet · OWNER: WP1 (P0 functional stub). The footer title block (SPEC §4.3): her heading (connect / closing),
+ * the contact row (email + Copy, LinkedIn ↗, Resume ↗), the title-block row (Drawn by · Location · Local time · Set ·
+ * Settings), her copyright and ↑ A-000. P0 wires the three Settings switches to core/prefs.
+ * Props: { heading: 'connect' | 'closing'; page: PageMeta }.
+ */
+import type { PageMeta } from '../../lib/page';
+import { home, labels, links } from '../../content/site';
+import { chrome, narrative } from '../../data/chrome';
+import { emailAddress } from '../../lib/verbatim';
+import { externalAttrs } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
+import Toast from './Toast.astro';
+interface Props { heading: 'connect' | 'closing'; page: PageMeta }
+const { heading, page } = Astro.props;
+const t = chrome.wp1.endSheet;
+const colophon = narrative(t.colophon);
+---
+<footer class="endsheet" role="contentinfo">
+  <div class="shell">
+    <h2 class="endsheet__h t-title" data-v>{home[heading]}</h2>
+    <p class="endsheet__contact t-ui">
+      <a href={links.email} data-v>{emailAddress}</a>
+      <button type="button" class="btn" data-js-only data-copy={emailAddress}><Icon name="copy" />{t.copy}</button>
+      <a class="btn" href={links.linkedin} {...externalAttrs(links.linkedin)}>{t.linkedin}<Icon name="arrow-up-right" /></a>
+      <a class="btn" href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" /></a>
+    </p>
+    <dl class="endsheet__tb">
+      <div><dt class="t-label ink-2">{t.drawnBy}</dt><dd>{t.drawnByValue}</dd></div>
+      <div><dt class="t-label ink-2">{t.location}</dt><dd>{t.locationValue}</dd></div>
+      <div><dt class="t-label ink-2">{t.localTime}</dt><dd><time class="t-code" data-clock>—</time></dd></div>
+      <div><dt class="t-label ink-2">{t.set}</dt><dd>{t.setValue}<br />{t.setYears}</dd></div>
+      <div data-js-only>
+        <dt class="t-label ink-2">{t.settings}</dt>
+        <dd class="endsheet__settings">
+          <button type="button" role="switch" aria-checked="true" data-pref-switch="motion" data-on="full" data-off="reduce">{t.motion}</button>
+          <button type="button" role="switch" aria-checked="false" data-pref-switch="theme" data-on="dusk" data-off="vellum">{t.dusk}</button>
+          <button type="button" role="switch" aria-checked="true" data-pref-switch="keys" data-on="on" data-off="off">{t.shortcuts}</button>
+        </dd>
+      </div>
+    </dl>
+    <p class="endsheet__base t-body-sm ink-2">
+      <span data-v>{home.copyright}</span>
+      {colophon && <span class="endsheet__colophon">{colophon}</span>}
+      <a href={page.kind === 'home' ? '#main' : '/'} class="t-code">↑ {t.toTop}</a>
+    </p>
+  </div>
+  <Toast />
+</footer>
+<script>
+  import { get, set, on, type PrefKey, type PrefValues } from '../../scripts/core/prefs';
+  const sync = (b: HTMLElement) => {
+    const key = b.dataset.prefSwitch as PrefKey;
+    b.setAttribute('aria-checked', String(get(key) === b.dataset.on));
+  };
+  document.querySelectorAll<HTMLElement>('[data-pref-switch]').forEach((b) => {
+    sync(b);
+    b.addEventListener('click', () => {
+      const key = b.dataset.prefSwitch as PrefKey;
+      const next = (get(key) === b.dataset.on ? b.dataset.off : b.dataset.on) as PrefValues[PrefKey];
+      set(key, next as never);
+    });
+    on(b.dataset.prefSwitch as PrefKey, () => sync(b));
+  });
+</script>
+<style>
+  .endsheet { margin-block-start: var(--space-chapter); padding-block: var(--s-8) var(--s-6); border-block-start: var(--lw-border) solid var(--ink); background: var(--sheet); }
+  .endsheet__h { margin-block-end: var(--s-5); }
+  .endsheet__contact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-block-end: var(--s-6); }
+  .endsheet__tb { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--s-4); border-block: var(--lw-object) solid var(--line-2); padding-block: var(--s-4); margin: 0; }
+  .endsheet__tb dd { margin: 0; }
+  .endsheet__settings { display: grid; gap: var(--s-1); justify-items: start; }
+  .endsheet__settings button[aria-checked='true']::after { content: ' ●'; color: var(--rust); }
+  .endsheet__settings button[aria-checked='false']::after { content: ' ○'; }
+  .endsheet__base { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-3); margin-block-start: var(--s-4); }
+</style>

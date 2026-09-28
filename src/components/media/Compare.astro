@@ -1,0 +1,14 @@
+---
+/**
+ * Compare · OWNER: WP4b (P0 stub). Section cut A–A: her wireframe beneath her final screen, with peel and loupe
+ * (SPEC SM6a). P0: the no-JS `.compare--static` version — both images stacked, whole and unfiltered.
+ */
+import type { Media } from '../../lib/blocks';
+import Plate from './Plate.astro';
+interface Props { final: Media; under: Media; alt: string; underAlt?: string }
+const { final, under, alt, underAlt = '' } = Astro.props;
+---
+<div class="compare compare--static">
+  <Plate layers={[final]} alt={alt} />
+  <Plate layers={[under]} alt={underAlt} />
+</div>
