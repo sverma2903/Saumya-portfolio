@@ -5,7 +5,8 @@
  *   level i        the last chapter whose top has passed the line (−1 above the first: the header, Key plan, schedule)
  *   p_i            clamp((line − top_i) / height_i, 0, 1)  — measured on the current and the next chapter only
  *   datum ▼        y = y_i + p_i·h_i on the rail (a transform; floors are laid out by CSS, cached here)
- *   trace          trace_i = max(trace_i, p_i) while reading (not while flinging past at > 3 viewports/s), shown as a
+ *   trace          trace_i = max(trace_i, p_i) while reading (not while flinging past at > 3 viewports/s, nor while a
+ *                  citation / J / K landing moves the page — cite.ts isLanding(); a skipped floor stays blank), shown as a
  *                  --hatch-acc strip; sessionStorage['sv:trace:<slug>'] (array of 0–1 per level; WP1's drawer reads it)
  *   current level  rust label + aria-current="location" (rail) and sv:level {index, label, elev} → WP1's running
  *                  head, bottom-bar pill and drawer; the Key plan hatches the level you are in — and keeps the last
@@ -19,7 +20,7 @@
  */
 import { emit } from '../core/bus';
 import { registerShortcut } from '../core/keys';
-import { goTo } from './cite';
+import { goTo, isLanding, onLanded } from './cite';
 
 const READ = 0.4;
 const FAST = 3; // viewports per second
@@ -35,6 +36,8 @@ const datum = rail?.querySelector<HTMLElement>('[data-datum]') ?? null;
 const segs = Array.from(document.querySelectorAll<HTMLElement>('[data-kp-seg]'));
 const stops = Array.from(document.querySelectorAll<HTMLElement>('[data-kp-stop]'));
 const marks = Array.from(document.querySelectorAll<HTMLElement>('[data-smark]'));
+const railMatch = document.querySelector<HTMLElement>('[data-rail-match]');
+const AT_FLOOR = 8; // px: the datum is "on" a floor line, whose tick then stands in for the datum's own level line
 const KEY = `sv:trace:${slug}`;
 
 // ── state ──
@@ -82,8 +85,8 @@ function setCurrent(i: number): void {
   if (i >= 0) last = i;
   segs.forEach((s, k) => s.classList.toggle('is-current', k === last));
   stops.forEach((s, k) => s.classList.toggle('is-current', k === last));
-  // reading straight on from one level into the next finishes the one behind
-  if (!fast && prev >= 0 && i === prev + 1 && trace[prev] < 1) { trace[prev] = 1; paintTrace(prev); save(); }
+  // reading straight on from one level into the next finishes the one behind (never while a landing moves the page)
+  if (!fast && !isLanding() && prev >= 0 && i === prev + 1 && trace[prev] < 1) { trace[prev] = 1; paintTrace(prev); save(); }
   const link = i >= 0 ? railLinks[i] : null;
   const label = i >= 0 ? (link?.querySelector('.floor__label')?.textContent ?? chapters[i].querySelector('h2')?.textContent ?? '') : '';
   emit('sv:level', { index: i, label: label.trim(), elev: i >= 0 ? (link?.dataset.elev ?? '') : '' });
@@ -117,10 +120,12 @@ function frame(): void {
   // a fling completes any section mark that is still drafting
   if (fast) marks.forEach((m) => { if (m.classList.contains('is-drawn')) m.classList.add('is-instant'); });
   setCurrent(above ? -1 : i);
-  if (!above && !fast && p > trace[i] + 0.002) { trace[i] = p; paintTrace(i); save(); }
+  if (!above && !fast && !isLanding() && p > trace[i] + 0.002) { trace[i] = p; paintTrace(i); save(); }
   if (datum && floorH.length) {
     const yy = floorTop[i] + (above ? 0 : p * floorH[i]);
     datum.style.setProperty('--_y', `${yy.toFixed(1)}px`);
+    const onFloor = Math.abs(yy - floorTop[i]) < AT_FLOOR || (i < n - 1 ? Math.abs(floorTop[i + 1] - yy) : Math.abs(floorTop[i] + floorH[i] - yy)) < AT_FLOOR;
+    if (onFloor !== datum.classList.contains('is-at-floor')) datum.classList.toggle('is-at-floor', onFloor);
   }
 }
 let raf = 0;
@@ -149,6 +154,16 @@ function initMarks(): void {
     }
   }, { threshold: [0.3] });
   marks.forEach((m) => { if (!m.classList.contains('is-drawn')) io.observe(m); });
+}
+
+// ── Match line: the rail's hands over to the sheet's own once that comes on screen (never two at once) ──
+function initHandover(): void {
+  const ml = document.querySelector<HTMLElement>('[data-matchline]');
+  if (!ml || !railMatch || !('IntersectionObserver' in window)) return;
+  new IntersectionObserver(([en]) => {
+    // on screen, or already scrolled past (above the viewport)
+    railMatch.classList.toggle('is-handed', en.isIntersecting || en.boundingClientRect.top < 0);
+  }).observe(ml);
 }
 
 // ── Key plan: pair each stop with its strip segment ──
@@ -191,10 +206,13 @@ export function initLevels(): void {
   if (!n) return;
   initMarks();
   initKeyplan();
+  initHandover();
   floors.forEach((_, i) => paintTrace(i));
   datum?.classList.add('is-live');
   frame();
   addEventListener('scroll', onScroll, { passive: true });
+  // a landing has come to rest: from here the reader is reading (one frame at rest, speed 0)
+  onLanded(() => { lastY = window.scrollY; lastT = performance.now(); kick(); });
   const remeasure = () => { stale = true; kick(); };
   addEventListener('resize', remeasure, { passive: true });
   if (rail && 'ResizeObserver' in window) new ResizeObserver(remeasure).observe(rail);

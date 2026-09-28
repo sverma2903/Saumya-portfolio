@@ -4,7 +4,7 @@
  *
  *   (02)▾ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ▾(02)     bubbles 02 / A-101 at both ends,
  *   A-101                                                          A-101    heavy long–short cut line (--lw-cut),
- *   Empathize                                        LEVEL 02 · +00:36 · ≈ 2 MIN        view arrows pointing into the level
+ *   Empathize                                        LEVEL 02 · +00:36 · ≈ 2 min        view arrows pointing into the level
  *
  * The line drafts across once when the mark is ≥ 30% visible (clip-path, --dur-5, --ease-draft; scripts/case/levels.ts
  * adds .is-drawn). It is hidden only under html.js + Motion on + the case script running (html[data-case]), so it is
@@ -19,6 +19,9 @@ import MatchLine from '../symbols/MatchLine.astro';
 interface Props { index: number; id: string; label: string; sheet: string; elev: string; minutes: number }
 const { index, id, label, sheet, elev, minutes } = Astro.props;
 const nn = pad2(index + 1);
+// "Level 02 · +00:36 · ≈ 2 min": the minutes are set like every other minutes value on the page (lowercase mono)
+const meta = fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes }).split(' · ');
+const mins = meta.pop() ?? '';
 ---
 <div class="section-mark" data-smark>
   <div class="section-mark__line" aria-hidden="true" data-chrome>
@@ -30,7 +33,7 @@ const nn = pad2(index + 1);
   </div>
   <div class="section-mark__head">
     <h2 id={`${id}-h`} class="section-mark__title t-chapter" tabindex="-1" data-v>{label}</h2>
-    <p class="section-mark__meta t-label"><Glyphs text={fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes })} /></p>
+    <p class="section-mark__meta t-label"><Glyphs text={meta.join(' · ')} /> · <span class="section-mark__min t-code"><Glyphs text={mins} /></span></p>
   </div>
 </div>
 
@@ -46,6 +49,9 @@ const nn = pad2(index + 1);
     margin-block-end: var(--s-6);
   }
   .section-mark__line :global(.bubble) { color: var(--ink); }
+  /* a section mark's bubbles carry the sheet number ("A-101"): one step larger than a detail bubble (--s-7, 48px), so
+     the number sits clear of the circle in its lower half-chord (at 44px its first and last glyphs touch the stroke) */
+  @media (min-width: 768px) { .section-mark__line :global(.bubble) { --_d: var(--s-7); } }
   .section-mark__arrow { flex: none; inline-size: 11px; block-size: 9px; fill: currentColor; margin-inline: -1px; }
   .section-mark__line :global(.section-mark__cut) { color: var(--ink); }
 
@@ -64,6 +70,7 @@ const nn = pad2(index + 1);
   .section-mark__title { margin: 0; outline-offset: var(--s-2); text-wrap: balance; }
   .section-mark__title:focus:not(:focus-visible) { outline: none; }
   .section-mark__meta { margin: 0; color: var(--ink-2); white-space: nowrap; }
+  .section-mark__min { font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
 
   @media (max-width: 767.98px) {
     .section-mark__line { margin-block-end: var(--s-5); }

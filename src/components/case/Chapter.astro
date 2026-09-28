@@ -73,6 +73,9 @@ const counted = (indices: number[]) => indices.some((i) => Object.values(plan[i]
     overflow-clip-margin: var(--s-7);
   }
   .chapter:not(:first-of-type) { content-visibility: auto; contain-intrinsic-size: auto 1400px; }
+  /* while a citation or J/K lands (cite.ts), every chapter renders, so the target's real position is known before the
+     page moves and the chapters in between keep their true (remembered) height afterwards */
+  :global(html[data-landing]) .chapter { content-visibility: visible; }
   /* 1024–1279 and below: one text column held at the reading measure; wide blocks (figures, schedules, runs,
      section marks) take the whole column; notes fold under their block (base.css) */
   @media (max-width: 1279.98px) {

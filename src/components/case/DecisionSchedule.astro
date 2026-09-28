@@ -101,8 +101,10 @@ const rows = resolveDecisions(cs);
     border-block-end: var(--lw-object) solid var(--line-2);
   }
   .decisions__row:last-child > th, .decisions__row:last-child > td { border-block-end: var(--lw-border) solid var(--ink); }
+  /* a row reads along one line: D-01, the first lines of CONSIDERED and DECIDED and the LEVEL link share a baseline */
+  .decisions__t .decisions__row > th, .decisions__t .decisions__row > td { vertical-align: baseline; }
   .decisions__no { inline-size: var(--_no); white-space: nowrap; }
-  .decisions__row > th.decisions__no { color: var(--ink-2); padding-block-start: calc(var(--s-4) + var(--s-1)); }
+  .decisions__row > th.decisions__no { color: var(--ink-2); }
   .decisions__c p, .decisions__d p { margin: 0; font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); text-wrap: pretty; }
   .decisions__c p { color: var(--ink-2); }
   .decisions__d p { color: var(--ink); }
@@ -126,11 +128,16 @@ const rows = resolveDecisions(cs);
   }
   .decisions__lv { inline-size: var(--_lv); }
   .decisions__row > td.decisions__lv, .decisions__thead th.decisions__lv { padding-inline-end: 0; }
+  /* the link sits on the row's baseline as text; its 32px target is drawn around it by ::after */
   .decisions__lk {
-    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 32px; margin-block-start: -6px;
+    position: relative; display: inline;
     color: var(--ink); text-decoration: none; white-space: nowrap;
   }
-  .decisions__arrow { font-family: var(--font-sans); color: var(--ink-2); transition: transform var(--dur-2) var(--ease-ui); }
+  .decisions__lk::after { content: ''; position: absolute; inset-block: min(calc((100% - 32px) / 2), calc(-1 * var(--s-2))); inset-inline: calc(-1 * var(--s-1)); }
+  .decisions__arrow {
+    display: inline-block; margin-inline-start: var(--s-1);
+    font-family: var(--font-sans); color: var(--ink-2); transition: transform var(--dur-2) var(--ease-ui);
+  }
   @media (hover: hover) {
     .decisions__lk:hover { color: var(--rust-deep); }
     .decisions__lk:hover .decisions__arrow { color: currentColor; transform: translateY(2px); }
@@ -167,7 +174,6 @@ const rows = resolveDecisions(cs);
     .decisions__row:last-child > th, .decisions__row:last-child > td { padding: 0; border: 0; inline-size: auto; }
     .decisions__row > th.decisions__no { grid-area: no; align-self: center; padding: 0; }
     .decisions__row > td.decisions__lv { grid-area: lv; }
-    .decisions__lk { margin: 0; }
     .decisions__row > td.decisions__c { grid-area: c; margin-block-start: var(--s-3); }
     .decisions__row > td.decisions__d { grid-area: d; margin-block-start: var(--s-3); padding-inline-start: var(--_ret); }
     .decisions__ret { inset-inline-start: 0; inset-block-start: 2px; }

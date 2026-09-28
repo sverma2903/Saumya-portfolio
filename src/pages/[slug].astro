@@ -80,15 +80,3 @@ const jsonLd = [
   </script>
 </Base>
 
-<style is:global>
-  /* presentation-only typesetting of her words (lib/typeset.ts; textContent unchanged):
-     hyphenated compounds in display titles never break at the hyphen (keepCompounds); the items of her title-block
-     lists are atomic on their line, breaking only between items, and inside an item only if it is longer than the
-     line (keepItems) */
-  .case .nobr { white-space: nowrap; }
-  .case .keep { display: inline-block; }
-  /* a block landed on by a citation (Decision schedule, REV. △1, the Sheet list) takes programmatic focus only, so the
-     next Tab continues from it; the landing is marked by its rust bracket (.is-cited), never by a focus ring around
-     the whole block and its notes column (as base.css does for main:focus) */
-  .case .blk[tabindex='-1']:focus { outline: none; }
-</style>

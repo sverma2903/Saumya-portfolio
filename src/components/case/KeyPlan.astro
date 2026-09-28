@@ -113,17 +113,22 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   :global(html.js[data-case]) .keyplan__seg { cursor: pointer; }
   .keyplan__seg::before { content: ''; position: absolute; inset: calc(-1 * var(--s-2)) 0 calc(-1 * var(--s-6)); }
   .keyplan__seg:nth-child(odd) { background-color: var(--ink); }
-  .keyplan__seg:is(.is-current, .is-hover, .is-focus) { background-color: var(--acc-soft); background-image: var(--hatch-acc); }
+  /* pointing at a stop or its segment pairs them in ink (a pencil hatch boxed in a heavier line); only the level you
+     are in is drawn in the case accent, so "here" and "pointing at" never look alike */
+  .keyplan__seg:is(.is-hover, .is-focus) { background-color: var(--sheet); background-image: var(--hatch-45); }
   .keyplan__seg:is(.is-current, .is-hover, .is-focus)::after {
     content: ''; position: absolute; inset: calc(-1 * var(--lw-object) - 1px) 0; pointer-events: none;
-    border-block: var(--lw-cut) solid var(--acc);
+    border-block: var(--lw-cut) solid var(--ink-2);
   }
+  .keyplan__seg.is-current { background-color: var(--acc-soft); background-image: var(--hatch-acc); }
+  .keyplan__seg.is-current::after { border-color: var(--acc); }
   .keyplan__segno {
     position: absolute; inset-block-start: calc(100% + var(--s-2)); inset-inline-start: 0;
     font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm); color: var(--ink-3);
     line-height: 1;
   }
-  .keyplan__seg:is(.is-current, .is-hover, .is-focus) .keyplan__segno { color: var(--acc); font-weight: var(--wt-code); }
+  .keyplan__seg:is(.is-hover, .is-focus) .keyplan__segno { color: var(--ink); font-weight: var(--wt-code); }
+  .keyplan__seg.is-current .keyplan__segno { color: var(--acc); font-weight: var(--wt-code); }
 
   /* ── the stops ── */
   .keyplan__stops {
@@ -145,11 +150,14 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     transform: scaleX(0); transform-origin: left;
   }
   .keyplan__stop:is(.is-current, .is-hover, .is-focus)::before { transform: none; }
+  /* pointing at it: the stop's head rule thickens in ink (the level you are in keeps the accent) */
+  .keyplan__stop:is(.is-hover, .is-focus):not(.is-current)::before { background: var(--ink); inset-block-start: 0; }
   /* only a pointer draws it across; keyboard focus and the reading position set it instantly (motion law 1) */
   .keyplan__stop.is-hover::before { transition: transform var(--dur-3) var(--ease-pen); }
   .keyplan__label { display: flex; align-items: baseline; gap: var(--s-2); margin: 0; color: var(--ink); }
   .keyplan__no { color: var(--ink-3); font-size: var(--fs-code-sm); transition: color var(--dur-1) var(--ease-ui); }
-  .keyplan__stop:is(.is-current, .is-hover, .is-focus) .keyplan__no { color: var(--acc); font-weight: var(--wt-code); }
+  .keyplan__stop:is(.is-hover, .is-focus) .keyplan__no { color: var(--ink); font-weight: var(--wt-code); }
+  .keyplan__stop.is-current .keyplan__no { color: var(--acc); font-weight: var(--wt-code); }
   .keyplan__elev {
     margin: 0; font-style: italic; font-size: var(--fs-caption); line-height: 1.2; color: var(--ink-2);
     font-variant-numeric: tabular-nums;
@@ -188,9 +196,12 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   @media (forced-colors: active) {
     .keyplan__seg { forced-color-adjust: none; background-color: Canvas; }
     .keyplan__seg:nth-child(odd) { background-color: CanvasText; }
-    .keyplan__seg:is(.is-current, .is-hover, .is-focus) { background-color: Highlight; background-image: none; }
-    .keyplan__seg:is(.is-current, .is-hover, .is-focus)::after { border-color: Highlight; }
+    .keyplan__seg:is(.is-hover, .is-focus) { background-color: Canvas; background-image: none; }
+    .keyplan__seg:is(.is-hover, .is-focus)::after { border-color: CanvasText; }
+    .keyplan__seg.is-current { background-color: Highlight; background-image: none; }
+    .keyplan__seg.is-current::after { border-color: Highlight; }
     .keyplan__stop::before { background: Highlight; }
+    .keyplan__stop:is(.is-hover, .is-focus):not(.is-current)::before { background: CanvasText; }
     .keyplan__segno { forced-color-adjust: auto; }
   }
 
@@ -203,7 +214,8 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     .keyplan__line, .keyplan__go { grid-column: 1 / -1; }
   }
   /* 768–1279: ≤ 4 per row (6 levels → 3 + 3, PFF 4 + 3); rows are ruled by the full rows above them and the grid is
-     closed by one full-width rule, so a short last row (PFF) never leaves its rule stopping short; ≥ 1280: one row */
+     closed by one full-width rule, so a short last row (PFF) never leaves its rule stopping short; ≥ 1280: one row,
+     closed by the same rule — the schedule is drawn as one closed box in every layout */
   @media (min-width: 768px) {
     .keyplan__stops {
       grid-template-columns: repeat(var(--_row), minmax(0, 1fr));
@@ -214,8 +226,8 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     .keyplan__stop.is-rowstart { border-inline-start: 0; padding-inline-start: 0; }
   }
   @media (min-width: 1280px) {
-    .keyplan--one-row .keyplan__stops { grid-template-columns: repeat(var(--_n), minmax(0, 1fr)); border-block-end: 0; }
-    .keyplan--one-row .keyplan__stop { border-block-end: 0; padding-block-end: 0; }
+    .keyplan--one-row .keyplan__stops { grid-template-columns: repeat(var(--_n), minmax(0, 1fr)); }
+    .keyplan--one-row .keyplan__stop { border-block-end: 0; }
     .keyplan--one-row .keyplan__stop.is-rowstart { border-inline-start: var(--lw-object) solid var(--line-2); padding-inline-start: var(--s-4); }
     .keyplan--one-row .keyplan__stop:first-child { border-inline-start: 0; padding-inline-start: 0; }
   }

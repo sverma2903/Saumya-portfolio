@@ -43,7 +43,7 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
       <dt class="titleblock__k t-label">{c.rev}</dt>
       <dd class="titleblock__v">
         <a class="titleblock__rev" href={`#${r.id}`} data-cite-link>
-          <span class="titleblock__delta" data-chrome><RevDelta n={1} size={20} /></span>
+          <span class="titleblock__delta" data-chrome><RevDelta n={1} size={24} /></span>
           <span class="titleblock__revt"><span class="titleblock__revk t-label-lg" data-v>{r.title}</span><span class="titleblock__dash" aria-hidden="true"> — </span><span class="titleblock__revl" data-v set:html={r.lede} /></span>
         </a>
       </dd>
@@ -58,7 +58,7 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
 <style>
   .titleblock {
     --_key: var(--s-9);   /* the 96px key column (§5.2.1) */
-    --_delta: 20px;
+    --_delta: 24px;       /* the revision △ with its 1: large enough that the numeral reads as a 1, not a "!" */
     margin-block-start: var(--s-5);
     background: var(--sheet);
     border: var(--lw-border) solid var(--ink);
@@ -71,9 +71,13 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
     background: linear-gradient(var(--line-2), var(--line-2)) no-repeat var(--_key) 0 / var(--lw-object) 100%;
   }
   .titleblock__row:first-child { border-block-start: 0; }
-  .titleblock__k { padding: var(--s-2) var(--s-3); color: var(--ink-2); white-space: nowrap; }
+  /* her comma-separated values break only between items (lib/typeset.ts keepItems; textContent unchanged): an
+     inline-block item is atomic on its line, and still wraps inside itself if it is longer than the line */
+  .titleblock__v :global(.keep) { display: inline-block; }
+  /* row padding: --titleblock-pad (the header tightens it by a step on short windows), else --s-2 */
+  .titleblock__k { padding: var(--titleblock-pad, var(--s-2)) var(--s-3); color: var(--ink-2); white-space: nowrap; }
   .titleblock__v {
-    margin: 0; padding: var(--s-2) var(--s-4);
+    margin: 0; padding: var(--titleblock-pad, var(--s-2)) var(--s-4);
     font-size: var(--fs-body-sm); line-height: 1.4; color: var(--ink);
     text-wrap: pretty;
   }
@@ -96,5 +100,5 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
   }
 
   @media (max-width: 479.98px) { .titleblock__v { padding-inline: var(--s-3); } }
-  .titleblock__v.titleblock__sheet { font-size: var(--fs-code); line-height: var(--lh-code); color: var(--ink-2); padding-block: var(--s-3); }
+  .titleblock__v.titleblock__sheet { font-size: var(--fs-code); line-height: var(--lh-code); color: var(--ink-2); padding-block: var(--titleblock-pad-sheet, var(--s-3)); }
 </style>

@@ -83,7 +83,10 @@ const top = cover.layers[cover.layers.length - 1].file;
 
 <style>
   /* ── the grid: phones stack in DOM order; ≥ 1024 the text takes cols 1–5 of the shell and the plate cols 6–12 ── */
-  .case-head { padding-block: var(--s-4) var(--s-7); }
+  .case-head {
+    padding-block: var(--s-4) var(--s-7);
+    --_view-min: 11.5rem; /* the narrowest the View toggle may be beside her CTA before it takes its own row */
+  }
   .case-head__grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -103,6 +106,9 @@ const top = cover.layers[cover.layers.length - 1].file;
 
   .case-head__eyebrow { color: var(--acc); margin-block-end: var(--s-3); }
   .case-head__title { max-inline-size: 16ch; text-wrap: balance; }
+  /* presentation-only typesetting of her words (lib/typeset.ts keepCompounds; textContent unchanged): a hyphenated
+     compound never breaks at its hyphen */
+  .case-head__title :global(.nobr) { white-space: nowrap; }
   /* a long title (PFF's is 63 characters) steps the title token down a size, so it sets in three or four lines, not
      five, beside the plate */
   .case-head__title--long { font-size: calc(var(--fs-title) * .82); line-height: 1.04; max-inline-size: 18ch; }
@@ -116,13 +122,24 @@ const top = cover.layers[cover.layers.length - 1].file;
     margin-block-start: var(--s-3); color: var(--ink-2);
   }
   .case-head__cap-t { color: var(--ink-2); }
+  /* the cover bubble carries the sheet number: one step larger (48px), so "A-101" clears the circle (SectionMark) */
+  @media (min-width: 768px) { .case-head__cap :global(.bubble) { --_d: var(--s-7); } }
 
-  /* actions: her CTA(s) on one line, then the View toggle as a strip the width of the title block */
+  /* actions (§5.2.1): her CTA(s) and the View toggle on one row — [ Jump to Prototype ↗ ]  ( Section | Plan ) — the
+     toggle taking the rest of the row; it wraps to its own row only when the row is too narrow for it (phones, PFF's
+     two CTAs). The toggle is a size container: its two options lay out by its own width, the same way for both
+     (ViewToggle.astro, @container viewtoggle) */
   .case-head__actions {
-    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4);
     margin-block-start: var(--s-5);
   }
-  .case-head__actions > :global(.case-head__view) { flex: 1 0 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .case-head__actions > :global(.case-head__view) {
+    container: viewtoggle / inline-size;
+    flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 768px) {
+    .case-head__actions > :global(.case-head__view) { flex-basis: var(--_view-min); }
+  }
   .case-head__cta { gap: var(--s-2); }
   .case-head__cta :global(.icon) { transition: transform var(--dur-2) var(--ease-ui); }
   @media (hover: hover) {
@@ -139,13 +156,8 @@ const top = cover.layers[cover.layers.length - 1].file;
     .case-head__second:hover { color: var(--rust-deep); }
   }
 
-  /* tablets: one column, but text keeps a reading measure, and the title block, her CTA and the View strip share one
-     drawing-sheet width (their right edges align, as they do beside the plate on desktop) */
-  @media (min-width: 768px) and (max-width: 1023.98px) {
-    .case-head { --_sheet: 36rem; }
-    .case-head__grid > :global(.titleblock), .case-head__actions { max-inline-size: var(--_sheet); }
-  }
-
+  /* tablets: one column; the title block and the actions row run the full content width, like the plate above them,
+     so every edge of the header lines up (the 96px key column keeps the values readable) */
   @media (min-width: 1024px) {
     .case-head { padding-block: var(--s-4) var(--s-7); }
     .case-head__grid {
@@ -162,5 +174,18 @@ const top = cover.layers[cover.layers.length - 1].file;
   }
   @media (min-width: 1280px) {
     .case-head__grid { column-gap: calc(var(--g) * 2); }
+  }
+  /* short laptop windows (1280×720, 1366×768): the whole first layer — title, deck, title block, her CTA and the View
+     toggle — stays above the fold: the title steps down one size (as a long title does), the long title one more,
+     and the vertical rhythm tightens by one space step */
+  @media (min-width: 1024px) and (max-height: 800px) {
+    .case-head { padding-block-start: 0; }
+    .case-head__back { margin-block-end: var(--s-2); }
+    .case-head__eyebrow { margin-block-end: var(--s-2); }
+    .case-head__title { font-size: calc(var(--fs-title) * .82); line-height: 1.04; }
+    .case-head__title--long { font-size: calc(var(--fs-title) * .72); }
+    .case-head__deck { margin-block-start: var(--s-3); }
+    .case-head__grid > :global(.titleblock) { margin-block-start: var(--s-4); --titleblock-pad: var(--s-1); --titleblock-pad-sheet: var(--s-2); }
+    .case-head__actions { margin-block-start: var(--s-4); row-gap: var(--s-3); }
   }
 </style>

@@ -85,6 +85,29 @@ const opts = [
   }
   .viewtoggle--stack .viewtoggle__min { font-size: var(--fs-code-sm); }
 
+  /* a host that makes the toggle a size container named `viewtoggle` (the case header does) gets one layout for both
+     options, chosen by the toggle's own width — never one option wrapped and the other not:
+       ≥ 500px   SECTION · FULL TEXT        ≈ 13 min      one line
+       340–499   SECTION · FULL TEXT / ≈ 13 min           label over minutes
+       < 340     SECTION / full text / ≈ 13 min           the rail's stack */
+  @container viewtoggle (min-width: 500px) {
+    .viewtoggle__opt { flex-wrap: nowrap; }
+  }
+  @container viewtoggle (max-width: 499.98px) {
+    .viewtoggle__opt { display: grid; justify-content: stretch; align-content: center; gap: 2px; }
+    .viewtoggle__label { white-space: nowrap; }
+  }
+  @container viewtoggle (max-width: 339.98px) {
+    .viewtoggle__opt { gap: 3px; padding: var(--s-2) var(--s-3) calc(var(--s-2) + 2px); }
+    .viewtoggle__label { display: grid; gap: 2px; white-space: normal; }
+    .viewtoggle__sep { display: none; }
+    .viewtoggle__desc {
+      font-family: var(--font-serif); font-style: italic; font-size: var(--fs-code-sm); font-weight: var(--wt-body);
+      font-variation-settings: normal; letter-spacing: 0; text-transform: none; line-height: 1.2;
+    }
+    .viewtoggle__min { font-size: var(--fs-code-sm); }
+  }
+
   /* the drawer (WP1) lays the two options out as full-width rows on its --sheet: rule them horizontally, and mark the
      chosen row on its leading edge (like the current floor above it), so the rule belongs to one row, not the seam */
   .viewtoggle.drawer__view .viewtoggle__opt + .viewtoggle__opt { border-inline-start: 0; border-block-start: var(--lw-object) solid var(--line-3); }

@@ -48,6 +48,9 @@ const no = String(next.no);
 </section>
 
 <style>
+  /* presentation-only typesetting of her words (lib/typeset.ts keepCompounds; textContent unchanged): a hyphenated
+     compound never breaks at its hyphen */
+  .matchline__title :global(.nobr) { white-space: nowrap; }
   .matchline { padding-block: var(--space-chapter) 0; display: grid; gap: var(--s-6); }
   .matchline__rule { display: flex; align-items: center; gap: var(--s-4); margin: 0; color: var(--ink-2); }
   .matchline__rk { flex: none; }

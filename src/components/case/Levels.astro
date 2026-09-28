@@ -2,7 +2,7 @@
 /**
  * Levels · WP5. The case study drawn as a building section (SPEC SM4), sticky in the rail column (≥ 1024).
  *
- *   LEVELS · A-101            ≈ 13 MIN
+ *   LEVELS · A-101            ≈ 13 min
  *   ┆
  *   ▼─ OVERVIEW                 each chapter is a floor; floor heights ∝ the minutes it takes to read,
  *   ▒┆ ±00:00                   clamp(30px, k·s, 180px) with Σ = H — solved by flexbox (flex-grow = seconds,
@@ -36,7 +36,7 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
   <nav class="levels" aria-label={l.title} data-levels-rail data-slug={reading.slug}>
     <p class="levels__head t-label">
       <span><span>{l.title}</span><span class="levels__sheet"> <span class="levels__dot" aria-hidden="true">·</span> <span class="t-code levels__no">{sheetNo}</span></span></span>
-      <span class="levels__total"><Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></span>
+      <span class="levels__total t-code"><Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></span>
     </p>
     <div class="levels__section">
       <ol class="levels__floors" role="list" data-floors>
@@ -92,7 +92,8 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
   /* ── header ── */
   .levels__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-4); color: var(--ink-2); }
   .levels__no { color: var(--ink-2); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
-  .levels__total { white-space: nowrap; }
+  /* minutes are set the same everywhere on the page: lowercase mono (≈ 13 min) */
+  .levels__total { white-space: nowrap; font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
 
   /* ── the building section ── */
   .levels__section { position: relative; }
@@ -175,6 +176,9 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
     content: ''; position: absolute; inset-block-start: calc(var(--_datum) * .9); inset-inline-start: calc(var(--_datum) / 2);
     inline-size: var(--_tick); border-block-start: var(--lw-object) solid var(--rust);
   }
+  /* on (or within a few px of) a floor line the floor's own tick is the level line: the datum draws its ▼ alone, so
+     the two never double up as a "═" (levels.ts toggles .is-at-floor in the same frame that moves it) */
+  .levels__datum.is-at-floor::after { display: none; }
   .levels__datum :global(.sym-datum) { display: block; }
   :global(html.js) .levels__datum.is-live { display: block; }
 
@@ -191,11 +195,21 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
   .rail__match {
     display: grid; gap: var(--s-1); padding-block-start: var(--s-1);
     color: var(--ink); text-decoration: none;
+    transition: opacity var(--dur-2) var(--ease-ui), visibility 0s linear 0s;
+  }
+  /* the sheet's own Match line has come on screen: the rail hands over to it, so the two are never seen at once
+     (levels.ts; the transition is off under reduced motion, base.css) */
+  .rail__match.is-handed {
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-2) var(--ease-ui), visibility 0s linear var(--dur-2);
   }
   .rail__matchrule { margin-block-end: var(--s-1); }
   .rail__matchrule :global(.sym-matchline) { color: var(--ink); }
   .rail__matchsee { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
   .rail__matcht { font-size: var(--fs-body-sm); line-height: 1.3; text-wrap: balance; transition: color var(--dur-1) var(--ease-ui); }
+  /* presentation-only typesetting of her words (lib/typeset.ts keepCompounds; textContent unchanged): a hyphenated
+     compound never breaks at its hyphen */
+  .rail__matcht :global(.nobr) { white-space: nowrap; }
   @media (hover: hover) {
     .rail__match:hover .rail__matcht { color: var(--rust-deep); }
   }

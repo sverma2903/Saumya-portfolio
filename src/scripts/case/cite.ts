@@ -2,9 +2,10 @@
  * cite.ts · WP5. Landing on a place in a case (SPEC §4.9, SM4, SM5b).
  *
  *   land(el, {smooth?, at?})  scroll `el` to the top of the reading area — smooth only for a pointer with Motion on,
- *                             instant for keys (law 1) — and hold it there while content-visibility chapters render at
- *                             their real height (the target moves as the chapters above it are measured for real).
- *                             A smooth scroll is re-aimed while it runs, so it still ends exactly on target.
+ *                             instant for keys (law 1). Every chapter renders while landing, so the target's real
+ *                             position is known before the move; a smooth landing glides the last viewport only.
+ *                             isLanding()/onLanded(): the Levels trace is not recorded while the page is being moved
+ *                             for the reader — a skipped chapter's floor stays blank (SM4).
  *   In-page citation links — the Key plan's "Go ↓", the Decision schedule's LEVEL ↓, the title block's REV. △1 and
  *   the header's secondary CTA ([data-cite-link], [data-level-link]) — land, move focus (chapter → its h2; block → the
  *   block) and push the hash like a native jump. A cited BLOCK is bracketed (.is-cited, 4 s; WP1 draws the same
@@ -17,43 +18,67 @@ import { get, set } from '../core/prefs';
 const instant = 'instant' as ScrollBehavior;
 const vh = () => window.innerHeight || document.documentElement.clientHeight;
 const px = (v: string) => parseFloat(v) || 0;
+const root = document.documentElement;
 
 /** Where `el` should come to rest: its top at the scroll padding (+ its own scroll-margin), or `at`·vh below it. */
 function targetY(el: Element, at: number): number {
   const top = el.getBoundingClientRect().top;
-  const pad = px(getComputedStyle(document.documentElement).scrollPaddingTop);
+  const pad = px(getComputedStyle(root).scrollPaddingTop);
   const margin = px(getComputedStyle(el).scrollMarginTop);
   return Math.max(0, Math.round(window.scrollY + top - pad - margin - at * vh()));
 }
 
 let landing = 0;
-/** Scroll `el` into place and keep it there until the page stops moving under it (or the reader takes over). */
+let busy = false;
+const landed: Array<() => void> = [];
+/** True while a landing is under way: the page is being moved for the reader, not read (levels.ts records no trace). */
+export const isLanding = (): boolean => busy;
+/** Run `fn` each time a landing comes to rest (or the reader takes over). */
+export const onLanded = (fn: () => void): void => { landed.push(fn); };
+
+/** Scroll `el` into place and keep it there until the page stops moving under it (or the reader takes over).
+ *  The target's real position is resolved first: while landing, every chapter renders (html[data-landing] lifts
+ *  content-visibility, Chapter.astro), so the chapters in between have their true height and their remembered size
+ *  afterwards. A smooth landing then glides at most one viewport (a longer distance is cut to that, instantly), so
+ *  it is short and never ends in a correction. */
 export function land(el: Element, opts: { smooth?: boolean; at?: number } = {}): void {
   const at = opts.at ?? 0;
   const id = ++landing;
+  busy = true;
+  root.dataset.landing = '';
   let quit = false;
   const stop = () => { quit = true; };
   const inputs = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
   inputs.forEach((ev) => addEventListener(ev, stop, { once: true, passive: true, capture: true }));
-  const done = () => inputs.forEach((ev) => removeEventListener(ev, stop, { capture: true }));
+  const done = () => {
+    inputs.forEach((ev) => removeEventListener(ev, stop, { capture: true }));
+    if (id !== landing) return; // a newer landing owns the page now
+    busy = false;
+    delete root.dataset.landing;
+    landed.forEach((fn) => fn());
+  };
   let goal = targetY(el, at);
   let still = 0;
   let frames = 0;
-  if (opts.smooth) window.scrollTo({ top: goal, behavior: 'smooth' });
+  if (opts.smooth) {
+    const h = vh();
+    const from = window.scrollY;
+    if (Math.abs(goal - from) > h) window.scrollTo({ top: goal - Math.sign(goal - from) * h, behavior: instant });
+    window.scrollTo({ top: goal, behavior: 'smooth' });
+  } else window.scrollTo({ top: goal, behavior: instant });
   const tick = () => {
     if (quit || id !== landing) return done();
     const t = targetY(el, at);
     const off = Math.abs(window.scrollY - t);
-    if (opts.smooth && frames < 90) {
-      // still gliding: re-aim when the target moved (chapters rendering), settle once we are there
+    if (opts.smooth && frames < 60) {
+      // still gliding: re-aim only if the target moved under us (a late image), settle once we are there
       if (Math.abs(t - goal) > 2) { goal = t; window.scrollTo({ top: t, behavior: 'smooth' }); still = 0; }
       else if (off <= 2) still++;
     } else if (off > 2) { window.scrollTo({ top: t, behavior: instant }); still = 0; }
     else still++;
-    if (still < 4 && ++frames < 150) requestAnimationFrame(tick);
+    if (still < 4 && ++frames < 120) requestAnimationFrame(tick);
     else done();
   };
-  if (!opts.smooth) window.scrollTo({ top: goal, behavior: instant });
   requestAnimationFrame(tick);
 }
 
