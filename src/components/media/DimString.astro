@@ -1,8 +1,101 @@
 ---
 /**
- * DimString · OWNER: WP4b (P0 stub). Hover/focus dimension strings on cover plates (SPEC §6.3): extension lines,
- * a dimension line with 45° ticks and '2679 PX' / '1544 PX' (Plex Mono 11.5, ink-2). Hidden on touch and in print.
- * P0: renders its slot only.
+ * DimString · WP4b (SPEC §6.3 "Dimension strings", §0.2). Covers only: "this is 2679 px, open it".
+ *
+ *   part="wrap"   the wrapper reserves 28px at the top and left (fine pointers only; touch never shows them)
+ *   part="lines"  inside the plate's view: extension lines out of the media edge, a dimension line with 45° ticks and
+ *                 the native size ('2679 PX' / '1544 PX', Plex Mono 11.5, ink-2) masking the line where it sits.
+ *                 Drawn in over --dur-3 on hover or focus-within (instant under reduced motion). The geometry is the
+ *                 top layer's rendered box in % of the view (computed at build time), so there is no JS at all.
+ *   Hidden on touch, in print and under forced colours; aria-hidden + data-chrome (Enlarged detail repeats the facts).
  */
+interface Props {
+  part: 'wrap' | 'lines';
+  rect?: { l: number; t: number; w: number; h: number };
+  w?: number;
+  h?: number;
+}
+const { part, rect = { l: 0, t: 0, w: 100, h: 100 }, w = 0, h = 0 } = Astro.props;
+const r = (n: number) => `${Math.round(n * 1000) / 1000}%`;
 ---
-<slot />
+{part === 'wrap' ? (
+  <div class="dims"><slot /></div>
+) : (
+  <span class="dim" aria-hidden="true" data-chrome style={`--l: ${r(rect.l)}; --t: ${r(rect.t)}; --w: ${r(rect.w)}; --h: ${r(rect.h)}`}>
+    <span class="dim__ext dim__ext--l"></span>
+    <span class="dim__ext dim__ext--r"></span>
+    <span class="dim__ext dim__ext--t"></span>
+    <span class="dim__ext dim__ext--b"></span>
+    <span class="dim__line dim__line--x"><i></i><i></i><b>{w} PX</b></span>
+    <span class="dim__line dim__line--y"><i></i><i></i><b>{h} PX</b></span>
+  </span>
+)}
+<style>
+  /* ---------- wrapper: the 28px band the strings are drawn in ---------- */
+  .dims { --_band: 28px; --_at: 13px; position: relative; }
+  @media (hover: hover) and (pointer: fine) {
+    .dims { padding-block-start: var(--_band); padding-inline-start: var(--_band); }
+  }
+
+  /* ---------- the drawing (positioned against the plate's view) ---------- */
+  .dim { position: absolute; inset: 0; pointer-events: none; z-index: var(--z-raised); display: none; color: var(--ink-2); }
+  @media (hover: hover) and (pointer: fine) { .dim { display: block; } }
+
+  .dim__line, .dim__ext { position: absolute; display: block; }
+  /* horizontal dimension line, --_at above the view, spanning the media's width */
+  .dim__line--x {
+    inset-inline-start: var(--l); inline-size: var(--w);
+    inset-block-start: calc(-1 * var(--_at, 13px)); block-size: 0;
+    border-block-start: var(--lw-dim) solid var(--line-2);
+    transform-origin: 0 50%;
+  }
+  /* vertical dimension line, --_at left of the view, spanning the media's height */
+  .dim__line--y {
+    inset-block-start: var(--t); block-size: var(--h);
+    inset-inline-start: calc(-1 * var(--_at, 13px)); inline-size: 0;
+    border-inline-start: var(--lw-dim) solid var(--line-2);
+    transform-origin: 50% 0;
+  }
+  /* 45° architectural ticks at both ends */
+  .dim__line i { position: absolute; display: block; inline-size: 9px; block-size: 0; border-block-start: var(--lw-dim) solid var(--ink-2); rotate: -45deg; }
+  .dim__line--x i { inset-block-start: calc(-0.5 * var(--lw-dim)); translate: -50% -50%; }
+  .dim__line--x i:first-child { inset-inline-start: 0; }
+  .dim__line--x i:nth-child(2) { inset-inline-start: 100%; }
+  .dim__line--y i { inset-inline-start: calc(-0.5 * var(--lw-dim)); translate: -50% -50%; }
+  .dim__line--y i:first-child { inset-block-start: 0; }
+  .dim__line--y i:nth-child(2) { inset-block-start: 100%; }
+  /* the size, masking the line (drafting convention: text interrupts the dimension line) */
+  .dim__line b {
+    position: absolute;
+    padding-inline: var(--s-1);
+    background: var(--paper);
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm);
+    line-height: 1; letter-spacing: var(--tr-code-sm); font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .dim__line--x b { inset-inline-start: 50%; inset-block-start: 0; translate: -50% -50%; }
+  .dim__line--y b { inset-block-start: 50%; inset-inline-start: 0; translate: -50% -50%; rotate: -90deg; }
+  /* extension lines: from the media's edges out past the dimension lines (dashed where they cross the stage) */
+  .dim__ext--l, .dim__ext--r {
+    inset-block-start: calc(-1 * var(--_at, 13px) - 5px); block-size: calc(var(--t) + var(--_at, 13px) + 5px - 2px);
+    inline-size: 0; border-inline-start: var(--lw-dim) dashed var(--line-2);
+  }
+  .dim__ext--l { inset-inline-start: var(--l); }
+  .dim__ext--r { inset-inline-start: calc(var(--l) + var(--w)); }
+  .dim__ext--t, .dim__ext--b {
+    inset-inline-start: calc(-1 * var(--_at, 13px) - 5px); inline-size: calc(var(--l) + var(--_at, 13px) + 5px - 2px);
+    block-size: 0; border-block-start: var(--lw-dim) dashed var(--line-2);
+  }
+  .dim__ext--t { inset-block-start: var(--t); }
+  .dim__ext--b { inset-block-start: calc(var(--t) + var(--h)); }
+
+  /* ---------- draw-in on hover / focus-within (one pass, --dur-3, --ease-draft) ---------- */
+  .dim__line { scale: 0 1; transition: scale var(--dur-3) var(--ease-draft); }
+  .dim__line--y { scale: 1 0; }
+  .dim__ext, .dim__line b { opacity: 0; transition: opacity var(--dur-3) var(--ease-ui); }
+  .dims:is(:hover, :focus-within) .dim__line { scale: 1 1; }
+  .dims:is(:hover, :focus-within) :is(.dim__ext, .dim__line b) { opacity: 1; }
+
+  @media print { .dims { padding: 0; } .dim { display: none; } }
+  @media (forced-colors: active) { .dim { display: none; } }
+</style>

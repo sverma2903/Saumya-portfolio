@@ -1,9 +1,264 @@
 ---
 /**
- * DetailViewer · OWNER: WP4b (P0 stub). The Enlarged detail: one <dialog class="detail"> per page (SPEC §4.5), opened
- * from any [data-fig] plate button, the `I` key or the Viewport's ⤢; original file, pan/zoom, file facts, prev/next.
- * P0: the empty dialog.
+ * DetailViewer · WP4b (SPEC §4.5). The Enlarged detail: ONE <dialog class="detail" data-dialog="detail"> per page,
+ * rendered by Base. It is the theater for every figure: her ORIGINAL file (the same URL, usually already cached) on a
+ * warm-black stage, pan/zoom to 1:1, and a title-block panel with the file's facts — "Original file · unaltered".
+ *
+ * This file is only the static shell (no JS cost until first use); scripts/media/detail.ts (lazy, with panzoom) fills
+ * it on open. Opened from any [data-fig] plate button, the Enlarge control, the I key, or `sv:fig-open` (the home
+ * Viewport's ⤢). showModal() makes the page inert; Esc closes; focus returns to the trigger.
+ *
+ *   ┌──────────────────────────────── stage (--detail-bg) ────────────┬── panel (--sheet, a title block) ──┐
+ *   │                                                                   │ FIG. 4.7                    12 / 31 │
+ *   │              her original file, fit → pan/zoom to 1:1             │ her caption (cloned, verbatim)      │
+ *   │                                                                   │ FILE · NATIVE · SIZE                │
+ *   │ 48%                                                               │ ORIGINAL FILE · UNALTERED           │
+ *   │                                                                   │ ↩ A-101 · Ideate                    │
+ *   │                                                                   │ Fit 1:1 + − · ‖ ↻ · 0.5× 1×        │
+ *   │                                                                   │ ← Prev  Next →      Close · Esc     │
+ *   └───────────────────────────────────────────────────────────────────┴─────────────────────────────────────┘
+ * Mobile (and portrait tablets): full screen; the panel is a bottom sheet collapsed to a 72px handle (FIG + the
+ * caption's first line) that expands to 50vh; swipe left/right steps figures at fit scale.
  */
 import { chrome } from '../../data/chrome';
+import Icon from '../symbols/Icon.astro';
+const d = chrome.wp4b.detail;
+const m = chrome.wp4b.media;
 ---
-<dialog class="detail" data-dialog="detail" aria-label={chrome.wp4b.media.enlarge}></dialog>
+<dialog class="detail" data-dialog="detail" aria-labelledby="dt-fig" aria-describedby="dt-cap" data-t-count={d.count} data-t-px={d.px} data-t-back={d.back}>
+  <div class="dt" data-dt>
+    <div class="dt__stage" data-dt-stage>
+      <div class="dt__canvas" data-dt-canvas>
+        <div class="dt__flip" data-dt-flip>
+          <div class="dt__item" data-dt-item data-ph-host>
+            <span class="dt__ph" data-dt-ph aria-hidden="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><path d="M0 0L100 100M100 0L0 100" vector-effect="non-scaling-stroke" /></svg>
+              <span class="dt__ph-l" data-dt-ph-label></span>
+            </span>
+            <img class="dt__media" data-dt-img alt="" width="1" height="1" hidden />
+            <video class="dt__media" data-dt-video playsinline muted preload="auto" hidden></video>
+            <canvas class="dt__media dt__poster" data-dt-poster aria-hidden="true" hidden></canvas>
+          </div>
+        </div>
+      </div>
+      <p class="dt__zoom" data-dt-zoom aria-hidden="true">100%</p>
+    </div>
+
+    <aside class="dt__panel" data-dt-panel>
+      <button type="button" class="dt__handle" data-dt-handle aria-expanded="false" aria-controls="dt-body">
+        <span class="dt__handle-bar" aria-hidden="true"></span>
+        <span class="dt__handle-t"><span data-dt-handle-fig></span><span class="dt__handle-cap" data-dt-handle-cap></span></span>
+        <span class="sr-only">{d.details}</span>
+      </button>
+      <div class="dt__body" id="dt-body">
+        <header class="dt__head">
+          <h2 id="dt-fig" class="dt__fig" tabindex="-1" data-dt-fig></h2>
+          <span class="dt__count" data-dt-count></span>
+        </header>
+        <div class="dt__cap" id="dt-cap" data-dt-cap></div>
+        <dl class="dt__facts">
+          <div class="dt__cell dt__cell--file"><dt>{d.file}</dt><dd class="dt__file" data-dt-file></dd></div>
+          <div class="dt__cell"><dt>{d.native}</dt><dd data-dt-native></dd></div>
+          <div class="dt__cell"><dt>{d.size}</dt><dd data-dt-size></dd></div>
+        </dl>
+        <p class="dt__orig">{d.original}</p>
+        <a class="dt__back" data-dt-back href="#main"><Icon name="return" size={14} /><span data-dt-back-t></span></a>
+
+        <div class="dt__tools" role="group" aria-label={d.zoom}>
+          <button type="button" class="dt__b" data-dt-act="fit"><Icon name="fit" size={15} />{d.fit}</button>
+          <button type="button" class="dt__b" data-dt-act="one">{d.oneToOne}</button>
+          <button type="button" class="dt__b dt__b--icon" data-dt-act="in" aria-label={d.zoomIn}><Icon name="plus" size={15} /></button>
+          <button type="button" class="dt__b dt__b--icon" data-dt-act="out" aria-label={d.zoomOut}><Icon name="minus" size={15} /></button>
+        </div>
+        <div class="dt__tools dt__tools--media" role="group" aria-label={m.walkthrough} data-dt-mediatools hidden>
+          <button type="button" class="dt__b dt__b--icon" data-dt-act="toggle" aria-label={m.pause} data-label-play={m.play} data-label-pause={m.pause}>
+            <Icon name="pause" size={15} class="dt__i-pause" /><Icon name="play" size={15} class="dt__i-play" />
+          </button>
+          <button type="button" class="dt__b dt__b--icon" data-dt-act="restart" aria-label={m.restart}><Icon name="restart" size={15} /></button>
+          <span class="dt__speed" data-dt-speed hidden role="radiogroup" aria-label={d.speed}>
+            <button type="button" class="dt__b" role="radio" aria-checked="false" data-dt-rate="0.5">{d.slow}</button>
+            <button type="button" class="dt__b" role="radio" aria-checked="true" data-dt-rate="1">{d.normal}</button>
+          </span>
+          <button type="button" class="dt__b dt__b--icon" data-dt-act="mute" aria-pressed="false" aria-label={m.unmute} data-label-mute={m.mute} data-label-unmute={m.unmute} hidden>
+            <Icon name="sound-off" size={15} class="dt__i-off" /><Icon name="sound-on" size={15} class="dt__i-on" />
+          </button>
+          <input class="dt__scrub" data-dt-scrub type="range" min="0" max="1000" value="0" step="1" aria-label={d.seek} hidden />
+          <span class="dt__time" data-dt-time aria-hidden="true" hidden></span>
+        </div>
+
+        <div class="dt__nav">
+          <button type="button" class="dt__b" data-dt-act="prev"><Icon name="arrow-left" size={15} />{d.prev}</button>
+          <button type="button" class="dt__b" data-dt-act="next">{d.next}<Icon name="arrow-right" size={15} /></button>
+        </div>
+      </div>
+      <button type="button" class="dt__close" data-dt-act="close" aria-label={d.close} aria-keyshortcuts="Escape"><Icon name="close" size={15} /><span>{d.close}</span><kbd aria-hidden="true">{d.esc}</kbd></button>
+    </aside>
+  </div>
+</dialog>
+<style>
+  /* ---------- the dialog: full viewport, top layer, a warm-black light table ---------- */
+  .detail {
+    position: fixed; inset: 0;
+    inline-size: 100%; block-size: 100%; max-inline-size: none; max-block-size: none;
+    margin: 0; padding: 0; border: 0;
+    background: var(--detail-bg);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .detail::backdrop { background: var(--scrim); }
+  .detail:not([open]) { display: none; }
+  .dt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 344px);
+    inline-size: 100%; block-size: 100%;
+  }
+
+  /* ---------- stage ---------- */
+  .dt__stage { position: relative; min-inline-size: 0; overflow: hidden; --focus: var(--plate); }
+  /* at fit a double-click or the wheel zooms in; zoomed, the whole stage drags (panzoom's canvas mode) */
+  .dt__canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: zoom-in; }
+  .dt__canvas[data-zoomed] { cursor: grab; }
+  .dt__canvas[data-zoomed]:active { cursor: grabbing; }
+  .dt__canvas:focus-visible { outline: 2px solid var(--plate); outline-offset: -4px; }
+  .dt__flip { position: absolute; inset: 0; transform-origin: 0 0; }
+  .dt__item { position: absolute; inset-inline-start: 0; inset-block-start: 0; }
+  .dt__media { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; max-inline-size: none; user-select: none; -webkit-user-drag: none; }
+  .dt__poster { z-index: var(--z-raised); }
+  .dt__ph {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: var(--plate); color: var(--print-ink);
+    transition: opacity var(--dur-2) var(--ease-ui), visibility 0s linear var(--dur-2);
+  }
+  .dt__ph svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+  .dt__ph path { fill: none; stroke: var(--print-line); stroke-width: var(--lw-dim); }
+  .dt__ph-l {
+    position: relative; padding: var(--s-1) var(--s-2); background: var(--plate);
+    font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
+    transform-origin: 50% 50%; white-space: nowrap;
+  }
+  .dt__item[data-state="ready"] .dt__ph, .dt__item[data-state="playing"] .dt__ph { opacity: 0; visibility: hidden; }
+  .dt__zoom {
+    position: absolute; inset: auto auto var(--s-4) var(--s-4);
+    padding: var(--s-1) var(--s-2);
+    font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
+    color: var(--plate);
+    background: color-mix(in srgb, var(--detail-bg) 72%, transparent);
+    box-shadow: 0 0 0 var(--lw-object) color-mix(in srgb, var(--plate) 22%, transparent);
+    pointer-events: none;
+  }
+
+  /* ---------- panel: a title block in --sheet ---------- */
+  .dt__panel {
+    position: relative;
+    display: flex; flex-direction: column;
+    min-block-size: 0;
+    background: var(--sheet);
+    border-inline-start: var(--lw-border) solid var(--ink);
+  }
+  .dt__handle { display: none; }
+  .dt__body { flex: 1 1 auto; min-block-size: 0; overflow: auto; padding: var(--s-6) var(--s-5) var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
+  .dt__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding-block-end: var(--s-3); border-block-end: var(--lw-border) solid var(--ink); }
+  .dt__fig {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code);
+    letter-spacing: var(--tr-code); line-height: var(--lh-code); color: var(--ink);
+  }
+  .dt__fig:focus { outline: none; }
+  .dt__fig:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .dt__count { font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .dt__cap { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); font-style: italic; color: var(--ink); text-wrap: pretty; }
+  .dt__cap:empty { display: none; }
+  .dt__cap :global(strong) { font-style: normal; }
+  /* the file facts as a title block: cells with a small caps key over the value; the file name gets the whole row
+     (a 32-character name fits on one line), native size and size+format share the next */
+  .dt__facts {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    border: var(--lw-border) solid var(--ink);
+  }
+  .dt__cell { display: grid; gap: var(--s-1); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3); min-inline-size: 0; }
+  .dt__cell--file { grid-column: 1 / -1; border-block-end: var(--lw-object) solid var(--line-2); }
+  .dt__cell + .dt__cell:not(.dt__cell--file) { border-inline-start: var(--lw-object) solid var(--line-2); }
+  .dt__facts dt {
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink-2);
+  }
+  .dt__facts dd {
+    margin: 0; font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code);
+    line-height: var(--lh-code); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere;
+  }
+  .dt__orig {
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--rust);
+  }
+  .dt__back {
+    display: inline-flex; align-items: center; gap: var(--s-2); align-self: flex-start;
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); letter-spacing: var(--tr-label-lg);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink-2);
+    text-decoration: none; min-block-size: var(--s-5);
+  }
+  .dt__back:hover { color: var(--rust); }
+  .dt__back[hidden] { display: none; }
+  .dt__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .dt__tools[hidden] { display: none; }
+  .dt__nav { display: flex; justify-content: space-between; gap: var(--s-2); margin-block-start: auto; padding-block-start: var(--s-4); border-block-start: var(--lw-object) solid var(--line-2); }
+  .dt__b {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+    min-block-size: 36px; min-inline-size: 36px; padding: 0 var(--s-3);
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); letter-spacing: .04em;
+    font-variation-settings: var(--wdth-label);
+    color: var(--ink); background: var(--sheet);
+    border: var(--lw-object) solid var(--line-3);
+    transition: color var(--dur-1) var(--ease-ui), border-color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
+  }
+  .dt__b--icon { padding: 0; }
+  .dt__b:hover { color: var(--rust-deep); border-color: var(--ink); }
+  .dt__b:disabled { color: var(--ink-3); border-color: var(--line-2); cursor: default; }
+  .dt__b[aria-pressed="true"], .dt__b[aria-checked="true"] { border-color: var(--ink); background: var(--blush); }
+  .dt__b[data-emph] { border-color: var(--rust); color: var(--rust); }
+  .dt__speed { display: inline-flex; gap: 0; }
+  .dt__speed[hidden] { display: none; }
+  .dt__speed .dt__b + .dt__b { margin-inline-start: calc(-1 * var(--lw-object)); }
+  .dt__b :global(:is(.dt__i-play, .dt__i-on)) { display: none; }
+  [data-dt-mediatools]:not([data-playing]) :global(.dt__i-pause) { display: none; }
+  [data-dt-mediatools]:not([data-playing]) :global(.dt__i-play) { display: block; }
+  .dt__b[aria-pressed="true"] :global(.dt__i-on) { display: block; }
+  .dt__b[aria-pressed="true"] :global(.dt__i-off) { display: none; }
+  .dt__scrub { flex: 1 1 100%; accent-color: var(--rust); min-block-size: var(--s-5); }
+  .dt__scrub[hidden], .dt__time[hidden] { display: none; }
+  .dt__time { font-family: var(--font-mono); font-size: var(--fs-code-sm); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .dt__close {
+    display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+    min-block-size: var(--s-7); margin: 0 var(--s-5) var(--s-5);
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); letter-spacing: var(--tr-label-lg);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase;
+    color: var(--ink); background: var(--sheet); border: var(--lw-border) solid var(--ink);
+  }
+  .dt__close:hover { color: var(--rust-deep); }
+  .dt__close kbd { font-family: var(--font-mono); font-size: var(--fs-code-sm); color: var(--ink-3); padding: 1px var(--s-1); border: var(--lw-object) solid var(--line-2); border-radius: var(--r-1); text-transform: none; }
+  @media (pointer: coarse) { .dt__b { min-block-size: 44px; min-inline-size: 44px; } }
+
+  /* ---------- mobile (and portrait tablets, where a side panel would halve the stage): full-screen stage, the panel
+     as a bottom sheet (72px handle ↔ 50vh) ---------- */
+  @media (max-width: 767.98px), (max-width: 1023.98px) and (orientation: portrait) {
+    .dt { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    .dt__panel { border-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); max-block-size: 72px; transition: max-block-size var(--dur-3) var(--ease-pen); }
+    .dt__panel[data-open] { max-block-size: 50vh; max-block-size: 50dvh; }
+    .dt__handle {
+      display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: var(--s-3);
+      min-block-size: 72px; padding: var(--s-3) var(--s-4) var(--s-2); padding-inline-end: calc(var(--s-4) + 52px);
+      text-align: start;
+    }
+    .dt__handle-bar { position: absolute; inset: var(--s-2) auto auto 50%; translate: -50% 0; inline-size: 36px; block-size: var(--s-1); border-radius: var(--r-dot); background: var(--line-3); }
+    .dt__handle-t { display: grid; gap: 2px; min-inline-size: 0; }
+    .dt__handle-t > :first-child { font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); }
+    .dt__handle-cap { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* open: the whole caption is in the body, so the handle keeps only the FIG number */
+    .dt__panel[data-open] .dt__handle-cap { display: none; }
+    .dt__body { padding: var(--s-2) var(--s-4) var(--s-4); }
+    .dt__head { display: none; }
+    .dt__close { position: absolute; inset: var(--s-3) var(--s-3) auto auto; margin: 0; inline-size: 44px; min-block-size: 44px; padding: 0; }
+    .dt__close span, .dt__close kbd { display: none; }
+  }
+  @media print { .detail { display: none !important; } }
+  @media (forced-colors: active) { .dt__panel { border-color: CanvasText; } .dt__b { border-color: ButtonText; } }
+</style>

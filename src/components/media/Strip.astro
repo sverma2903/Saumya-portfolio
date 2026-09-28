@@ -1,8 +1,102 @@
 ---
 /**
- * Strip · OWNER: WP4b (P0 stub). Mobile pan strip for wide diagrams (SPEC §6.2 media, staging `strip`):
- * fixed height at native aspect, overflow-x: auto, edge fades, a focusable region with an Enlarge button.
- * P0: renders its slot.
+ * Strip · WP4b (SPEC §6.2 media "Wide diagrams on mobile", §6.4 integrity exception 4). A pan strip: a window onto the
+ * WHOLE image, which sits at a fixed height (staging `strip`, 160–260px) at its native aspect and scrolls sideways
+ * inside the figure. Used below 768px for the wide diagrams, and at every width for the 13.4:1 CSBS filmstrip
+ * (`stripAll`: its native 250px height).
+ *
+ *   · overflow-x: auto; overscroll-behavior-x: contain; the edges fade only on the side where more image waits
+ *     (at the start there is no left fade; at the end no right fade), so every pixel can be seen unfaded
+ *   · a focusable region ("FIG. 3.2, scrollable"): arrow keys scroll it; a mouse can drag it
+ *   · a "Drag" hint (↔) and an explicit Enlarge button under the window (a tap on a scroller must not open the viewer)
+ *   · variant "row": a row of separate figures (the PFF phones) — the track is the row itself, each item keeps its own
+ *     Enlarge (a tap on one phone opens it; a drag never does), so there is no strip-wide Enlarge button
+ * One DOM for every width: above 768px (unless stripAll) the window is just the plate (or the row).
  */
+import Icon from '../symbols/Icon.astro';
+import { chrome, fill } from '../../data/chrome';
+interface Props {
+  /** strip height in px (image strips) */
+  height?: number;
+  /** native aspect w/h (image strips) */
+  aspect?: number;
+  /** 'image' (one file at a fixed height) · 'row' (a row of items, each its own figure) */
+  variant?: 'image' | 'row';
+  /** at every width (the filmstrip) */
+  all?: boolean;
+  /** 'FIG. 3.2' (names the region and the Enlarge button) */
+  fig?: string;
+  enlarge?: boolean;
+}
+const { height = 0, aspect = 1, variant = 'image', all = false, fig, enlarge = variant === 'image' } = Astro.props;
+const m = chrome.wp4b.media;
+const label = fig ? fill(m.scrollable, { fig }) : undefined;
+const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspect * 10000) / 10000}` : undefined;
 ---
-<div class="strip"><slot /></div>
+<div class:list={['strip', `strip--${variant}`, { 'strip--all': all }]} style={style} data-strip data-at-start>
+  <div class="strip__win" data-strip-win tabindex={all ? '0' : undefined} role={all ? 'region' : undefined} aria-label={all ? label : undefined} data-label={label}>
+    <div class="strip__track"><slot /></div>
+  </div>
+  <div class="strip__bar">
+    <span class="strip__hint" aria-hidden="true"><Icon name="drag" size={16} />{m.drag}</span>
+    {enlarge && fig && (
+      <button type="button" class="strip__enlarge" data-strip-enlarge data-js-only aria-label={fill(m.enlargeLabel, { fig })}>
+        <Icon name="enlarge" size={15} /><span aria-hidden="true">{m.enlarge}</span>
+      </button>
+    )}
+  </div>
+</div>
+<script>
+  import '../../scripts/media/strip';
+</script>
+<style>
+  .strip { --_fade: var(--s-6); position: relative; min-inline-size: 0; }
+  .strip__bar { display: none; }
+  .strip__win { position: relative; }
+
+  /* ---------- strip mode ---------- */
+  .strip--all .strip__win { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+  .strip--all .strip__track { inline-size: calc(var(--sh) * var(--sa)); }
+  .strip--all .strip__bar { display: flex; }
+  @media (max-width: 767.98px) {
+    .strip__win { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+    .strip--image .strip__track { inline-size: calc(var(--sh) * var(--sa)); }
+    .strip--row .strip__track { inline-size: max-content; }
+    .strip--row .strip__win { scroll-snap-type: x proximity; scroll-padding-inline: 0; }
+    .strip__bar { display: flex; }
+  }
+  .strip__win { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+  .strip--all .strip__win, .strip__win:is([data-strip-on]) {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, black var(--_fl, var(--_fade)), black calc(100% - var(--_fr, var(--_fade))), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, black var(--_fl, var(--_fade)), black calc(100% - var(--_fr, var(--_fade))), transparent 100%);
+  }
+  .strip[data-at-start] .strip__win { --_fl: 0px; }
+  .strip[data-at-end] .strip__win { --_fr: 0px; }
+  .strip__win[data-dragging] { cursor: grabbing; user-select: none; }
+  .strip__win:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  /* in an image strip the plate's own enlarge cover yields to scrolling: the Enlarge button below opens the viewer
+     (in a row, each item is its own figure: a tap opens that one, a drag is swallowed by strip.ts) */
+  .strip--image .strip__win[data-strip-on] :global(.plate__open) { pointer-events: none; }
+  .strip--all .strip__win :global(.plate__open) { cursor: grab; }
+
+  .strip__bar { align-items: center; justify-content: space-between; gap: var(--s-3); margin-block-start: var(--s-2); }
+  .strip__hint {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink-3);
+  }
+  .strip__enlarge {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    min-block-size: 44px; padding: 0 var(--s-3);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink);
+    border: var(--lw-object) solid var(--line-3); background: var(--sheet);
+  }
+  .strip__enlarge:hover { color: var(--rust-deep); border-color: var(--ink); }
+  @media (hover: hover) and (pointer: fine) { .strip__enlarge { min-block-size: 32px; } }
+  @media print {
+    .strip__win { overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
+    .strip__track { inline-size: auto !important; }
+    .strip__bar { display: none !important; }
+  }
+</style>

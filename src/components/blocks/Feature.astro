@@ -1,56 +1,159 @@
 ---
 /**
- * Feature · OWNER: WP4b (P0 functional stub). One feature, rendered by the renderer lib/features.ts chose:
- *   stacked (desktop capture): head (her kicker as a tag, or her `n` as a keynote), title h{ctx.hl}, lede, html,
- *            items, then the figure WIDE in its staging frame (Cloudflare W4 → Compare, SM6a)
- *   split:   text 5/12 + figure 7/12 (flip swaps the visual order only; DOM order is text, then media)
- * Plan view: keep kicker, title, lede, media; html/items → .plan-hide.
+ * Feature · WP4b (SPEC §6.2 `feature`). One feature, in the renderer lib/features.ts chose:
+ *
+ *   stacked  (a desktop capture: native w ≥ 1800 and ≥ 1.3:1 — Cloudflare W1–W4, Orbit, PFF design decisions)
+ *            her kicker as a tag ('[WORKFLOW 1]', mono rust in a 1px box) or her `n` as a keynote tag, her title
+ *            (h{ctx.hl}), lede, html and items (a leader list) in the text measure; then the figure WIDE in its staging
+ *            frame (BRW for the captures). `flip` is ignored. Cloudflare W4's figure is the Section cut (Compare, SM6a).
+ *   split    (everything else — CSBS 01–04, Educademy lo-fi) text 5/12 + figure 7/12 in the wide area (a flipped row
+ *            mirrors the tracks: figure 7/12 on the left); the figure is capped at its staging cap / native width.
+ *            A file cropped at one edge by design (staging `bleed`: BXlkhl right, cytCJG0 left) sits flush against
+ *            that edge of the wide area, matted on the other three sides. `flip` swaps the VISUAL order only (DOM:
+ *            text, then media). No media → text only.
+ * Plan view: kicker, title, lede and media stay; html/items are .plan-hide.
+ * The figure's Enlarged detail shows her title as its context (capId), and the media is described by her text
+ * (aria-describedby, §7.1 1.2.1).
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { singleRenderer, type SingleRenderer } from '../../lib/features';
 import { rich } from '../../lib/rich';
-import { fileOf, stagingOf } from '../../lib/staging';
-import { m } from '../../lib/blocks';
+import { dimsLabel, facts, fileOf, stagingOf } from '../../lib/staging';
+import { m as media } from '../../lib/blocks';
 import { alt } from '../../data/alt';
 import Plate from '../media/Plate.astro';
 import Compare from '../media/Compare.astro';
+import Icon from '../symbols/Icon.astro';
+import { enlargeable } from '../media/media-lib';
+
 interface Props { block: Extract<Block, { t: 'feature' }>; ctx: BlockCtx; renderer?: SingleRenderer }
 const { block, ctx, renderer } = Astro.props;
 const r = renderer ?? singleRenderer(block);
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
-const compare = block.media.length === 1 ? stagingOf(block.media[0]).compare : undefined;
+const mm = block.media[0];
+const compare = block.media.length === 1 ? stagingOf(mm).compare : undefined;
+const titleId = block.title ? `${ctx.id}-t` : undefined;
+const textId = `${ctx.id}-x`;
+const st = mm ? stagingOf(mm) : {};
+const bleed = r === 'split' ? st.bleed : undefined;
+const fig = mm && ctx.fig && enlargeable(mm) ? { no: ctx.fig, capId: titleId } : undefined;
+const capPx = mm ? Math.min(st.cap ?? Infinity, facts(mm).w) : Infinity;
+const figStyle = r === 'split' && Number.isFinite(capPx) ? `--_cap: ${capPx}px` : undefined;
+const hasText = !!(block.kicker || block.n || block.title || block.lede || block.html || block.items?.length);
 ---
-<div {...blkAttrs('feature', ctx, `feature--${r}${block.flip ? ' feature--flip' : ''}`)} data-renderer={r}>
-  <div class="blk__main feature">
-    <div class="feature__text">
-      {block.n && <span class="feature__n t-code" data-v>{block.n}</span>}
-      {block.kicker && <p class="feature__kicker t-code rust" data-v>{block.kicker}</p>}
-      {block.title && <Tag class="feature__title t-h" data-v set:html={rich(block.title)} />}
-      {block.lede && <p class="feature__lede t-lede-sm" data-v set:html={rich(block.lede)} />}
-      {block.html && <p class="feature__html t-body ink-2 plan-hide" data-v set:html={rich(block.html)} />}
-      {block.items && block.items.length > 0 && <ul class="feature__items leaders t-body ink-2 plan-hide">{block.items.map((it) => <li data-v set:html={rich(it)} />)}</ul>}
-    </div>
-    {block.media.length > 0 && (
-      <figure class="feature__media">
-        {compare ? (
-          <Compare final={block.media[0]} under={m(compare.under)} alt={alt(fileOf(block.media[0]))} />
-        ) : (
-          block.media.map((mm) => <Plate layers={[mm]} alt={alt(fileOf(mm))} fig={ctx.fig ? { no: ctx.fig } : undefined} />)
+<div {...blkAttrs('feature', ctx, ['feature', `feature--${r}`, block.flip && r === 'split' ? 'feature--flip' : '', !mm ? 'feature--textonly' : ''].filter(Boolean).join(' '))} data-renderer={r}>
+  <div class="blk__main feature__grid">
+    {hasText && (
+      <div class="feature__text" id={textId}>
+        {(block.kicker || block.n) && (
+          <p class="feature__head">
+            {block.kicker && <span class="feature__kicker" data-v>{block.kicker}</span>}
+            {block.n && <span class="feature__n" data-v>{block.n}</span>}
+          </p>
         )}
-        {ctx.fig && <figcaption class="t-code ink-2" data-chrome>{ctx.fig}</figcaption>}
+        {block.title && <Tag class="feature__title" id={titleId} data-v set:html={rich(block.title)} />}
+        {block.lede && <p class="feature__lede" data-v set:html={rich(block.lede)} />}
+        {block.html && <p class="feature__html plan-hide" data-v set:html={rich(block.html)} />}
+        {block.items && block.items.length > 0 && (
+          <ul class="feature__items plan-hide" role="list">{block.items.map((it) => <li data-v set:html={rich(it)} />)}</ul>
+        )}
+      </div>
+    )}
+    {mm && (
+      <figure class:list={['feature__fig', bleed && `feature__fig--bleed-${bleed}`]} style={figStyle} data-bleed={bleed}>
+        {compare ? (
+          <Compare final={mm} under={media(compare.under)} ctx={ctx} alt={alt(fileOf(mm))} underAlt={alt(compare.under)} describedBy={textId} titleId={titleId} />
+        ) : (
+          block.media.map((x) => <Plate layers={[x]} alt={alt(fileOf(x))} fig={fig} describedBy={textId} class={bleed ? 'plate--bleed' : undefined} />)
+        )}
+        {ctx.fig && !compare && (
+          <figcaption class="feature__cap" data-chrome>
+            <span class="feature__no">{ctx.fig}</span>
+            {mm && <span class="feature__tag" aria-hidden="true">{dimsLabel(mm, false)}<Icon name="enlarge" size={12} /></span>}
+          </figcaption>
+        )}
       </figure>
     )}
   </div>
 </div>
 <style>
-  .feature { display: grid; gap: var(--s-5); }
-  .feature--split .feature { grid-template-columns: 5fr 7fr; align-items: center; }
-  .feature--split.feature--flip .feature__media { order: -1; }
-  @media (max-width: 767.98px) {
-    .feature--split .feature { grid-template-columns: minmax(0, 1fr); }
-    .feature--split.feature--flip .feature__media { order: 0; }
+  /* §6.1: a feature takes --flow-xl above and below (a heading keeps its own tighter step). The space between a feature
+     and a Plan-view omit-run wrapper is the wrapper's (WP5's OmitRun; chapters are grids, so margins never collapse). */
+  :global(.blk:not(.blk--h)) + .feature { margin-block-start: var(--flow-xl); }
+  .feature + :global(.blk) { margin-block-start: var(--flow-xl); }
+  .feature__grid { display: grid; gap: var(--flow-m); min-inline-size: 0; }
+  .feature__text { display: grid; gap: var(--s-3); align-content: start; max-inline-size: var(--measure); min-inline-size: 0; }
+  .feature__head { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+  .feature__kicker {
+    display: inline-block; padding: 3px var(--s-2) 2px;
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
+    line-height: var(--lh-code); color: var(--rust);
+    border: var(--lw-object) solid currentColor;
   }
-  .feature__text { display: grid; gap: var(--s-3); align-content: start; }
-  .feature__media { display: grid; gap: var(--s-2); }
+  .feature__n {
+    display: inline-grid; place-items: center; min-inline-size: 28px; block-size: var(--s-5); padding-inline: var(--s-1);
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
+    color: var(--ink); border: var(--lw-object) solid var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .feature__title {
+    font-family: var(--font-serif); font-size: var(--fs-h); font-weight: var(--wt-h);
+    line-height: var(--lh-h); letter-spacing: var(--tr-h); text-wrap: balance; color: var(--ink);
+  }
+  .feature__lede { font-size: var(--fs-lede-sm); font-weight: var(--wt-lede-sm); line-height: var(--lh-lede-sm); letter-spacing: var(--tr-lede-sm); color: var(--ink); }
+  .feature__html { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
+  /* her items as a leader list (her Issuu leaders: a clay line ending in a dot). Inset at every width: §6.2 hangs
+     them in the gutter ≥ 1024, but a case chapter is paint-contained (content-visibility), which clips anything left of
+     its box, and at 1440 that 43px gutter is the sticky Levels rail's edge (a hanging leader would touch its View box).
+     See wt-notes/wp4b.md → "for the integrator". */
+  .feature__items { list-style: none; margin: 0; padding: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
+  .feature__items > li { position: relative; padding-block: 14px; padding-inline-start: 44px; }
+  .feature__items > li + li { border-block-start: var(--lw-object) solid var(--line-1); }
+  .feature__items > li::before {
+    content: ''; position: absolute; inset-inline-start: 0; inset-block-start: calc(14px + 0.81em);
+    inline-size: 28px; border-block-start: var(--lw-dim) solid var(--clay);
+  }
+  .feature__items > li::after {
+    content: ''; position: absolute; inset-inline-start: 26px; inset-block-start: calc(14px + 0.81em - 3px);
+    inline-size: 6px; block-size: 6px; border-radius: var(--r-dot); background: var(--clay);
+  }
+
+  .feature__fig { margin: 0; min-inline-size: 0; display: grid; gap: var(--s-2); }
+  .feature__cap { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3); }
+  .feature__no { font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--ink-2); }
+  .feature__tag {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    opacity: 0; transition: opacity var(--dur-3) var(--ease-ui);
+  }
+  .feature__tag :global(svg) { vertical-align: middle; margin-inline-start: var(--s-1); }
+  @media (hover: hover) and (pointer: fine) { .feature__fig:is(:hover, :focus-within) .feature__tag { opacity: 1; } }
+  @media (hover: none) { .feature__tag { display: none; } }
+
+  /* ---------- stacked: text in the measure, then the figure across the wide area ---------- */
+  .feature--stacked .feature__grid { gap: var(--flow-l); }
+
+  /* ---------- split: text 5/12 + figure 7/12 in the wide area; a flipped row mirrors the tracks ---------- */
+  @media (min-width: 768px) {
+    .feature--split .feature__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: var(--s-7); align-items: center; }
+    .feature--split.feature--flip .feature__grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .feature--split.feature--flip .feature__fig { order: -1; }
+    .feature--split .feature__fig { justify-items: start; }
+    .feature--split:not(.feature--flip) .feature__fig { justify-items: end; }
+    .feature--split .feature__fig > :global(.plate) { inline-size: 100%; max-inline-size: var(--_cap, none); }
+    .feature--split .feature__fig > .feature__cap { inline-size: 100%; max-inline-size: var(--_cap, none); }
+    .feature--textonly .feature__grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* a file cropped at one edge by design (BXlkhl right, cytCJG0 left) sits flush against that edge of the wide area
+     (the sheet's edge: chapters are paint-contained by content-visibility, so the container edge IS the bleed), matted
+     on the other three sides only — the crop reads as the sheet's edge, not as a framing mistake */
+  .feature__fig--bleed-right { justify-items: end; }
+  .feature__fig--bleed-left { justify-items: start; }
+  .feature__fig--bleed-right :global(.plate--bleed .plate__mat) {
+    box-shadow: 0 calc(-1 * var(--lw-object)) 0 0 var(--line-2), 0 var(--lw-object) 0 0 var(--line-2), calc(-1 * var(--lw-object)) 0 0 0 var(--line-2);
+  }
+  .feature__fig--bleed-left :global(.plate--bleed .plate__mat) {
+    box-shadow: 0 calc(-1 * var(--lw-object)) 0 0 var(--line-2), 0 var(--lw-object) 0 0 var(--line-2), var(--lw-object) 0 0 0 var(--line-2);
+  }
 </style>

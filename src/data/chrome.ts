@@ -190,6 +190,18 @@ export const chrome = {
       drag: 'Drag',
       scrollable: '{fig}, scrollable',
       enlargeLabel: 'Enlarge {fig}',
+      // WP4b additions (labels)
+      playSound: 'Play · {t} · sound',
+      mute: 'Mute',
+      unmute: 'Unmute',
+      walkthrough: 'Walkthrough',
+      /** the loupe drift/peel cross-references: '← FIG. 4.7 · Ideate' / '→ compared in FIG. 5.4' */
+      figRef: '{fig} · {level}',
+    },
+    compare: {
+      section: 'Section A–A',
+      peel: 'Peel the wireframe back from the final screen',
+      peelValue: '{n}% wireframe',
     },
     detail: {
       file: 'File',
@@ -203,6 +215,17 @@ export const chrome = {
       prev: 'Prev',
       next: 'Next',
       close: 'Close',
+      // WP4b additions (labels)
+      esc: 'Esc',
+      count: '{i} / {n}',
+      px: '{w} × {h} px',
+      back: 'Back to {where}',
+      zoom: 'Zoom',
+      speed: 'Speed',
+      slow: '0.5×',
+      normal: '1×',
+      details: 'Details',
+      seek: 'Position',
     },
   },
 

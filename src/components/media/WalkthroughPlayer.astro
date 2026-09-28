@@ -1,0 +1,113 @@
+---
+/**
+ * WalkthroughPlayer · WP4b (SPEC §6.2 `feature`, WalkthroughPlayer). A run of ≥ 3 untitled features, each a lede + one
+ * desktop capture — PFF Highlights (1 GIF + 4 MP4).
+ *
+ *   ≥ 1024 (JS)  a vertical tablist (300px): `01…05` + her FULL lede (never truncated), Newsreader 17px; the active tab
+ *                ink with a rust rule, the others ink-2. Beside it ONE player: every step's file in the same BRW frame
+ *                box (the files are 1.38–1.41:1; the box is the common 2876 × 2046), only the active one shown.
+ *                Auto-advance on `ended` (or after the GIF's known length), once through, stopping after the last;
+ *                any selection turns it off and that step loops. Controls in the frame's bar: Pause/Play, Restart,
+ *                Enlarge, and the progress hairline. Keys: arrows, Home, End (automatic activation).
+ *   < 1024, no JS stacked: each lede followed by its file (the DOM keeps the tablist whole; CSS interleaves them);
+ *                only the most visible one plays, muted, with Pause.
+ *   Motion off   no autoplay, no auto-advance: each step waits on its first frame (videos) or poster (the GIF).
+ * Videos keep preload="none" until selected.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { fileOf } from '../../lib/staging';
+import { pad2 } from '../../lib/text';
+import { alt } from '../../data/alt';
+import { chrome } from '../../data/chrome';
+import Plate from './Plate.astro';
+
+interface Props { blocks: Extract<Block, { t: 'feature' }>[]; ctxs: BlockCtx[] }
+const { blocks, ctxs } = Astro.props;
+const BOX = 2876 / 2046; // the common frame box (4 of the 5 files are 1.406–1.408:1; HuYD94 is 1.380 → 0.9% side mats)
+---
+<div class="blk blk--run is-wide wkpl" data-block="run" data-renderer="player" data-plan="keep">
+  <div class="blk__main wkpl__grid" data-player style={`--n: ${blocks.length}`}>
+    <div class="wkpl__tabs" data-player-tabs data-label={chrome.wp4b.media.walkthrough}>
+      {blocks.map((b, i) => {
+        const ctx = { ...ctxs[i], inRun: true };
+        return (
+          <div {...blkAttrs('feature', ctx, 'wkpl__tab')} data-player-tab={i} style={`--i: ${i}`} aria-current={i === 0 ? 'step' : undefined}>
+            <span class="wkpl__n" aria-hidden="true" data-chrome>{pad2(i + 1)}</span>
+            {b.lede && <span class="wkpl__lede" id={`${ctx.id}-x`} data-v set:html={rich(b.lede)} />}
+          </div>
+        );
+      })}
+    </div>
+    {blocks.map((b, i) => {
+      const ctx = ctxs[i];
+      const mm = b.media[0];
+      return (
+        <div class="wkpl__panel" id={`${ctx.id}-panel`} data-player-panel={i} style={`--i: ${i}`}>
+          <Plate
+            layers={[mm]}
+            aspect={BOX}
+            frame="browser"
+            alt={alt(fileOf(mm))}
+            fig={ctx.fig ? { no: ctx.fig, capId: b.lede ? `${ctx.id}-x` : undefined } : undefined}
+            managed={false}
+            loop={false}
+            describedBy={b.lede ? `${ctx.id}-x` : undefined}
+          />
+          {ctx.fig && <p class="wkpl__no" data-chrome>{ctx.fig}</p>}
+        </div>
+      );
+    })}
+  </div>
+</div>
+<script>
+  import '../../scripts/media/player';
+</script>
+<style>
+  /* §6.1: walkthroughs take --flow-xxl above and below (a heading stays tight to what it introduces) */
+  :global(.blk:not(.blk--h)) + .wkpl { margin-block-start: var(--flow-xxl); }
+  .wkpl + :global(.blk) { margin-block-start: var(--flow-xxl); }
+  /* ---------- stacked (default: < 1024, no JS): lede i, then file i ---------- */
+  .wkpl__grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--flow-m); min-inline-size: 0; }
+  .wkpl__tabs { display: contents; }
+  .wkpl__tab { order: calc(var(--i) * 2); margin: 0 !important; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-3); align-items: baseline; }
+  .wkpl__panel { order: calc(var(--i) * 2 + 1); display: grid; gap: var(--s-2); min-inline-size: 0; }
+  .wkpl__tab:not(:first-child) { margin-block-start: var(--flow-l) !important; }
+  .wkpl__n {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
+    color: var(--rust); font-variant-numeric: tabular-nums;
+  }
+  .wkpl__lede { font-family: var(--font-serif); font-size: var(--fs-lede-sm); line-height: var(--lh-lede-sm); color: var(--ink); text-wrap: pretty; }
+  .wkpl__no { margin: 0; font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--ink-2); }
+
+  /* ---------- the player (≥ 1024 with JS): tablist | one frame ---------- */
+  @media (min-width: 1024px) {
+    :global(html.js) .wkpl__grid { grid-template-columns: 300px minmax(0, 1fr); column-gap: var(--s-7); align-items: start; row-gap: 0; }
+    :global(html.js) .wkpl__tabs {
+      display: flex; flex-direction: column; grid-column: 1; grid-row: 1;
+      border-block-start: var(--lw-object) solid var(--line-2);
+    }
+    :global(html.js) .wkpl__tab {
+      order: 0; margin: 0 !important;
+      position: relative;
+      padding: var(--s-4) var(--s-3) var(--s-4) var(--s-5);
+      border-block-end: var(--lw-object) solid var(--line-2);
+      cursor: pointer;
+      transition: background-color var(--dur-1) var(--ease-ui);
+    }
+    :global(html.js) .wkpl__tab::before {
+      content: ''; position: absolute; inset-block: -1px; inset-inline-start: 0; inline-size: var(--lw-cut);
+      background: transparent; transition: background-color var(--dur-2) var(--ease-ui);
+    }
+    :global(html.js) .wkpl__tab[aria-selected="true"]::before { background: var(--rust); }
+    :global(html.js) .wkpl__tab .wkpl__lede { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); transition: color var(--dur-1) var(--ease-ui); }
+    :global(html.js) .wkpl__tab .wkpl__n { color: var(--ink-3); }
+    :global(html.js) .wkpl__tab[aria-selected="true"] .wkpl__lede { color: var(--ink); }
+    :global(html.js) .wkpl__tab[aria-selected="true"] .wkpl__n { color: var(--rust); }
+    :global(html.js) .wkpl__tab:hover .wkpl__lede { color: var(--ink); }
+    :global(html.js) .wkpl__tab:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
+    :global(html.js) .wkpl__tab:focus-visible { outline-offset: -2px; }
+    :global(html.js) .wkpl__panel { order: 0; grid-column: 2; grid-row: 1; }
+  }
+</style>

@@ -1,0 +1,116 @@
+---
+/**
+ * MediaControls · WP4b (SPEC §6.3 GIF/video managers, §7.1 WCAG 2.2.2). The controls every GIF or video that loops
+ * longer than 5 s carries, and its loop-progress hairline. Rendered by Plate (and the walkthroughs); driven by
+ * scripts/media/{gif,video,walkthrough,player}.ts through data attributes only.
+ *
+ *   part="buttons"  Pause/Play (one toggle; its label and icon follow the state) · Restart · [Mute/Unmute] · [Enlarge]
+ *   part="progress" a 2px rust hairline whose length is the loop's progress (CSS animation for GIFs, whose duration is
+ *                   the file's known length from media-staging; driven from currentTime for videos)
+ *
+ *   variant  bar      inside the browser frame's bar (right-aligned, like toolbar buttons) — never over her pixels
+ *            overlay  bottom-right over the media, shown on hover/focus-within; always shown on coarse pointers (44px)
+ *            below    under a phone on its stage panel
+ * Every button is data-js-only (no JS → the plain <noscript> media, which the browser controls itself).
+ */
+import Icon from '../symbols/Icon.astro';
+import { chrome, fill } from '../../data/chrome';
+interface Props {
+  part?: 'buttons' | 'progress';
+  variant?: 'bar' | 'overlay' | 'below';
+  /** 'FIG. 5.1' — names the Enlarge button and the group */
+  fig?: string;
+  enlarge?: boolean;
+  audio?: boolean;
+  /** loop length in seconds (the progress hairline) */
+  secs?: number;
+  class?: string;
+}
+const { part = 'buttons', variant = 'overlay', fig, enlarge = false, audio = false, secs, class: cls } = Astro.props;
+const m = chrome.wp4b.media;
+---
+{part === 'buttons' ? (
+  <span class:list={['mc', `mc--${variant}`, cls]} data-mc data-js-only role="group" aria-label={fig ?? m.walkthrough}>
+    <button type="button" class="mc__b mc__toggle" data-mc-toggle aria-label={m.pause} data-label-play={m.play} data-label-pause={m.pause}>
+      <Icon name="pause" class="mc__i mc__i--pause" /><Icon name="play" class="mc__i mc__i--play" />
+    </button>
+    <button type="button" class="mc__b" data-mc-restart aria-label={m.restart}><Icon name="restart" class="mc__i" /></button>
+    {audio && (
+      <button type="button" class="mc__b mc__mute" data-mc-mute aria-pressed="false" aria-label={m.unmute} data-label-mute={m.mute} data-label-unmute={m.unmute}>
+        <Icon name="sound-off" class="mc__i mc__i--off" /><Icon name="sound-on" class="mc__i mc__i--on" />
+      </button>
+    )}
+    {enlarge && fig && (
+      <button type="button" class="mc__b" data-mc-enlarge aria-label={fill(m.enlargeLabel, { fig })}><Icon name="enlarge" class="mc__i" /></button>
+    )}
+  </span>
+) : (
+  <span class:list={['mprog', `mprog--${variant}`, cls]} data-mc-prog aria-hidden="true" style={secs ? `--_secs: ${secs}s` : undefined}><i></i></span>
+)}
+<style>
+  /* ---------- buttons ---------- */
+  .mc { display: inline-flex; align-items: center; }
+  .mc__b {
+    position: relative;
+    display: grid; place-items: center;
+    inline-size: var(--_b, 28px); block-size: var(--_b, 28px);
+    color: var(--ink-2);
+    transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
+  }
+  .mc__b:hover { color: var(--rust); }
+  .mc__b::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: 44px; block-size: 44px; translate: -50% -50%; }
+  .mc__b :global(.mc__i) { inline-size: 16px; block-size: 16px; }
+  /* the toggle shows Pause while playing, Play otherwise (the scripts set data-playing on the group) */
+  .mc[data-playing] :global(.mc__i--play) { display: none; }
+  .mc[data-playing] :global(.mc__i--pause) { display: block; }
+  .mc:not([data-playing]) :global(.mc__i--pause) { display: none; }
+  .mc:not([data-playing]) :global(.mc__i--play) { display: block; }
+  /* Mute/Unmute: the icon shows the current state (sound off until the reader unmutes) */
+  .mc__mute :global(.mc__i--on) { display: none; }
+  .mc__mute[aria-pressed="true"] :global(.mc__i--on) { display: block; }
+  .mc__mute[aria-pressed="true"] :global(.mc__i--off) { display: none; }
+
+  /* bar: toolbar buttons at the right of the browser bar */
+  .mc--bar { block-size: 100%; }
+  .mc--bar .mc__b { --_b: var(--_bar, 28px); }
+
+  /* overlay: bottom-right over the media; hover/focus on fine pointers, always on coarse ones */
+  .mc--overlay {
+    position: absolute; inset: auto var(--s-2) var(--s-2) auto; z-index: var(--z-raised);
+    background: var(--sheet);
+    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
+    opacity: 0;
+    transition: opacity var(--dur-2) var(--ease-ui);
+  }
+  :global(:is(.plate:hover, .plate:focus-within)) .mc--overlay, .mc--overlay:not([data-playing]) { opacity: 1; }
+  @media (pointer: coarse) {
+    .mc--overlay { opacity: 1; }
+    .mc--overlay .mc__b { --_b: 44px; }
+  }
+  /* below: a quiet row under a phone, centred */
+  .mc--below { justify-content: center; gap: var(--s-1); }
+  .mc--below .mc__b { --_b: var(--s-6); color: var(--_on-stage, var(--ink-2)); }
+  @media (pointer: coarse) { .mc--below .mc__b { --_b: 44px; } }
+
+  /* ---------- the loop hairline ---------- */
+  .mprog { display: block; block-size: var(--lw-cut); overflow: hidden; pointer-events: none; }
+  .mprog i {
+    display: block; block-size: 100%; inline-size: 100%;
+    background: var(--rust);
+    transform-origin: 0 50%;
+    transform: scaleX(var(--_p, 0));
+  }
+  .mprog--bar { position: absolute; inset: auto 0 calc(-1 * var(--lw-object)) 0; }
+  .mprog--overlay, .mprog--below { position: relative; }
+  /* the hairline runs as a CSS animation of the file's known length (media-staging secs), restarted on every (re)mount;
+     --_d offsets it to a video's currentTime; "once" for the walkthrough player (no loop); data-hold freezes it */
+  .mprog[data-run] i { animation: mprog-loop var(--_secs, 10s) linear var(--_d, 0s) infinite; }
+  .mprog[data-run="once"] i { animation-iteration-count: 1; animation-fill-mode: forwards; }
+  .mprog[data-hold] i { animation-play-state: paused; }
+  @keyframes mprog-loop { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  /* with Motion off nothing plays by itself; if the reader starts a GIF or video, its progress is state, not decoration */
+  :global(html[data-motion="reduce"]) .mprog[data-run] i { animation-duration: var(--_secs, 10s) !important; animation-iteration-count: infinite !important; }
+  :global(html[data-motion="reduce"]) .mprog[data-run="once"] i { animation-iteration-count: 1 !important; }
+  @media (forced-colors: active) { .mprog i { background: Highlight; } }
+  @media print { .mc, .mprog { display: none; } }
+</style>

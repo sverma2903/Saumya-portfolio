@@ -1,48 +1,228 @@
 ---
 /**
- * Media · OWNER: WP4b (P0 functional stub). <figure class="blk fig">: .blk__main holds the Plate(s); the
- * <figcaption class="blk__note"> holds `FIG. c.n` (chrome, mono) + her caption (data-v, italic).
- * A gallery (items > 1) is ONE figure, items lettered a b c…; frame 'soft' is a logo schedule.
- * Plan view: keep only the first media block after the section start or after each `h` (else omitted by the Chapter).
+ * Media · WP4b (SPEC §6.2 `media`). <figure class="blk fig">: .blk__main holds the plate(s); the <figcaption
+ * class="blk__note"> holds `FIG. c.n` (chrome, mono) + her caption (data-v, italic).
+ *
+ *   single     one Plate in its staging frame (plate · print · before · phone · bare …), capped per staging
+ *   gallery    ONE figure, items lettered a b c… (chrome); columns = her `cols`; below 768px cols ≥ 4 → 2, except
+ *              phone rows (a scroll-snap strip of 160px phones) and logo schedules (always n-up)
+ *   logos      frame 'soft' → a logo schedule: bordered cells (outer --lw-border ink, inner --line-2), 1:1 on --plate,
+ *              each logo ≤ 60% of its cell and capped per staging, a corner tag C-1… — no overflow at any width
+ *   strips     staging `strip`: a pan strip below 768px (the filmstrip at every width) — Strip.astro
+ *   caption    at ≥ 1280 a non-wide figure's caption sits in the notes column, joined to the plate's right edge by a
+ *              clay leader with a dot terminal (her Issuu leader lines); otherwise below. Hover/focus adds a tag
+ *              '3526 × 1005 · JPG ⤢'. The wireframe under the W4 section cut says "→ compared in FIG. 5.4".
+ *   zoom       every figure except logos (and staging zoom:'none') opens Enlarged detail.
+ * Plan view: the Chapter keeps only the first media block after the section start / each `h` (ctx.plan).
  */
-import type { Block } from '../../lib/blocks';
+import type { Block, Media as M } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
-import { fileOf, stagingOf } from '../../lib/staging';
+import { dimsLabel, facts, fileOf, stagingOf } from '../../lib/staging';
+import { figuresOf } from '../../lib/figures';
+import { caseBySlug } from '../../lib/verbatim';
 import { alt } from '../../data/alt';
+import { chrome } from '../../data/chrome';
 import type { Frame } from '../../data/media-staging';
 import Plate from '../media/Plate.astro';
+import Strip from '../media/Strip.astro';
+import Icon from '../symbols/Icon.astro';
+import { enlargeable } from '../media/media-lib';
+
 interface Props { block: Extract<Block, { t: 'media' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
-const gallery = block.items.length > 1;
+const items = block.items;
+const gallery = items.length > 1;
 const logos = block.frame === 'soft';
-const frameFor = (file: string): Frame | undefined => stagingOf(file).frame ?? (block.frame === 'soft' ? 'soft' : block.frame === 'bare' ? 'bare' : undefined);
-const fig = ctx.fig ? { no: ctx.fig, caption: block.caption } : undefined;
+const phones = gallery && items.every((mm) => stagingOf(mm).frame === 'phone');
+const capId = block.caption ? `${ctx.id}-cap` : undefined;
+const frameFor = (mm: M): Frame | undefined => stagingOf(mm).frame ?? (block.frame === 'bare' ? 'bare' : undefined);
+// her `zoom: true` on a media block → 'deep' (1:1 emphasised in Enlarged detail), unless staging says 'soft'/'none'
+const zoomFor = (mm: M): 'deep' | undefined => (block.zoom && !stagingOf(mm).zoom ? 'deep' : undefined);
+const figFor = (mm: M, i: number) =>
+  ctx.fig && !logos && enlargeable(mm) ? { no: `${ctx.fig}${gallery ? ctx.figLetters?.[i] ?? '' : ''}`, capId } : undefined;
+
+// "→ compared in FIG. 5.4": this file is the wireframe beneath a section cut elsewhere in the case (SM6a)
+let xref: { no: string; id: string } | undefined;
+if (!gallery) {
+  const cs = caseBySlug(ctx.slug);
+  const f = figuresOf(cs).find((x) => x.t === 'feature' && x.items.length === 1 && stagingOf(x.items[0]).compare?.under === fileOf(items[0]));
+  if (f) xref = { no: f.no, id: f.id };
+}
+// the hover/focus tag: '3526 × 1005 · JPG' (single figures)
+const tag = !gallery && !logos ? dimsLabel(items[0], false) : undefined;
+// the plate's width when it is narrower than the text measure (so the caption leader reaches it)
+const MEASURE = 680; // --measure
+const f0 = facts(items[0]);
+const st0 = stagingOf(items[0]);
+const pw = !gallery && !st0.strip && !['phone', 'phone-baked'].includes(st0.frame ?? '') ? Math.min(st0.cap ?? Infinity, f0.w) : Infinity;
+const figStyle = Number.isFinite(pw) && pw < MEASURE ? `--_pw: ${pw}px` : undefined;
+// a single plate staged narrower than the measure never spans the wide area (a `wide` hint can't widen a capped file):
+// it keeps the measure, and its caption the notes column
+const bctx = ctx.wide && !gallery && !logos && st0.cap != null && pw < MEASURE ? { ...ctx, wide: false } : ctx;
+const m = chrome.wp4b.media;
+// the PFF phone row: below 768px a scroll strip of 160px phones (Strip's row variant: fades, Drag hint, focusable
+// region "FIG. 5.3, scrollable" only while it scrolls); each phone stays its own enlargeable figure
+const GalleryWrap = phones ? Strip : Fragment;
+const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {};
 ---
-<figure {...blkAttrs('media', ctx, gallery ? 'fig fig--gallery' : 'fig')}>
-  <div class="blk__main">
-    {gallery ? (
-      <ul class:list={['gallery', { 'gallery--logos': logos }]} style={`--cols: ${block.cols ?? block.items.length}`} role="list">
-        {block.items.map((mm, i) => (
-          <li class="gallery__item">
-            <Plate layers={[mm]} alt={alt(fileOf(mm))} frame={frameFor(fileOf(mm))} fig={fig && !logos ? { no: `${fig.no}${ctx.figLetters?.[i] ?? ''}`, caption: block.caption } : undefined} />
-            {ctx.figLetters?.[i] && <span class="gallery__letter t-code-sm ink-3" data-chrome>{ctx.figLetters[i]}</span>}
+<figure {...blkAttrs('media', bctx, ['fig', gallery ? 'fig--gallery' : 'fig--single', logos && 'fig--logos', phones && 'fig--phones'].filter(Boolean).join(' '))} style={figStyle}>
+  <div class="blk__main fig__main">
+    {logos ? (
+      <ul class="logos" style={`--n: ${items.length}`} role="list">
+        {items.map((mm, i) => (
+          <li class="logos__cell">
+            <span class="logos__tag" aria-hidden="true" data-chrome>{`C-${i + 1}`}</span>
+            <div class="logos__mark" style={stagingOf(mm).cap ? `--_cap: ${stagingOf(mm).cap}px` : undefined}>
+              <Plate layers={[mm]} alt={alt(fileOf(mm))} frame="bare" />
+            </div>
           </li>
         ))}
       </ul>
+    ) : gallery ? (
+      <GalleryWrap {...galleryWrapProps}>
+      <ul class:list={['gallery', { 'gallery--phones': phones }]} style={`--cols: ${block.cols ?? items.length}`} role="list">
+        {items.map((mm, i) => {
+          const st = stagingOf(mm);
+          const plate = <Plate layers={[mm]} alt={alt(fileOf(mm))} frame={frameFor(mm)} fig={figFor(mm, i)} zoom={zoomFor(mm)} />;
+          return (
+            <li class="gallery__item">
+              {st.strip ? (
+                <Strip height={st.strip} aspect={facts(mm).aspect} all={!!st.stripAll} fig={figFor(mm, i)?.no}>{plate}</Strip>
+              ) : plate}
+              {ctx.figLetters?.[i] && <span class="gallery__letter" aria-hidden="true" data-chrome>{ctx.figLetters[i]}</span>}
+            </li>
+          );
+        })}
+      </ul>
+      </GalleryWrap>
+    ) : st0.strip ? (
+      <Strip height={st0.strip} aspect={f0.aspect} all={!!st0.stripAll} fig={figFor(items[0], 0)?.no}>
+        <Plate layers={items} alt={alt(fileOf(items[0]))} frame={frameFor(items[0])} fig={figFor(items[0], 0)} zoom={zoomFor(items[0])} />
+      </Strip>
     ) : (
-      <Plate layers={block.items} alt={alt(fileOf(block.items[0]))} frame={frameFor(fileOf(block.items[0]))} fig={fig} />
+      <Plate layers={items} alt={alt(fileOf(items[0]))} frame={frameFor(items[0])} fig={figFor(items[0], 0)} zoom={zoomFor(items[0])} class={frameFor(items[0]) === 'phone' ? 'fig__phone' : undefined} />
     )}
   </div>
   <figcaption class="blk__note fig__cap">
-    {ctx.fig && <span class="fig__no t-code ink-2" data-chrome>{ctx.fig}</span>}
-    {block.caption && <span class="fig__caption t-caption ink-2" data-v set:html={rich(block.caption)} />}
+    {ctx.fig && <span class="fig__no" data-chrome>{ctx.fig}</span>}
+    {block.caption && <span class="fig__caption" id={capId} data-v set:html={rich(block.caption)} />}
+    {xref && (
+      <a class="fig__xref" href={`#${xref.id}`} data-chrome><Icon name="arrow-right" size={13} />{`${m.comparedIn} ${xref.no}`}</a>
+    )}
+    {tag && <span class="fig__tag" aria-hidden="true" data-chrome>{tag}<Icon name="enlarge" size={12} /></span>}
   </figcaption>
 </figure>
 <style>
-  .gallery { list-style: none; padding: 0; display: grid; gap: var(--s-4); align-items: start; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
-  @media (max-width: 767.98px) { .gallery:not(.gallery--logos) { grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 1fr)); } }
-  .gallery--logos .gallery__item { display: grid; place-items: center; aspect-ratio: 1; padding: 20%; background: var(--plate); outline: var(--lw-object) solid var(--line-2); }
-  .gallery__item { display: grid; gap: var(--s-1); }
-  .fig__cap { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: baseline; margin-block-start: var(--s-2); }
+  /* (no margin reset here: base.css resets figure margins, and its .blk rhythm rules set the block's own. The space
+     between a figure and a Plan-view omit-run wrapper belongs to that wrapper (WP5's OmitRun): chapters are grids, where
+     margins don't collapse, so a margin here as well would double it.) */
+  .fig__main { min-inline-size: 0; }
+
+  /* ---------- caption ---------- */
+  .fig__cap { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+  .fig__no {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code);
+    letter-spacing: var(--tr-code); line-height: var(--lh-code); color: var(--ink-2); font-variant-numeric: tabular-nums;
+  }
+  .fig__caption {
+    font-family: var(--font-serif); font-size: var(--fs-caption); line-height: var(--lh-caption); font-style: italic;
+    color: var(--ink-2); text-wrap: pretty; max-inline-size: var(--measure);
+  }
+  /* inline-block, so its baseline is its text's (it shares the caption row's baseline); ≥ 24px tall (2.5.8) */
+  .fig__xref {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--rust);
+    text-decoration: none; min-block-size: var(--s-5);
+  }
+  .fig__xref :global(svg) { vertical-align: middle; margin-inline-end: var(--s-1); }
+  .fig__xref:hover { color: var(--rust-deep); text-decoration: underline; }
+  .fig__tag {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    opacity: 0; transition: opacity var(--dur-3) var(--ease-ui);
+  }
+  .fig__tag :global(svg) { vertical-align: middle; margin-inline-start: var(--s-1); }
+  @media (hover: hover) and (pointer: fine) {
+    .fig:is(:hover, :focus-within) .fig__tag { opacity: 1; }
+  }
+  @media (hover: none) { .fig__tag { display: none; } }
+  /* below the plate (wide figures, nested figures, and everything under 1280px) */
+  .fig.is-wide > .fig__cap, .fig.blk--nested > .fig__cap { grid-column: text-start / notes-end; margin-block-start: var(--s-3); flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-3); }
+  @media (max-width: 1279.98px) {
+    .fig > .fig__cap { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-3); margin-block-start: var(--s-3); }
+  }
+  /* ≥ 1280, non-wide: the caption sits in the notes column; a clay leader with a dot terminal joins it to the plate */
+  @media (min-width: 1280px) {
+    .fig:not(.is-wide):not(.blk--nested) > .fig__cap {
+      --_lead: calc(var(--gap, 40px) + max(0px, var(--measure) - var(--_pw, var(--measure))));
+      position: relative;
+    }
+    .fig:not(.is-wide):not(.blk--nested) > .fig__cap::before,
+    .fig:not(.is-wide):not(.blk--nested) > .fig__cap::after {
+      content: ''; position: absolute; pointer-events: none;
+      inset-block-start: calc(var(--fs-code) * var(--lh-code) / 2);
+    }
+    .fig:not(.is-wide):not(.blk--nested) > .fig__cap::before {
+      inset-inline-end: calc(100% + var(--s-2));
+      inline-size: calc(var(--_lead) - var(--s-2) - var(--s-2));
+      border-block-start: var(--lw-dim) solid var(--clay);
+    }
+    .fig:not(.is-wide):not(.blk--nested) > .fig__cap::after {
+      inset-inline-end: calc(100% + var(--_lead) - var(--s-2) - 3px);
+      inline-size: 5px; block-size: 5px; border-radius: var(--r-dot); background: var(--clay);
+      translate: 0 -50%;
+      margin-block-start: calc(var(--lw-dim) / 2);
+    }
+  }
+
+  /* ---------- gallery ---------- */
+  .gallery {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: var(--s-4); align-items: start;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  }
+  .gallery__item { display: grid; gap: var(--s-2); min-inline-size: 0; justify-items: start; }
+  .gallery__item > :global(.plate), .gallery__item > :global(.strip) { inline-size: 100%; }
+  .gallery__letter {
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3);
+    line-height: 1;
+  }
+  @media (max-width: 767.98px) {
+    .gallery:not(.gallery--phones) { grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 1fr)); gap: var(--s-3); }
+  }
+  /* the PFF phone row: 6-up in the wide area; below 768px a row of 160px phones inside a Strip (row variant) */
+  .gallery--phones { gap: var(--s-4); align-items: end; }
+  @media (max-width: 767.98px) {
+    .gallery--phones { display: flex; gap: var(--s-3); padding-block-end: var(--s-2); }
+    .gallery--phones > .gallery__item { flex: 0 0 160px; scroll-snap-align: start; }
+  }
+
+  /* ---------- logo schedule (frame 'soft'): C-4 overflow fixed — n equal cells at every width ---------- */
+  .logos {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    border: var(--lw-border) solid var(--ink);
+    /* her logos were composed on white: on pure white their opaque canvases vanish, as on her site (on --plate, two of
+       four Cloudflare marks and three of four U-Up marks sat in visible white boxes) */
+    background: var(--white);
+  }
+  .logos__cell {
+    position: relative; aspect-ratio: 1; min-inline-size: 0;
+    display: grid; place-items: center;
+    padding: 20%;
+  }
+  .logos__cell + .logos__cell { border-inline-start: var(--lw-object) solid var(--print-line); }
+  .logos__mark { inline-size: 100%; max-inline-size: var(--_cap, 100%); display: grid; place-items: center; }
+  .logos__mark > :global(.plate) { inline-size: 100%; }
+  .logos__tag {
+    position: absolute; inset: var(--s-2) auto auto var(--s-2);
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--print-ink);
+    line-height: 1;
+  }
+  @media (max-width: 479.98px) { .logos__tag { inset: var(--s-1) auto auto var(--s-1); } }
+
+  /* a single flat phone screen: sized like a phone, not like a page */
+  .fig__main > :global(.fig__phone) { max-inline-size: 280px; }
 </style>

@@ -1,0 +1,146 @@
+---
+/**
+ * WalkthroughPhone · WP4b (SPEC §6.2 `feature`, WalkthroughPhone). A run of ≥ 2 features whose media are all phones
+ * (U-Up: 3 GIFs; Educademy: so2bh2 → n8B6Uj → so2bh2).
+ *
+ *   stacked (no JS · Motion off · < 1024px)  each step: her title + html, then its phone on the case's --stage panel
+ *   sticky  (≥ 1024px, Motion on)             steps in 6/12, each ≥ 72vh; the active step (the one on the viewport's
+ *            centre line) gets a rust rule, the others ink-3. ONE phone (5/12) stays sticky on the --stage panel, sized
+ *            by height (--ph: min(560px, 70vh)); two stacked views (A/B) swap her GIFs, cross-fading over --dur-2 — a
+ *            swap restarts the GIF from frame 0, so Educademy's repeat of so2bh2 reads as "back to the dashboard".
+ *   Text never sits on the stage panel — only the phone does. Controls (Pause, Restart, Enlarge), the loop hairline
+ *   and the FIG number sit under the panel, on the paper.
+ * Each phone is clipped to its device silhouette (media-staging `outline`); nothing else of her GIFs is touched.
+ */
+import type { Block } from '../../lib/blocks';
+import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { rich } from '../../lib/rich';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
+import { STAGES } from '../../data/sheets';
+import { alt } from '../../data/alt';
+import Plate from './Plate.astro';
+import MediaControls from './MediaControls.astro';
+
+interface Props { blocks: Extract<Block, { t: 'feature' }>[]; ctxs: BlockCtx[] }
+const { blocks, ctxs } = Astro.props;
+const slug = ctxs[0]?.slug ?? '';
+// a dark stage (U-Up's plum) turns the focus ring to --plate (§4.13)
+const stage = (STAGES as Record<string, string>)[slug] ?? '';
+const hex = /#([0-9a-f]{6})/i.exec(stage)?.[1];
+const dark = hex ? (() => { const n = parseInt(hex, 16); const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.18; })() : false;
+const widest = Math.max(...blocks.map((b) => facts(b.media[0]).aspect));
+const first = blocks[0].media[0];
+const firstSecs = stagingOf(first).gif?.secs ?? 10;
+---
+<div class:list={['blk', 'blk--run', 'is-wide', 'wkp', { 'wkp--dark': dark }]} data-block="run" data-renderer="phone" data-plan="keep">
+  <div class="blk__main wkp__grid" data-walk style={`--_w: ${Math.round(widest * 10000) / 10000}`}>
+    <ol class="wkp__steps" role="list">
+      {blocks.map((b, i) => {
+        const ctx = { ...ctxs[i], inRun: true };
+        const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+        const mm = b.media[0];
+        const titleId = b.title ? `${ctx.id}-t` : undefined;
+        const textId = `${ctx.id}-x`;
+        return (
+          <li {...blkAttrs('feature', ctx, 'wkp__step')} data-walk-step={i} aria-current={i === 0 ? 'step' : undefined}>
+            <div class="wkp__text" id={textId}>
+              {b.title && <Tag class="wkp__title" id={titleId} data-v set:html={rich(b.title)} />}
+              {b.lede && <p class="wkp__lede" data-v set:html={rich(b.lede)} />}
+              {b.html && <p class="wkp__html plan-hide" data-v set:html={rich(b.html)} />}
+            </div>
+            <figure class="wkp__fig">
+              <div class="wkp__panel">
+                <Plate layers={[mm]} alt={alt(fileOf(mm))} fig={ctx.fig ? { no: ctx.fig, capId: titleId } : undefined} describedBy={textId} />
+              </div>
+              {ctx.fig && <figcaption class="wkp__no" data-chrome>{ctx.fig}</figcaption>}
+            </figure>
+          </li>
+        );
+      })}
+    </ol>
+    <div class="wkp__stage" data-walk-stage data-state="idle" style={`--_secs: ${firstSecs}s`} hidden>
+      <div class="wkp__panel wkp__panel--sticky">
+        <div class="wkp__phone">
+          <div class="wkp__view" data-walk-view data-ph-host><img class="wkp__img" data-walk-img alt="" width={facts(first).w} height={facts(first).h} decoding="async" /><canvas class="wkp__poster" hidden aria-hidden="true"></canvas></div>
+          <div class="wkp__view" data-walk-view data-ph-host><img class="wkp__img" data-walk-img alt="" width={facts(first).w} height={facts(first).h} decoding="async" /><canvas class="wkp__poster" hidden aria-hidden="true"></canvas></div>
+        </div>
+      </div>
+      <div class="wkp__below">
+        <MediaControls part="progress" variant="below" secs={firstSecs} />
+        <MediaControls variant="below" fig={ctxs[0]?.fig} enlarge={!!ctxs[0]?.fig} />
+        <p class="wkp__no" data-walk-fig data-chrome aria-live="off">{ctxs[0]?.fig}</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  import '../../scripts/media/walkthrough';
+</script>
+<style>
+  /* §6.1: walkthroughs take --flow-xxl above and below (a heading stays tight to what it introduces) */
+  :global(.blk:not(.blk--h)) + .wkp { margin-block-start: var(--flow-xxl); }
+  .wkp + :global(.blk) { margin-block-start: var(--flow-xxl); }
+  .wkp { --ph: min(480px, 72svh); }
+  .wkp__grid { min-inline-size: 0; }
+  .wkp__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--flow-xl); }
+  .wkp__step { margin: 0 !important; }
+  .wkp__text { display: grid; gap: var(--s-3); max-inline-size: var(--measure); }
+  .wkp__title { font-family: var(--font-serif); font-size: var(--fs-h); font-weight: var(--wt-h); line-height: var(--lh-h); letter-spacing: var(--tr-h); color: var(--ink); text-wrap: balance; }
+  .wkp__lede { font-size: var(--fs-lede-sm); line-height: var(--lh-lede-sm); color: var(--ink); }
+  .wkp__html { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
+  .wkp__fig { margin: var(--flow-m) 0 0; display: grid; gap: var(--s-2); }
+  .wkp__panel {
+    display: grid; place-items: center;
+    padding: var(--s-6) var(--s-4);
+    background: var(--stage);
+  }
+  .wkp--dark .wkp__panel { --focus: var(--plate); }
+  .wkp__no { font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--ink-2); margin: 0; }
+  /* stacked: the phone's controls sit on the stage panel, so they take its contrast */
+  .wkp--dark .wkp__fig .wkp__panel :global(.mc__b) { color: var(--plate); }
+  .wkp--dark .wkp__fig .wkp__panel :global(.mc__b:hover) { color: var(--blush); }
+
+  /* ---------- sticky walkthrough (≥ 1024, JS, Motion on) ---------- */
+  .wkp__stage[hidden] { display: none !important; }
+  @media (min-width: 1024px) {
+    /* the phone is centred on the viewport (§6.2); --_below is what hangs under it (panel padding, the gap, the
+       controls + FIG line, a margin), so the whole stage always fits a short viewport (1280×800, 1024×768) */
+    :global(html.js:not([data-motion="reduce"])) .wkp {
+      --_below: calc(var(--s-6) + var(--s-3) + var(--s-8) + var(--s-4));
+      --ph: min(560px, 70vh, calc(100vh - 2 * var(--_below)));
+    }
+    :global(html.js:not([data-motion="reduce"])) .wkp__grid[data-sticky] {
+      display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); column-gap: var(--s-7); align-items: start;
+    }
+    /* the run ends only once the last step has been centred under a still-sticky phone */
+    .wkp__grid[data-sticky] .wkp__steps { gap: 0; padding-block-end: max(0px, calc(var(--ph) / 2 + var(--_below) - 36vh)); }
+    .wkp__grid[data-sticky] .wkp__step { min-block-size: 72vh; display: grid; align-content: center; }
+    .wkp__grid[data-sticky] .wkp__text {
+      padding-block: var(--s-2); padding-inline-start: var(--s-5);
+      border-inline-start: var(--lw-cut) solid var(--line-1);
+      transition: border-color var(--dur-2) var(--ease-ui);
+    }
+    .wkp__grid[data-sticky] .wkp__step[aria-current="step"] .wkp__text { border-inline-start-color: var(--rust); }
+    .wkp__grid[data-sticky] .wkp__step:not([aria-current="step"]) :is(.wkp__title, .wkp__lede, .wkp__html) { color: var(--ink-3); }
+    .wkp__grid[data-sticky] .wkp__step :is(.wkp__title, .wkp__lede, .wkp__html) { transition: color var(--dur-2) var(--ease-ui); }
+    .wkp__grid[data-sticky] .wkp__fig { display: none; }
+    .wkp__grid[data-sticky] .wkp__stage {
+      display: grid; gap: var(--s-3);
+      position: sticky; inset-block-start: calc(50vh - var(--ph) / 2 - var(--s-6));
+    }
+    .wkp__panel--sticky { padding: var(--s-6); }
+  }
+  .wkp__phone { position: relative; block-size: var(--ph); inline-size: calc(var(--ph) * var(--_w, 0.6)); }
+  .wkp__view {
+    position: absolute; inset-block: 0; inset-inline-start: 50%; translate: -50% 0;
+    block-size: 100%;
+    opacity: 0; transition: opacity var(--dur-2) var(--ease-ui);
+  }
+  .wkp__view[data-on] { opacity: 1; }
+  .wkp__img, .wkp__poster { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; max-inline-size: none; }
+  .wkp__img:not([src]) { opacity: 0; }
+  .wkp__poster { z-index: var(--z-raised); }
+  .wkp__below { display: grid; justify-items: center; gap: var(--s-2); }
+  .wkp__below :global(.mprog) { inline-size: calc(var(--ph) * var(--_w, 0.6)); }
+  @media print { .wkp__stage { display: none !important; } .wkp__fig { display: grid !important; } }
+</style>
