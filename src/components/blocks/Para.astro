@@ -1,8 +1,11 @@
 ---
 /**
- * Para (`p`) · OWNER: WP4a (P0 functional stub). <p class="p full" data-v> plus, when ctx.plan.mode === 'skim',
- * <p class="p skim"> holding ONLY her <strong> pieces (each <strong data-v>) joined by a chrome ⋯ (aria-hidden).
- * Sizes: default --fs-body ink-2 · md --fs-body-md ink · sm --fs-body-sm.
+ * Para (`p`) · WP4a. <p class="p full" data-v> (SPEC §6.2 `p`); sizes: default --fs-body ink-2 · md --fs-body-md ink
+ * ("thesis" paragraphs) · sm --fs-body-sm ink-2. Her <strong> 620 ink, <em> italic, links underlined (base.css), her
+ * <br><br> preserved.
+ * Plan view (SM5c): when ctx.plan.mode === 'skim', a sibling <p class="skim"> holds ONLY her bold clauses, each a
+ * <strong data-v> (her inner HTML, verbatim), joined by a clay ⋯ (chrome, aria-hidden, data-join). The pair is
+ * swapped by html[data-view] (base.css). A paragraph with no qualifying bold is omitted by the Chapter (omit run).
  */
 import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
@@ -11,21 +14,33 @@ import { rich } from '../../lib/rich';
 interface Props { block: Extract<Block, { t: 'p' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const size = block.size ?? 'default';
-const role = size === 'md' ? 't-body-md' : size === 'sm' ? 't-body-sm' : 't-body ink-2';
 const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
 ---
 <div {...blkAttrs('p', ctx)}>
   <div class="blk__main">
-    <p class:list={['p', `p--${size}`, role, { full: !!skim }]} data-v set:html={rich(block.html)} />
+    <p class:list={['p', `p--${size}`, { full: !!skim }]} data-v set:html={rich(block.html)} />
     {skim && (
-      <p class={`p skim ${role}`}>
+      <p class={`p p--${size} p--skim skim`}>
         {skim.map((s, i) => (
-          <>{i > 0 && <span class="skim__join" data-chrome data-join aria-hidden="true"> <Icon name="ellipsis" /> </span>}<strong data-v set:html={s} /></>
+          <>{i > 0 && <span class="skim__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
         ))}
       </p>
     )}
   </div>
 </div>
 <style>
-  .skim__join { color: var(--clay); }
+  .p { font-family: var(--font-serif); hanging-punctuation: first; }
+  .p--default { font-size: var(--fs-body); font-weight: var(--wt-body); line-height: var(--lh-body); letter-spacing: var(--tr-body); color: var(--ink-2); }
+  .p--md { font-size: var(--fs-body-md); font-weight: var(--wt-body-md); line-height: var(--lh-body-md); letter-spacing: var(--tr-body-md); color: var(--ink); }
+  .p--sm { font-size: var(--fs-body-sm); font-weight: var(--wt-body-sm); line-height: var(--lh-body-sm); letter-spacing: var(--tr-body-sm); color: var(--ink-2); }
+
+  /* Plan view: her bold only. The ⋯ joiner is drafted in clay, like a break in a dimension string. */
+  .p--skim { color: var(--ink); }
+  .skim__join {
+    display: inline-block;
+    margin-inline: 0.3em;
+    color: var(--clay);
+    vertical-align: -0.06em;
+  }
+  .skim__join :global(.icon) { inline-size: 1em; block-size: 1em; }
 </style>

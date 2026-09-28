@@ -1,35 +1,119 @@
 ---
 /**
- * List · OWNER: WP4a (P0 functional stub). Unnumbered → leader list <ul class="leaders">; numbered → keynotes
- * <ol class="keynotes">. Each <li data-v>. Plan view skim: only items with her bold, as <strong data-v> pieces,
- * then "+ N items omitted" (chrome, ink-3).
+ * List · WP4a (SPEC §6.2 `list`).
+ *  - Unnumbered → a leader list (LeaderList: hairline rows, her Issuu leader + dot hanging in the gutter).
+ *  - Numbered → keynotes <ol class="keynotes">: each item carries a boxed tag `01` (28×24, 1px ink, Plex Mono 12,
+ *    chrome + aria-hidden: the <ol> already numbers it for assistive tech) hanging in the gutter at ≥ 1280px.
+ *    Used by her Reflection lessons and Cloudflare's decision questions.
+ *  - Plan view skim: only the items that carry her bold, as her <strong> pieces (data-v) joined by a clay ⋯; keynotes
+ *    keep their ORIGINAL numbers (01, 03…). Then "+ N items omitted" (chrome, ink-3). A list without her bold is
+ *    omitted by the Chapter (omit run).
  */
+import LeaderList from './LeaderList.astro';
 import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
+import { boldPieces } from '../../lib/planview';
 import { rich } from '../../lib/rich';
+import { pad2 } from '../../lib/text';
 import { chrome, fill } from '../../data/chrome';
 interface Props { block: Extract<Block, { t: 'list' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
-const Tag = block.numbered ? 'ol' : 'ul';
-const cls = block.numbered ? 'keynotes' : 'leaders';
-const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skimItems ?? []) : null;
-const dropped = ctx.plan.dropped ?? 0;
+const skimmed = ctx.plan.mode === 'skim';
+const html = block.items.map((it) => rich(it));
+// Plan view: the kept items (with their original numbers) and their bold pieces
+const kept = skimmed
+  ? block.items.map((it, i) => ({ n: i + 1, pieces: boldPieces(it) })).filter((k) => k.pieces.length > 0)
+  : [];
+const dropped = skimmed ? block.items.length - kept.length : 0;
+const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : fill(chrome.wp4a.itemsOmitted, { n: dropped });
 ---
 <div {...blkAttrs('list', ctx)}>
   <div class="blk__main">
-    <Tag class:list={[cls, 't-body', 'ink-2', { full: !!skim }]}>
-      {block.items.map((it) => <li data-v set:html={rich(it)} />)}
-    </Tag>
-    {skim && (
-      <Tag class={`${cls} skim t-body ink-2`}>
-        {skim.map((pieces) => <li>{pieces.map((s, j) => <>{j > 0 && <span class="skim__join" data-chrome data-join aria-hidden="true"> <Icon name="ellipsis" /> </span>}<strong data-v set:html={s} /></>)}</li>)}
-      </Tag>
+    {block.numbered ? (
+      <>
+        <ol class:list={['keynotes', { full: skimmed }]} role="list">
+          {html.map((h, i) => (
+            <li class="keynotes__i" data-v><span class="keynotes__tag" aria-hidden="true" data-chrome>{pad2(i + 1)}</span><span set:html={h} /></li>
+          ))}
+        </ol>
+        {skimmed && (
+          <ol class="keynotes skim" role="list">
+            {kept.map((k) => (
+              <li class="keynotes__i"><span class="keynotes__tag" aria-hidden="true" data-chrome>{pad2(k.n)}</span>{k.pieces.map((s, j) => (
+                <>{j > 0 && <span class="keynotes__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+              ))}</li>
+            ))}
+          </ol>
+        )}
+      </>
+    ) : (
+      <>
+        <LeaderList items={html} class={skimmed ? 'full' : undefined} />
+        {skimmed && <LeaderList pieces={kept.map((k) => k.pieces)} class="skim" />}
+      </>
     )}
-    {skim && dropped > 0 && <p class="skim list__dropped t-label ink-3" data-chrome>{fill(chrome.wp5.plan.itemsOmitted, { n: dropped })}</p>}
+    {skimmed && dropped > 0 && <p class="list__dropped skim" data-chrome>{droppedLabel}</p>}
   </div>
 </div>
 <style>
-  li + li { margin-block-start: var(--s-3); }
-  .skim__join { color: var(--clay); }
+  .keynotes {
+    --_pad: 14px;                                    /* SPEC: 14px rows (as the leader list) */
+    --_tag-w: calc(var(--s-5) + var(--s-1));         /* the 28 × 24 keynote tag */
+    --_tag-h: var(--s-5);
+    --_gap: var(--s-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-serif);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--ink-2);
+  }
+  .keynotes__i {
+    position: relative;
+    padding-block: var(--_pad);
+    padding-inline-start: calc(var(--_tag-w) + var(--_gap));
+    border-block-start: var(--lw-object) solid var(--line-1);
+    text-wrap: pretty;
+  }
+  .keynotes__i:last-child { border-block-end: var(--lw-object) solid var(--line-1); }
+  .keynotes__tag {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: calc(var(--_pad) + 0.5lh - var(--_tag-h) / 2);
+    display: grid;
+    place-items: center;
+    inline-size: var(--_tag-w);
+    block-size: var(--_tag-h);
+    border: var(--lw-object) solid var(--ink);
+    background: var(--sheet);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    line-height: 1;
+    letter-spacing: var(--tr-code);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  /* ≥ 1280: the tag hangs in the gutter, ≥ 4px clear of the sticky Levels rail (--gap is set by .case-body). Below
+     1280 the lg gutter (32px) cannot hold a 28px tag plus clearance, so the tag stays inset. */
+  @media (min-width: 1280px) {
+    .keynotes__i { padding-inline-start: 0; }
+    .keynotes__tag { inset-inline-start: calc(-1 * min(var(--_tag-w) + var(--s-2), var(--gap, var(--s-7)) - var(--s-1))); }
+  }
+  .keynotes__join { display: inline-block; margin-inline: 0.3em; color: var(--clay); vertical-align: -0.06em; }
+  .keynotes__join :global(.icon) { inline-size: 1em; block-size: 1em; }
+
+  .list__dropped {
+    margin-block-start: var(--s-3);
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: var(--wt-label);
+    line-height: var(--lh-label);
+    letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
 </style>

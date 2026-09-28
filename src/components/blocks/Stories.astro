@@ -1,16 +1,18 @@
 ---
 /**
- * Stories · OWNER: WP4a (P0 functional stub). Occupant data sheets (PFF): avatar, her title, a ruled <dl> of her rows
- * ("As a" / "I want to" / "So that"). Plan view: omit (counted as "user-story set").
- * Her original rows read "<strong>As a</strong>, Financial Analyst": the ", " between key and value is her punctuation,
- * but the content model's [k, v] rows do not carry it — keep the comma in the DOM text (a data-chrome span) so the
- * page text still reads as her original (the fidelity checker requires "As a , Financial Analyst").
+ * Stories · WP4a (SPEC §6.2 `stories`): PFF's user stories as occupant data sheets. 4-up at ≥ 1280 (wide), 2 at
+ * 768–1279, 1 on phones (avatar beside the title there, to keep each sheet compact).
+ * Each sheet: --sheet ground, --line-2 frame; her avatar (816px PNG with its own baked circle) at 112px; her title
+ * (h{hl}, Newsreader 440); a ruled <dl> of her rows — keys "As a" / "I want to" / "So that" in label caps (her short
+ * labels; the DOM text is hers), values in Newsreader ≈ 17px.
+ * Her original rows read "As a, Financial Analyst": the [k, v] content model dropped the comma, so it is restored as
+ * a chrome span right after the key (visible, aria-hidden), keeping the page text "As a , Financial Analyst".
+ * Avatars are not figures (not enlargeable). Plan view: omitted by the Chapter (counted as a user-story set).
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
-import { fileOf } from '../../lib/staging';
+import { fileOf, srcOf } from '../../lib/staging';
 import { alt } from '../../data/alt';
-import Plate from '../media/Plate.astro';
 interface Props { block: Extract<Block, { t: 'stories' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
@@ -18,24 +20,84 @@ const Tag = `h${ctx.hl}` as 'h3' | 'h4';
 <div {...blkAttrs('stories', ctx)}>
   <div class="blk__main">
     <ul class="stories" role="list">
-      {block.items.map((it) => (
-        <li class="story">
-          <div class="story__avatar"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} frame="bare" /></div>
-          <Tag class="story__t t-index" data-v>{it.title}</Tag>
-          <dl class="story__rows">
-            {it.rows.map(([k, v]) => (
-              <div class="story__row"><dt class="t-label ink-2" data-v>{k}<span class="story__comma" data-chrome aria-hidden="true">,</span></dt><dd data-v>{v}</dd></div>
-            ))}
-          </dl>
-        </li>
-      ))}
+      {block.items.map((it) => {
+        const file = fileOf(it.img);
+        return (
+          <li class="story">
+            <div class="story__head">
+              <img class="story__avatar" src={srcOf(file)} width={it.img.w} height={it.img.h} alt={alt(file)} loading="lazy" decoding="async" />
+              <Tag class="story__t" data-v>{it.title}</Tag>
+            </div>
+            <dl class="story__rows">
+              {it.rows.map(([k, v]) => (
+                <div class="story__row">
+                  <dt class="story__k" data-v>{k}<span class="story__comma" aria-hidden="true" data-chrome>,</span></dt>
+                  <dd class="story__v" data-v>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        );
+      })}
     </ul>
   </div>
 </div>
 <style>
-  .stories { list-style: none; padding: 0; display: grid; gap: var(--s-5); grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  @media (max-width: 1279.98px) { .stories { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stories {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  @media (max-width: 1279.98px) { .stories { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5) var(--s-4); } }
   @media (max-width: 767.98px) { .stories { grid-template-columns: minmax(0, 1fr); } }
-  .story__avatar { inline-size: 112px; }
-  .story__row { padding-block: var(--s-2); border-block-start: var(--lw-object) solid var(--line-1); }
+
+  .story {
+    display: flex;
+    flex-direction: column;
+    padding: var(--s-5) var(--s-5) var(--s-4);
+    background: var(--sheet);
+    border: var(--lw-object) solid var(--line-2);
+  }
+  .story__head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-4); }
+  .story__avatar { inline-size: calc(var(--s-10) - var(--s-4)); block-size: auto; }   /* 112px */
+  .story__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-body);
+    font-weight: var(--wt-h);
+    line-height: var(--lh-lede);
+    letter-spacing: var(--tr-lede);
+    color: var(--ink);
+  }
+  .story__rows { margin-block-start: var(--s-4); }
+  .story__row {
+    padding-block: var(--s-3);
+    border-block-start: var(--lw-object) solid var(--line-1);
+  }
+  .story__row:last-child { padding-block-end: 0; }
+  .story__k {
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: var(--wt-label);
+    line-height: var(--lh-label);
+    letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .story__comma { color: var(--ink-3); }
+  .story__v {
+    margin: var(--s-1) 0 0;
+    font-family: var(--font-serif);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-caption);
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  @media (max-width: 767.98px) {
+    .story__head { flex-direction: row; align-items: center; }
+    .story__avatar { inline-size: var(--s-9); }     /* 96px beside the title */
+  }
 </style>

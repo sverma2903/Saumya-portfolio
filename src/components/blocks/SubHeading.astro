@@ -1,7 +1,9 @@
 ---
 /**
- * SubHeading (`h3` block) · OWNER: WP4a (P0 functional stub). Her sub-level label: <h{ctx.hl} class="sublevel" data-v>
- * in --fs-label-lg uppercase (her short labels only), preceded by a rust ▼. Plan view: keep.
+ * SubHeading (`h3` block) · WP4a. Her sub-level label (SPEC §6.2 `h3`): a rust ▼ datum, her short label in
+ * --fs-label-lg caps (CSS text-transform on her short label only; the DOM text is hers), then a hairline level line
+ * to the column end — the floor-level mark of a building section ("▼ CONFIGURATION ———").
+ * Tag: h{ctx.hl} (h4 under a detail title, h3 otherwise). Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
@@ -12,8 +14,29 @@ const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
 ---
 <div {...blkAttrs('h3', ctx)}>
-  <Tag class="sublevel t-label-lg blk__main" data-v><span class="sublevel__datum" data-chrome><Datum /></span><span set:html={rich(block.html)} /></Tag>
+  <Tag class="blk__main sublevel" data-v><span class="sublevel__datum" aria-hidden="true" data-chrome><Datum size={10} /></span><span class="sublevel__t" set:html={rich(block.html)} /><i class="sublevel__line" aria-hidden="true" data-chrome></i></Tag>
 </div>
 <style>
-  .sublevel { display: flex; align-items: center; gap: var(--s-2); }
+  .sublevel {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    font-family: var(--font-sans);
+    font-size: var(--fs-label-lg);
+    font-weight: var(--wt-label-lg);
+    line-height: var(--lh-label-lg);
+    letter-spacing: var(--tr-label-lg);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .sublevel__datum { display: inline-flex; flex: none; color: var(--rust); transform: translateY(-0.5px); }
+  .sublevel__t { flex: 0 1 auto; min-inline-size: 0; }
+  .sublevel__line {
+    flex: 1 1 var(--s-5);
+    min-inline-size: var(--s-5);
+    align-self: center;
+    border-block-start: var(--lw-object) solid var(--line-2);
+  }
 </style>

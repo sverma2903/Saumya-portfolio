@@ -1,0 +1,91 @@
+---
+/**
+ * LeaderList · WP4a (internal helper for List, Insights, Concept). Her unnumbered list as a leader list (SPEC §6.2
+ * `list`): items separated by --line-1 hairlines with 14px vertical padding; each bullet is her Issuu leader — a clay
+ * hairline ending in a 6px clay dot — HANGING in the gutter at ≥ 1024px (sized to the gutter, always ≥ 8px clear of the
+ * sticky Levels rail) and inset below that.
+ * `hang={false}` keeps it inset (lists that don't start at the text edge).
+ *
+ * `items` are her HTML strings, already post-processed by the caller (rich()), rendered as <li data-v>.
+ * `pieces` (Plan-view skim) replaces an item's content by her bold pieces joined with a chrome ⋯ (data-join).
+ */
+import Icon from '../symbols/Icon.astro';
+interface Props {
+  items?: string[];
+  pieces?: string[][];
+  hang?: boolean;
+  size?: 'body' | 'sm';
+  class?: string;
+}
+const { items, pieces, hang = true, size = 'body', class: cls } = Astro.props;
+---
+<ul class:list={['leaders', `leaders--${size}`, { 'leaders--hang': hang }, cls]} role="list">
+  {items && items.map((html) => <li class="leaders__i" data-v set:html={html} />)}
+  {pieces && pieces.map((ps) => (
+    <li class="leaders__i">{ps.map((s, j) => (
+      <>{j > 0 && <span class="leaders__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+    ))}</li>
+  ))}
+</ul>
+<style>
+  .leaders {
+    --_pad: 14px;          /* item padding (SPEC: 14px) */
+    --_line: calc(var(--s-5) + var(--s-1));   /* the 28px leader (inset, < 1024) */
+    --_gap: var(--s-3);    /* leader dot → text */
+    --_dot: 3px;           /* dot radius (6px dot) */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-serif);
+    color: var(--ink-2);
+  }
+  .leaders--body { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .leaders--sm { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); }
+
+  .leaders__i {
+    position: relative;
+    padding-block: var(--_pad);
+    padding-inline-start: calc(var(--_line) + var(--_gap));
+    border-block-start: var(--lw-object) solid var(--line-1);
+    text-wrap: pretty;
+  }
+  .leaders__i:last-child { border-block-end: var(--lw-object) solid var(--line-1); }
+  /* the leader: a clay hairline… */
+  .leaders__i::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: calc(var(--_pad) + 0.5lh);
+    inline-size: var(--_line);
+    border-block-start: var(--lw-object) solid var(--clay);
+  }
+  /* …ending in a dot terminal that points at her first line (a border, so it survives forced colours) */
+  .leaders__i::after {
+    content: '';
+    position: absolute;
+    inset-inline-start: calc(var(--_line) - var(--_dot));
+    inset-block-start: calc(var(--_pad) + 0.5lh + 0.5px - var(--_dot));
+    border: var(--_dot) solid var(--clay);
+    border-radius: var(--r-dot);
+  }
+  /* ≥ 1024: the leader hangs in the gutter between the Levels rail and the text, so her text keeps one left edge,
+     always ≥ 8px clear of the sticky rail. 1024–1279: the lg grid's gutter is 32px (--s-6) → a 16px leader + 8px gap.
+     ≥ 1280: the gutter is --gap (.case-body) → up to a 24px leader + 12px gap. */
+  @media (min-width: 1024px) {
+    .leaders--hang { --_gap: var(--s-2); --_line: var(--s-4); --_hang: calc(var(--_line) + var(--_gap)); }
+    .leaders--hang .leaders__i { padding-inline-start: 0; }
+    .leaders--hang .leaders__i::before { inset-inline-start: calc(-1 * var(--_hang)); }
+    .leaders--hang .leaders__i::after { inset-inline-start: calc(-1 * var(--_gap) - var(--_dot)); }
+  }
+  @media (min-width: 1280px) {
+    .leaders--hang {
+      --_gap: var(--s-3);
+      --_hang: min(var(--s-5) + var(--s-3), var(--gap, var(--s-7)) - var(--s-2));
+      --_line: calc(var(--_hang) - var(--_gap));
+    }
+  }
+
+  /* Plan view: her bold pieces, the ⋯ in clay */
+  .leaders__join { display: inline-block; margin-inline: 0.3em; color: var(--clay); vertical-align: -0.06em; }
+  .leaders__join :global(.icon) { inline-size: 1em; block-size: 1em; }
+</style>

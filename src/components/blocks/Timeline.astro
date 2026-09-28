@@ -1,27 +1,149 @@
 ---
 /**
- * Timeline · OWNER: WP4a (P0 functional stub). Phasing schedule (CSBS): her `k` above each tick, her `v` (with <br>)
- * below; an empty `v` renders as-is. No "current" marker. Plan view: keep.
+ * Timeline · WP4a (SPEC §6.2 `timeline`): CSBS's summer as a phasing schedule.
+ * Horizontal: a --lw-border ink baseline with a tick at each (evenly spaced) phase; her `k` ("Week 2") in label caps
+ * above the tick, her `v` (her <br> kept) in Newsreader ≈ 15px ink-2 below. "Onboarding" has an empty `v`, rendered
+ * as-is. No "current" marker: the timeline is historical.
+ * The layout follows the space it actually has (a container query, not the viewport): one row of phases when every
+ * phase gets ≥ 94px (the wide track at ≥ 1366), two rows when it has 560–939px (tablets, 1024–1365),
+ * and a vertical track below that (phones). Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
 interface Props { block: Extract<Block, { t: 'timeline' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
+const n = block.items.length;
+const half = Math.ceil(n / 2);
 ---
 <div {...blkAttrs('timeline', ctx)}>
-  <div class="blk__main">
-    <ol class="timeline" role="list">
-      {block.items.map((it) => (
-        <li class="tl">
-          <span class="tl__k t-label" data-v>{it.k}</span>
-          <span class="tl__v t-body-sm ink-2" data-v set:html={rich(it.v)} />
+  <div class="blk__main tl-c">
+    <ol class="timeline" role="list" style={`--_n: ${n}; --_half: ${half}`}>
+      {block.items.map((it, i) => (
+        <li class:list={['tl', { 'tl--row-end': i === half - 1 && i !== n - 1, 'tl--end': i === n - 1 }]}>
+          <p class="tl__k" data-v>{it.k}</p>
+          <span class="tl__tick" aria-hidden="true"></span>
+          <p class="tl__v" data-v set:html={rich(it.v)} />
         </li>
       ))}
     </ol>
   </div>
 </div>
 <style>
-  .timeline { list-style: none; padding: 0; display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
-  .tl { display: grid; gap: var(--s-1); align-content: start; border-block-start: var(--lw-border) solid var(--ink); padding-block-start: var(--s-2); }
+  .tl-c { container-type: inline-size; }
+  .timeline {
+    --_tick: var(--s-3);           /* tick height */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tl__k {
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: var(--wt-label);
+    line-height: var(--lh-label);
+    letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .tl__v {
+    font-family: var(--font-serif);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    color: var(--ink-2);
+    text-wrap: pretty;
+    hyphens: manual;
+  }
+
+  /* ── vertical track (phones): the line runs down the left, a tick per phase ── */
+  .tl {
+    position: relative;
+    display: grid;
+    grid-template-columns: calc(var(--s-9) - var(--s-2)) minmax(0, 1fr);   /* 88px key column */
+    column-gap: var(--s-4);
+    align-items: baseline;
+    padding-block: var(--s-2) var(--s-3);
+    padding-inline-start: var(--s-5);
+  }
+  .tl:first-child { padding-block-start: 0; }
+  .tl:last-child { padding-block-end: 0; }
+  /* the spine: each phase draws its run, from its tick (first) / its top (others) to the next phase / its tick (last) */
+  .tl::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block: 0;
+    border-inline-start: var(--lw-border) solid var(--ink);
+  }
+  .tl:first-child::before { inset-block-start: 0.5lh; }
+  .tl:last-child::before { inset-block-end: auto; block-size: calc(var(--s-2) + 0.5lh); }
+  .tl:only-child::before { content: none; }
+  .tl__tick {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: calc(var(--s-2) + 0.5lh);
+    inline-size: var(--s-3);
+    border-block-start: var(--lw-object) solid var(--ink);
+  }
+  @container (max-width: 559.98px) { .tl:first-child .tl__tick { inset-block-start: 0.5lh; } }
+  .tl__k { grid-column: 1; }
+  .tl__v { grid-column: 2; }
+
+  /* ── horizontal: two rows (560–939px) or one row (≥ 940px, so "ONBOARDING" fits at the label tracking) ── */
+  @container (min-width: 560px) {
+    .timeline { grid-template-columns: repeat(var(--_half), minmax(0, 1fr)); row-gap: var(--s-6); }
+    .tl {
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      border: 0;
+    }
+    .tl::before { content: none; }
+    .tl:first-child, .tl:last-child { padding: 0; }
+    .tl__k { order: 0; padding-inline: var(--s-1) 0; padding-block-end: var(--s-2); }
+    /* the baseline: each phase draws its own run of it, so the runs join into one line */
+    .tl__tick {
+      order: 1;
+      position: relative;
+      inset: auto;
+      display: block;
+      inline-size: 100%;
+      block-size: var(--_tick);
+      border-block-start: 0;
+    }
+    .tl__tick::before {       /* the baseline run */
+      content: '';
+      position: absolute;
+      inset-inline: 0;
+      inset-block-start: 50%;
+      border-block-start: var(--lw-border) solid var(--ink);
+    }
+    .tl__tick::after {        /* the tick at the phase's start */
+      content: '';
+      position: absolute;
+      inset-inline-start: 0;
+      inset-block: 0;
+      border-inline-start: var(--lw-object) solid var(--ink);
+    }
+    .tl__v { order: 2; padding: var(--s-2) var(--s-2) 0 var(--s-1); text-wrap: balance; }   /* even breaks in narrow phases */
+    /* the end of a row closes the baseline with its own tick */
+    .tl--row-end, .tl--end { position: relative; }
+    .tl--row-end::after, .tl--end::after {
+      content: '';
+      position: absolute;
+      inset-inline-end: 0;
+      inset-block-start: calc(var(--fs-label) * var(--lh-label) + var(--s-2));
+      block-size: var(--_tick);
+      border-inline-end: var(--lw-object) solid var(--ink);
+    }
+  }
+  @container (min-width: 940px) {
+    /* evenly spaced; min-content only as a safety net for a longer word than today's */
+    .timeline { grid-template-columns: repeat(var(--_n), minmax(min-content, 1fr)); }
+    .tl--row-end::after { content: none; }
+  }
 </style>

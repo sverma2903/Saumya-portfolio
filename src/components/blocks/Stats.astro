@@ -1,28 +1,232 @@
 ---
 /**
- * Stats · OWNER: WP4a (P0 functional stub). Dimensioned specimens: value <p class="stat__v" data-v> (typographic
- * split via lib/text.ts splitStat — textContent must equal her value) and <p class="stat__html" data-v>. Sidenotes
- * for "Source:" lines are WP4a. Plan view: keep.
+ * Stats · WP4a (SPEC §6.2 `stats`): her numbers as dimensioned specimens.
+ *
+ * Each stat: a dimension line (45° ticks, --line-2, aria-hidden) → her value <p class="stat__v" data-v> → her html.
+ * The value is split TYPOGRAPHICALLY ONLY by lib/text.ts splitStat (pre + num + rest === her decoded value, always):
+ *   pre  → rust, .6em, raised     num → --fs-stat     rest → italic --fs-body on its own line
+ *   no match ("High AI adoption") → .stat__v--word (Newsreader 340, ≈ 34px at 1440).
+ * Splits only ever fall where her text already has a space, so the page text still reads "> 13 PB of user data".
+ * A space-less prefix ("~60%") stays ONE text node and is styled with ::first-letter — a tag between "~" and "60%"
+ * would read "~ 60%" to find-in-page, citations and the fidelity check.
+ *
+ * Sidenotes: an html that starts with "Source:" leaves the column and becomes a numbered sidenote in the notes column
+ * (≥ 1280) or a footnote under the row (< 1280). Identical sources share one number (Cloudflare's two earnings-call
+ * stats share ¹). The stat keeps a rust superscript marker (chrome) that links to its note.
+ * Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
+import { decodeEntities, splitStat, stripHtml } from '../../lib/text';
+import { chrome, fill } from '../../data/chrome';
 interface Props { block: Extract<Block, { t: 'stats' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
+
+const notes: { n: number; html: string; id: string; plain: string }[] = [];
+const items = block.items.map((it) => {
+  const plain = stripHtml(it.html);
+  let note: (typeof notes)[number] | undefined;
+  if (/^Source:/.test(plain)) {
+    note = notes.find((x) => x.plain === plain);
+    if (!note) {
+      note = { n: notes.length + 1, html: it.html, id: `${ctx.id}-note${notes.length + 1}`, plain };
+      notes.push(note);
+    }
+  }
+  const sp = splitStat(it.v);
+  // a one-character prefix glued to the number ("~60%") → ::first-letter; a spaced prefix ("> 13 PB") → its own span
+  const glued = !!sp && sp.pre !== '' && !/\s$/.test(sp.pre);
+  return { it, sp, glued, note };
+});
+
+/* Fit: a number never breaks from its unit ("600 K" stays whole), and every specimen in a row shares one size — the
+   largest at which the row's longest value still fits its own column. Widths in em of Newsreader at the stat setting
+   (measured in the browser, tracking included); the 0.6em prefix is scaled; +3% margin. The result is a CSS min()
+   over the row's values, in container units of the text column, one for the multi-column row and one for 1-up. */
+const NUM: Record<string, number> = { ',': 0.171, '.': 0.183, ' ': 0.212, '%': 0.755, K: 0.685, M: 0.947, P: 0.566, B: 0.586 };
+const PRE: Record<string, number> = { '~': 0.52, '>': 0.52, '≈': 0.53, ' ': 0.23 };
+const emOf = (pre: string, num: string, glued: boolean) => {
+  let e = glued ? 0.06 : 0;
+  for (const c of pre) e += (PRE[c] ?? 0.6) * 0.6;
+  for (const c of num) e += /\d/.test(c) ? 0.569 : NUM[c] ?? 0.6;
+  return +(e * 1.03).toFixed(3);
+};
+const n = items.length;
+const pads = (i: number) => (n === 1 ? 0 : i === 0 || i === n - 1 ? 1 : 2);      // column paddings, in --s-5
+const fitN: string[] = [];
+const fit1: string[] = [];
+items.forEach(({ sp, glued }, i) => {
+  if (!sp) return;
+  const e = emOf(sp.pre, sp.num, glued);
+  fitN.push(`(100cqi / ${n} - ${pads(i)} * var(--s-5)) / ${e}`);
+  fit1.push(`100cqi / ${e}`);
+});
+const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')}); --_fit1: min(var(--fs-stat), ${fit1.join(', ')})` : '';
 ---
 <div {...blkAttrs('stats', ctx)}>
-  <div class="blk__main">
-    <ul class="stats" role="list">
-      {block.items.map((it) => (
+  <div class="blk__main stats-c">
+    <ul class="stats" role="list" style={`--_n: ${block.items.length}${fitStyle}`}>
+      {items.map(({ it, sp, glued, note }) => (
         <li class="stat">
-          <p class="stat__v t-stat" data-v set:html={it.v} />
-          <p class="stat__html t-body-sm ink-2" data-v set:html={rich(it.html)} />
+          <svg class="stat__dim" width="100%" height="10" aria-hidden="true" focusable="false">
+            <line x1="0" y1="5.5" x2="100%" y2="5.5" />
+            <line x1="-4" y1="9.5" x2="4" y2="1.5" />
+            <svg x="100%" y="0" overflow="visible"><line x1="-4" y1="9.5" x2="4" y2="1.5" /></svg>
+          </svg>
+          {sp ? (
+            <p class="stat__v" data-v><span class="stat__head">{glued
+              ? <span class="stat__num stat__num--glued">{sp.pre + sp.num}</span>
+              : <>{sp.pre && <span class="stat__pre">{sp.pre}</span>}<span class="stat__num">{sp.num}</span></>}</span>{sp.rest
+              ? <span class="stat__rest">{sp.rest}{note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</span>
+              : note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</p>
+          ) : (
+            <p class="stat__v stat__v--word" data-v>{decodeEntities(it.v)}{note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</p>
+          )}
+          {!note && <p class="stat__html" data-v set:html={rich(it.html)} />}
         </li>
       ))}
     </ul>
   </div>
+  {notes.length > 0 && (
+    <div class="blk__note stats__notes">
+      {notes.map((n) => (
+        <p class="sidenote" id={n.id} data-v><sup class="sidenote__n" aria-hidden="true" data-chrome>{n.n}</sup><span set:html={rich(n.html)} /></p>
+      ))}
+    </div>
+  )}
 </div>
 <style>
-  .stats { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); }
-  @media (max-width: 559.98px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+  .stats-c { container-type: inline-size; --_dimh: 10px; }   /* SPEC: the dimension line is 10px tall */
+  .stats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--_n), minmax(0, 1fr));
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    padding-inline: var(--s-5);
+    border-inline-start: var(--lw-object) solid var(--line-1);
+  }
+  .stat:first-child { padding-inline-start: 0; border-inline-start: 0; }
+  .stat:last-child { padding-inline-end: 0; }
+
+  /* the dimension line: the specimen is "measured" */
+  .stat__dim { display: block; block-size: var(--_dimh); overflow: visible; color: var(--line-2); }
+  .stat__dim line { stroke: currentColor; stroke-width: var(--lw-dim); }
+
+  .stats { --_fit: var(--_fitn, var(--fs-stat)); }
+  .stat__v {
+    margin-block-start: var(--s-4);
+    font-family: var(--font-serif);
+    font-size: var(--_fit);
+    font-weight: var(--wt-stat);
+    line-height: var(--lh-stat);
+    letter-spacing: var(--tr-stat);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .stat__head { white-space: nowrap; }     /* "~ 600 K" never breaks from its unit (the row size fits it, above) */
+  .stat__pre {
+    font-size: 0.6em;
+    vertical-align: 0.35em;
+    color: var(--rust);
+    letter-spacing: 0;
+  }
+  /* "~60%": the glued prefix is the first letter of one text node (see header). ::first-letter takes font, colour,
+     margin and vertical-align, which is all the prefix needs. */
+  .stat__num--glued { display: inline-block; }
+  .stat__num--glued::first-letter {
+    font-size: 0.6em;
+    vertical-align: 0.35em;
+    color: var(--rust);
+    margin-inline-end: 0.06em;
+  }
+  .stat__rest {
+    display: block;
+    margin-block-start: var(--s-2);
+    font-size: var(--fs-body);
+    font-style: italic;
+    font-weight: var(--wt-body);
+    line-height: var(--lh-lede);
+    letter-spacing: 0;
+    font-variant-numeric: normal;
+    text-wrap: pretty;
+  }
+  .stat__v--word {
+    font-size: calc(var(--fs-stat) * 0.57);   /* Newsreader 340 · 34px at 1440; words wrap, so no fit */
+    font-weight: var(--wt-title);             /* 340 */
+    line-height: var(--lh-h);
+    letter-spacing: var(--tr-h);
+    font-variant-numeric: normal;
+  }
+  .stat__html {
+    margin-block-start: var(--s-3);
+    font-family: var(--font-serif);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+
+  /* the sidenote marker: a rust superscript that links to its note */
+  .stat__mark {
+    margin-inline-start: 0.12em;
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    font-weight: var(--wt-code);
+    font-style: normal;
+    line-height: 0;
+    letter-spacing: 0;
+    vertical-align: super;
+  }
+  .stat__mark a { color: var(--rust); text-decoration: none; padding: var(--s-1); margin: calc(-1 * var(--s-1)); }
+  .stat__mark a:hover { color: var(--rust-deep); text-decoration: underline; }
+
+  /* the sidenotes: notes column at ≥ 1280 (aligned to the numbers), footnotes under the row below that */
+  .stats__notes { display: grid; gap: var(--s-2); }
+  .sidenote {
+    font-family: var(--font-serif);
+    font-size: var(--fs-caption);
+    font-style: italic;
+    line-height: var(--lh-caption);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .sidenote__n {
+    margin-inline-end: 0.35em;
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    font-style: normal;
+    font-weight: var(--wt-code);
+    line-height: 0;
+    color: var(--rust);
+    vertical-align: super;
+  }
+  @media (min-width: 1280px) {
+    .stats__notes { padding-block-start: calc(var(--_dimh) + var(--s-4)); }   /* level with the numerals (dimension line + gap) */
+  }
+  @media (max-width: 1279.98px) {
+    .stats__notes {
+      margin-block-start: var(--s-5);
+      padding-block-start: var(--s-3);
+      border-block-start: var(--lw-object) solid var(--line-1);
+      max-inline-size: 28em;
+    }
+  }
+
+  /* one column below ~520px of text: separators turn horizontal */
+  @container (max-width: 519.98px) {
+    /* one column: each specimen's own dimension line is the separator (no second rule) */
+    .stats { --_fit: var(--_fit1, var(--fs-stat)); grid-template-columns: minmax(0, 1fr); row-gap: var(--s-6); }
+    .stat { padding-inline: 0; border-inline-start: 0; }
+  }
+  @media print {
+    .stat__v { font-size: calc(var(--_fit) * 0.62); }
+    .stat__v--word { font-size: calc(var(--fs-stat) * 0.45); }
+  }
 </style>

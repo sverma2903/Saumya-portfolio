@@ -1,44 +1,179 @@
 ---
 /**
- * Concept · OWNER: WP4a (P0 functional stub). Design option sheets (Orbit): her title (h{ctx.hl}), her media in a row
- * with captions[i] beneath and letters a. b. c. (chrome); "Concept Analysis" (her label, site.ts labels) + her lines
- * only where analysis exists. Her leading +/− stay in the text. Plan view: title + first image.
+ * Concept · WP4a (SPEC §6.2 `concept`): Orbit's design options as option sheets.
+ *  - A heavy rule, her title (h{hl}, Newsreader 440) and the figure number (chrome).
+ *  - Her media in one row JUSTIFIED BY HEIGHT: each track is sized ∝ its image's aspect, so every image in the row
+ *    has the same height and the row fills the width — capped so a row is never taller than --_maxh (tall phone
+ *    wireframes stay at a sensible size). Each image sits on a plate with her caption beneath, lettered a. b. c.
+ *    (chrome). One figure (FIG. c.n); every image opens in Enlarged detail.
+ *  - Phones: the row becomes a horizontal strip (scroll-snap), images at a common height.
+ *  - Only where analysis exists: her label "Concept Analysis" (site.ts labels) and her lines. Each line's leading
+ *    "+" or "-" stays in her text; only that first character is wrapped (graphite 600 for +, rust 600 for -) and
+ *    hangs in its own column — textContent is unchanged.
+ * Owner flag (SPEC §8.9.10): concepts 4 and 5 repeat concept 3's captions on her live page; rendered verbatim.
+ * Plan view: title + first image (the other images, captions after the first and the analysis are .plan-hide).
  */
+import Plate from '../media/Plate.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
-import { fileOf } from '../../lib/staging';
+import { fileOf, stagingOf } from '../../lib/staging';
 import { alt } from '../../data/alt';
 import { labels } from '../../content/site';
-import Plate from '../media/Plate.astro';
 interface Props { block: Extract<Block, { t: 'concept' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+const items = block.media.map((mm, i) => {
+  const a = mm.w / mm.h;
+  const cap = stagingOf(fileOf(mm)).cap;
+  return { mm, i, a, cap, letter: ctx.figLetters?.[i] ?? '', caption: block.captions[i] };
+});
+const sum = items.reduce((s, it) => s + it.a, 0);
+const tracks = items.map((it) => `minmax(0, ${it.a.toFixed(4)}fr)`).join(' ');
+// a width cap (staging) on any image caps the row height too: its height at that width
+const capH = Math.min(...items.map((it) => (it.cap ? it.cap / it.a : Infinity)));
+const rowStyle = `--_tracks: ${tracks}; --_sum: ${sum.toFixed(4)}; --_n: ${items.length}${Number.isFinite(capH) ? `; --_caph: ${Math.round(capH)}px` : ''}`;
+// her "+"/"-" lead character, wrapped (first character only; the rest is her HTML untouched)
+const signed = (line: string) => {
+  const c = line.charAt(0);
+  if (c !== '+' && c !== '-') return rich(line);
+  return `<span class="an__sign an__sign--${c === '+' ? 'plus' : 'minus'}">${c}</span>${rich(line.slice(1))}`;
+};
+const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : null;
 ---
 <div {...blkAttrs('concept', ctx)}>
   <div class="blk__main concept">
-    <Tag class="concept__t t-h" data-v set:html={rich(block.title)} />
-    <ol class="concept__row" role="list">
-      {block.media.map((mm, i) => (
-        <li class:list={['concept__item', { 'plan-hide': i > 0 }]}>
-          <Plate layers={[mm]} alt={alt(fileOf(mm))} />
-          <p class="concept__cap t-caption">
-            {ctx.figLetters?.[i] && <span class="t-code ink-3" data-chrome>{`${ctx.figLetters[i]}. `}</span>}
-            {block.captions[i] && <span data-v set:html={rich(block.captions[i])} />}
-          </p>
+    <div class="concept__head">
+      <Tag class="concept__t" data-v set:html={rich(block.title)} />
+      {ctx.fig && <p class="concept__fig" data-chrome>{ctx.fig}</p>}
+    </div>
+    <ol class="concept__row" role="list" style={rowStyle}>
+      {items.map((it) => (
+        <li class:list={['concept__item', { 'plan-hide': it.i > 0 }]} style={`--_a: ${it.a.toFixed(4)}`}>
+          <Plate layers={[it.mm]} alt={alt(fileOf(it.mm))} fig={ctx.fig ? { no: `${ctx.fig}${it.letter}`, caption: it.caption } : undefined} />
+          <p class="concept__cap">{it.letter && <span class="concept__letter" aria-hidden="true" data-chrome>{`${it.letter}.`}</span>}{it.caption && <span class="concept__captext" data-v set:html={rich(it.caption)} />}</p>
         </li>
       ))}
     </ol>
-    {block.analysis && block.analysis.length > 0 && (
+    {analysis && (
       <div class="concept__analysis plan-hide">
-        <p class="t-label" data-v>{labels.conceptAnalysis}</p>
-        <ul class="t-body-sm ink-2">{block.analysis.map((a) => <li data-v set:html={rich(a)} />)}</ul>
+        <p class="concept__alabel" data-v>{labels.conceptAnalysis}</p>
+        <ul class="analysis" role="list">
+          {analysis.map((line) => <li class="analysis__i" data-v set:html={signed(line)} />)}
+        </ul>
       </div>
     )}
   </div>
 </div>
 <style>
-  .concept { display: grid; gap: var(--s-4); }
-  .concept__row { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-4); align-items: flex-start; }
-  .concept__item { flex: 1 1 12rem; max-inline-size: 24rem; display: grid; gap: var(--s-2); }
+  .concept { --_gap: var(--s-5); --_maxh: 420px; }   /* a row is never taller than 420px (the staging caps' scale) */
+  .concept__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding-block-start: var(--s-4);
+    border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .concept__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-lede-sm);
+    font-weight: var(--wt-h);
+    line-height: var(--lh-lede);
+    letter-spacing: var(--tr-index);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .concept__fig {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    letter-spacing: var(--tr-code);
+    color: var(--ink-3);
+  }
+
+  /* one row, justified by height: tracks ∝ aspect; never taller than --_maxh (or a staging cap) */
+  .concept__row {
+    list-style: none;
+    margin: var(--s-5) 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: var(--_tracks);
+    column-gap: var(--_gap);
+    align-items: start;
+    max-inline-size: calc(var(--_sum) * min(var(--_maxh), var(--_caph, 9999px)) + (var(--_n) - 1) * var(--_gap));
+  }
+  .concept__item { min-inline-size: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+  .concept__item :global(.plate) { inline-size: 100%; }
+  .concept__cap {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--s-2);
+    align-items: baseline;
+    font-family: var(--font-serif);
+    font-size: var(--fs-caption);
+    font-style: italic;
+    line-height: var(--lh-caption);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .concept__letter {
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    font-style: normal;
+    letter-spacing: var(--tr-code-sm);
+    color: var(--ink-3);
+  }
+
+  /* phones: a strip at a common height */
+  @media (max-width: 767.98px) {
+    .concept__row {
+      --_h: 300px;
+      display: flex;
+      max-inline-size: none;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      margin-inline: calc(-1 * var(--m));        /* bleed to the screen edges… */
+      padding-inline: var(--m);                  /* …while the first image aligns with the text */
+      scroll-padding-inline: var(--m);
+      gap: var(--s-3);
+      padding-block-end: var(--s-2);
+      scrollbar-width: thin;
+    }
+    .concept__item {
+      flex: none;
+      inline-size: min(80%, calc(var(--_h) * var(--_a)));
+      scroll-snap-align: start;
+    }
+  }
+
+  .concept__analysis { margin-block-start: var(--s-5); max-inline-size: var(--measure); }
+  .concept__alabel {
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: var(--wt-label);
+    line-height: var(--lh-label);
+    letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .analysis { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+  .analysis__i {
+    display: grid;                       /* her sign in its own column; her text (an anonymous item) beside it */
+    grid-template-columns: 1.1em minmax(0, 1fr);
+    padding-block: var(--s-2);
+    border-block-start: var(--lw-object) solid var(--line-1);
+    font-family: var(--font-serif);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .analysis__i:last-child { border-block-end: var(--lw-object) solid var(--line-1); }
+  .analysis__i :global(.an__sign) { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .analysis__i :global(.an__sign--plus) { color: var(--ink); }
+  .analysis__i :global(.an__sign--minus) { color: var(--rust); }
 </style>

@@ -1,27 +1,83 @@
 ---
 /**
- * Heading (`h`) · OWNER: WP4a (P0 functional stub). The detail title (SPEC §6.2):
- * <h3 id="<section>-<slug>" class="dt" data-v> with the permalink bubble `n / A-101`, her text and a rule.
- * Always h3. Numbered 1…n within each chapter (ctx.headingNo). Plan view: keep.
+ * Heading (`h`) · WP4a. The detail title (SPEC §6.2 `h`):
+ *   [bubble n / A-101] Her text ───────────────────────── (a --lw-border rule from the end of her text to the column end)
+ *
+ * - Her text is the <h3 id="<section>-<slug>" data-v> (always h3). The rule is a zero-width inline element at the end of
+ *   her last line, so it starts where the text ends even when the heading wraps; the h3 clips it at the column edge.
+ * - The permalink bubble is a sibling of the <h3>, not inside it: the heading's accessible name stays her words only,
+ *   and the link's name starts with its visible text "1 A-101" (WCAG 2.5.3).
+ * - Numbered 1…n within each chapter (ctx.headingNo): the detail number is the prefix for figure references.
+ * - :target (arriving by permalink, Sheet list or Key plan) inks the bubble in rust.
+ * Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { headingId } from '../../lib/ids';
-import { chrome } from '../../data/chrome';
+import { chrome, fill } from '../../data/chrome';
 import Bubble from '../symbols/Bubble.astro';
 interface Props { block: Extract<Block, { t: 'h' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const hid = ctx.headingId ?? headingId(ctx.chapter.id, block.text);
+const n = ctx.headingNo ?? '';
+const label = fill(chrome.wp4a.permalinkLabel, { n, sheet: ctx.sheet, title: block.text });
 ---
 <div {...blkAttrs('h', ctx)}>
-  <h3 id={hid} class="dt t-h blk__main" data-v>
-    <a class="dt__bubble" href={`#${hid}`} aria-label={chrome.wp4a.permalink} data-chrome><Bubble n={ctx.headingNo ?? ''} sheet={ctx.sheet} /></a>
-    <span class="dt__t">{block.text}</span>
-    <i class="dt__rule" aria-hidden="true" data-chrome></i>
-  </h3>
+  <div class="blk__main dt">
+    <a class="dt__bubble" href={`#${hid}`} aria-label={label}><Bubble n={n} sheet={ctx.sheet} /></a>
+    <h3 id={hid} class="dt__t" data-v>{block.text}<i class="dt__rule" aria-hidden="true" data-chrome></i></h3>
+  </div>
 </div>
 <style>
-  .dt { display: flex; align-items: center; gap: var(--s-3); }
-  .dt__bubble { text-decoration: none; color: var(--ink); }
-  .dt__rule { flex: 1 1 auto; align-self: center; border-block-start: var(--lw-border) solid var(--ink); min-inline-size: var(--s-5); }
+  .dt {
+    --_d: 44px;                                          /* Bubble diameter (36px below 768, see Bubble.astro) */
+    --_lh: calc(var(--fs-h) * var(--lh-h));              /* one line of the title */
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--s-4);
+    align-items: start;
+  }
+  @media (max-width: 767.98px) { .dt { --_d: 36px; column-gap: var(--s-3); } }
+
+  /* the bubble sits on the first line of her title, centred on it */
+  .dt__bubble {
+    display: inline-flex;
+    margin-block-start: calc((var(--_lh) - var(--_d)) / 2);
+    border-radius: var(--r-dot);
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .dt__bubble :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
+  .dt__bubble:hover :global(.bubble),
+  .dt__bubble:focus-visible :global(.bubble),
+  .dt:has(> :target) .dt__bubble :global(.bubble) { color: var(--rust); }
+  .dt:has(> :target) .dt__bubble :global(.bubble) { background: var(--blush); }
+
+  .dt__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h);
+    font-weight: var(--wt-h);
+    line-height: var(--lh-h);
+    letter-spacing: var(--tr-h);
+    color: var(--ink);
+    overflow-x: clip;              /* the rule below runs to the column edge and stops there */
+    overflow-clip-margin: 0;
+  }
+  /* zero-width anchor at the end of her last line; its ::after is the rule */
+  .dt__rule {
+    display: inline-block;
+    position: relative;
+    inline-size: 0;
+    block-size: 0;
+    vertical-align: baseline;
+  }
+  .dt__rule::after {
+    content: '';
+    position: absolute;
+    inset-block-end: 0.3em;         /* ≈ mid x-height: level with the bubble's diameter on a one-line title */
+    inset-inline-start: var(--s-4);
+    inline-size: 200vw;
+    border-block-start: var(--lw-border) solid var(--ink);
+  }
+  @media (max-width: 767.98px) { .dt__rule::after { inset-inline-start: var(--s-3); } }
 </style>

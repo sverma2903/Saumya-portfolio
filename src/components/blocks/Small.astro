@@ -1,7 +1,8 @@
 ---
 /**
- * Small · OWNER: WP4a (P0 functional stub). <p class="small" data-v> in the notes column (≥1280), caption style,
- * upright, ink-2. Plan view: like `p`. (Not used by the current content, but supported.)
+ * Small · WP4a (SPEC §6.2 `small`). <p class="small" data-v> in the notes column (.blk__note) at ≥ 1280px, below its
+ * predecessor otherwise; --fs-caption, upright, ink-2. Not used by the current content, but supported.
+ * Plan view: like `p` (skim to her bold, or omitted by the Chapter).
  */
 import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
@@ -13,7 +14,24 @@ const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
 ---
 <div {...blkAttrs('small', ctx)}>
   <div class="blk__note">
-    <p class:list={['small', 't-body-sm', 'ink-2', { full: !!skim }]} data-v set:html={rich(block.html)} />
-    {skim && <p class="small skim t-body-sm ink-2">{skim.map((s, i) => <>{i > 0 && <span data-chrome data-join aria-hidden="true"> <Icon name="ellipsis" /> </span>}<strong data-v set:html={s} /></>)}</p>}
+    <p class:list={['small', { full: !!skim }]} data-v set:html={rich(block.html)} />
+    {skim && (
+      <p class="small skim">{skim.map((s, i) => (
+        <>{i > 0 && <span class="small__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+      ))}</p>
+    )}
   </div>
 </div>
+<style>
+  .small {
+    font-family: var(--font-serif);
+    font-size: var(--fs-caption);
+    font-weight: var(--wt-caption);
+    line-height: var(--lh-caption);
+    letter-spacing: var(--tr-caption);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .small__join { display: inline-block; margin-inline: 0.3em; color: var(--clay); vertical-align: -0.06em; }
+  .small__join :global(.icon) { inline-size: 1em; block-size: 1em; }
+</style>

@@ -1,8 +1,10 @@
 ---
 /**
- * Split · OWNER: WP4a (P0 functional stub). grid-template-columns: her ratio; children render as nested blocks
- * (plain block layout, ctx.inSplit, ids `${id}-l${j}` / `-r${j}`). Mobile stacks. Plan view: recurse; omitted if both
- * sides are omitted.
+ * Split · WP4a (SPEC §6.2 `split`): her two-column composition within the wide area — grid-template-columns: her
+ * ratio (e.g. `1.3fr 1fr`), 48px gap, vertically centred. Children render as nested blocks through <Block>
+ * (plain block layout; ids `${id}-l${j}` / `-r${j}`). Phones stack left, then right.
+ * Plan view: recurse — a child the plan omits is .plan-hide here (a split whose children are ALL omitted is omitted
+ * whole by the Chapter).
  */
 import type { Block as B } from '../../lib/blocks';
 import { blkAttrs, splitChildCtx, type BlockCtx } from '../../lib/blocks-ctx';
@@ -12,14 +14,33 @@ interface Props { block: Extract<B, { t: 'split' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const cs = caseBySlug(ctx.slug);
 const ratio = block.ratio ?? '1fr 1fr';
+const side = (blocks: B[], s: 'l' | 'r') => blocks.map((c, j) => ({ c, cctx: splitChildCtx(cs, ctx, s, j) }));
+const left = side(block.left, 'l');
+const right = side(block.right, 'r');
 ---
 <div {...blkAttrs('split', ctx)}>
   <div class="blk__main split" style={`--_ratio: ${ratio}`}>
-    <div class="split__side">{block.left.map((c, j) => <Block block={c} ctx={splitChildCtx(cs, ctx, 'l', j)} />)}</div>
-    <div class="split__side">{block.right.map((c, j) => <Block block={c} ctx={splitChildCtx(cs, ctx, 'r', j)} />)}</div>
+    <div class="split__side split__side--l">
+      {left.map(({ c, cctx }) => cctx.plan.mode === 'omit'
+        ? <div class="plan-hide"><Block block={c} ctx={cctx} /></div>
+        : <Block block={c} ctx={cctx} />)}
+    </div>
+    <div class="split__side split__side--r">
+      {right.map(({ c, cctx }) => cctx.plan.mode === 'omit'
+        ? <div class="plan-hide"><Block block={c} ctx={cctx} /></div>
+        : <Block block={c} ctx={cctx} />)}
+    </div>
   </div>
 </div>
 <style>
-  .split { display: grid; grid-template-columns: var(--_ratio); gap: var(--s-7); align-items: center; }
-  @media (max-width: 767.98px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  .split {
+    display: grid;
+    grid-template-columns: var(--_ratio);
+    column-gap: var(--s-7);
+    align-items: center;
+  }
+  .split__side { min-inline-size: 0; }
+  @media (max-width: 767.98px) {
+    .split { grid-template-columns: minmax(0, 1fr); row-gap: var(--flow-l); }
+  }
 </style>
