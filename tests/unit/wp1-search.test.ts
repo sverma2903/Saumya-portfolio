@@ -105,11 +105,17 @@ describe('matching (§4.4 scoring)', () => {
     expect(orbit?.why).toBe('in-depth faculty interviews');
   });
 
-  test('a query runs well under 3 ms over the whole set', () => {
-    search(corpus, 'warm up', -1);
-    const t0 = performance.now();
-    for (const q of ['constraint', 'AI informs', 'interviews', 'journey map', 'approval chain']) search(corpus, q, 1);
-    expect((performance.now() - t0) / 5).toBeLessThan(3);
+  test('a query runs well under 3 ms over the whole set (median of 20 rounds, so machine load cannot flake it)', () => {
+    const qs = ['constraint', 'AI informs', 'interviews', 'journey map', 'approval chain'];
+    for (let i = 0; i < 3; i++) for (const q of qs) search(corpus, q, 1); // warm the JIT
+    const perQuery: number[] = [];
+    for (let r = 0; r < 20; r++) {
+      const t0 = performance.now();
+      for (const q of qs) search(corpus, q, 1);
+      perQuery.push((performance.now() - t0) / qs.length);
+    }
+    perQuery.sort((a, b) => a - b);
+    expect(perQuery[perQuery.length >> 1]).toBeLessThan(3);
   });
 });
 

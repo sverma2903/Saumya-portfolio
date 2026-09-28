@@ -275,7 +275,7 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
   .drawer__title { display: flex; align-items: baseline; gap: var(--s-3); margin: 0; padding-block-start: var(--s-2); color: var(--ink-2); }
   .drawer__sheetno { color: var(--rust); font-size: var(--fs-label-lg); }
   .drawer__close {
-    display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: 44px; padding-inline: var(--s-3);
+    display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: calc(var(--s-7) - var(--s-1)); padding-inline: var(--s-3);
     border: var(--lw-object) solid var(--line-3); color: var(--ink); background: var(--sheet);
   }
   .drawer__close:hover { color: var(--rust-deep); border-color: var(--ink); }
@@ -285,7 +285,7 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
     display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--s-7);
     padding-inline: var(--s-4); border: var(--lw-border) solid var(--ink); background: var(--paper); color: var(--ink-2);
   }
-  .drawer__search:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .drawer__search:focus-within { outline: var(--lw-cut) solid var(--focus); outline-offset: var(--lw-cut); }
   .drawer__search input {
     flex: 1 1 auto; min-inline-size: 0; block-size: var(--s-7); border: 0; background: transparent; outline: none;
     font-family: var(--font-serif); font-size: var(--fs-lede-sm); color: var(--ink);
@@ -307,7 +307,7 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
   /* Levels: floors with their reading trace (SM4) */
   .lvrow {
     --t: 0;
-    display: grid; grid-template-columns: 10px 14px minmax(0, 1fr) auto; align-items: center; gap: var(--s-3);
+    display: grid; grid-template-columns: calc(var(--s-2) + var(--lw-cut)) calc(var(--s-3) + var(--lw-cut)) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3);
     min-block-size: var(--s-7); padding-block: var(--s-2); text-decoration: none; color: var(--ink);
     border-block-end: var(--lw-object) solid var(--line-1);
   }
@@ -319,8 +319,8 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
   .lvrow__datum { display: grid; place-items: center; visibility: hidden; }
   .lvrow[aria-current='location'] .lvrow__datum { visibility: visible; }
   .lvrow[aria-current='location'] .lvrow__label { color: var(--rust); }
-  .lvrow__text { display: grid; gap: 2px; min-inline-size: 0; }
-  .lvrow__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: 1.2; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .lvrow__text { display: grid; gap: var(--lw-cut); min-inline-size: 0; }
+  .lvrow__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: var(--lh-code); color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .lvrow__min { color: var(--ink-3); }
   .lvrow:hover .lvrow__label { color: var(--rust-deep); }
 
@@ -336,7 +336,7 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
   .drawer__match-body { display: grid; gap: var(--s-1); }
   .drawer__match-body .t-label { color: var(--rust); }
   .drawer__match-title { font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index); line-height: var(--lh-index); letter-spacing: var(--tr-index); text-wrap: balance; }
-  .drawer__match :global(.icon) { margin-block-end: 6px; }
+  .drawer__match :global(.icon) { margin-block-end: calc(var(--s-1) + var(--lw-cut)); }
   .drawer__match:hover .drawer__match-title { color: var(--rust-deep); }
 
   /* Sheets */
@@ -346,7 +346,7 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
     border-block-end: var(--lw-object) solid var(--line-1);
   }
   .shrow__no { color: var(--ink-2); }
-  .shrow__t { font-family: var(--font-serif); font-size: var(--fs-body); line-height: 1.25; text-wrap: pretty; }
+  .shrow__t { font-family: var(--font-serif); font-size: var(--fs-body); line-height: var(--lh-code); text-wrap: pretty; }
   .shrow[aria-current='page'] .shrow__no { color: var(--rust); }
   .shrow:hover .shrow__t { color: var(--rust-deep); }
   .shrow__here { color: var(--rust); }

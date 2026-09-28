@@ -44,7 +44,7 @@ const actions: { id: string; label: string; icon: 'copy' | 'arrow-up-right' | 'f
 const strings = {
   sheets: t.groups.sheets, levels: t.groups.levels, details: t.groups.details, passages: t.groups.passages, actions: t.groups.actions,
   sheet: t.kinds.sheet, level: t.kinds.level, detail: t.kinds.detail, action: t.kinds.action, external: t.kinds.external,
-  found: t.found, searching: t.searching, none: t.none, count: t.count,
+  found: t.found, searching: t.searching, none: t.none, noneHint: t.noneHint, tryLabel: t.tryLabel, count: t.count,
   copyEmail: t.actions.copyEmail, resume: t.actions.resume, linkedin: t.actions.linkedin, planView: t.actions.planView,
   sectionView: t.actions.sectionView, motionOff: t.actions.motionOff, motionOn: t.actions.motionOn, duskOn: t.actions.duskOn,
   duskOff: t.actions.duskOff, keysOff: t.actions.keysOff, keysOn: t.actions.keysOn, showKeys: t.actions.showKeys,
@@ -63,7 +63,7 @@ const subParts = t.keys.sub.split('{mod}');
       <form method="dialog">
         <button class="pl-esc" value="close">
           <span class="pl-esc__touch t-label" aria-hidden="true"><Icon name="close" size={14} />{t.close}</span>
-          <span class="sr-only">{t.close} </span><kbd class="pl-esc__key">{t.hints.esc}</kbd>
+          <span class="sr-only">{t.close} </span><kbd class="kbd pl-esc__key">{t.hints.esc}</kbd>
         </button>
       </form>
     </div>
@@ -87,8 +87,12 @@ const subParts = t.keys.sub.split('{mod}');
       />
     </label>
 
+    <div class="pl-empty" data-pl-empty hidden>
+      <p class="pl-empty__msg" data-pl-empty-msg></p>
+    </div>
+
     <div class="pl-chips" data-pl-chips>
-      <span class="pl-chips__label t-label" id="pl-chips-l">{t.tryLabel}</span>
+      <span class="pl-chips__label t-label" id="pl-chips-l" data-pl-chips-label>{t.tryLabel}</span>
       <div class="pl-chips__list" role="group" aria-labelledby="pl-chips-l">
         {t.suggestions.map((s) => <button type="button" class="pl-chip" data-pl-chip={s}>{s}</button>)}
       </div>
@@ -133,10 +137,6 @@ const subParts = t.keys.sub.split('{mod}');
         </div>
       </div>
       <div class="pl-results" data-pl-results hidden></div>
-    </div>
-
-    <div class="pl-empty" data-pl-empty hidden>
-      <p class="pl-empty__msg" data-pl-empty-msg></p>
     </div>
 
     <section class="pl-keys" data-pl-keys hidden aria-labelledby="pl-keys-h">
@@ -201,8 +201,7 @@ const subParts = t.keys.sub.split('{mod}');
     background: var(--sheet); color: var(--ink); box-shadow: var(--shadow-dialog); overflow: hidden;
   }
   .palette[open] { display: flex; }
-  .palette::backdrop { background: color-mix(in srgb, var(--paper) 78%, transparent); }
-  :root[data-theme='dusk'] .palette::backdrop { background: var(--scrim); }
+  .palette::backdrop { background: var(--scrim); } /* the same scrim as the Sheet drawer: one overlay treatment */
   .pl-frame { display: flex; flex-direction: column; inline-size: 100%; min-block-size: 0; }
 
   .pl-head {
@@ -210,24 +209,28 @@ const subParts = t.keys.sub.split('{mod}');
     padding: var(--s-2) var(--s-3) var(--s-2) var(--s-5); border-block-end: var(--lw-object) solid var(--line-2);
   }
   .pl-title { margin: 0; color: var(--ink-2); }
-  .pl-esc { display: inline-grid; place-items: center; min-inline-size: 44px; min-block-size: var(--s-6); color: var(--ink-2); }
+  .pl-esc { display: inline-grid; place-items: center; min-inline-size: calc(var(--s-7) - var(--s-1)); min-block-size: var(--s-6); color: var(--ink-2); }
   .pl-esc:hover { color: var(--rust-deep); }
   /* touch has no Esc key: say Close */
   .pl-esc__touch { display: none; align-items: center; gap: var(--s-2); color: var(--ink); }
   @media (pointer: coarse) {
-    .pl-esc { min-block-size: 44px; padding-inline: var(--s-3); }
+    .pl-esc { min-block-size: calc(var(--s-7) - var(--s-1)); padding-inline: var(--s-3); }
     .pl-esc__key { display: none !important; }
+    /* no keyboard hints on touch (the header already says Close) */
+    .pl-foot__keys { display: none !important; }
     .pl-esc__touch { display: inline-flex; }
   }
-  .pl-esc kbd, .palette .kbd {
-    display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-inline-size: 1.9em; block-size: 20px;
-    padding-inline: 5px; border: var(--lw-object) solid var(--line-3); border-block-end-width: 2px; border-radius: var(--r-1);
-    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: 500;
-    line-height: 1; letter-spacing: 0; text-transform: none;
+  /* THE keycap: one style for the title bar's ⌘K and every key in the Sheet list (global: the title bar uses it too) */
+  .kbd {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0; min-inline-size: var(--s-5); block-size: var(--s-5);
+    padding-inline: var(--s-1); border: var(--lw-object) solid var(--line-3); border-block-end-width: var(--lw-cut); border-radius: var(--r-1);
+    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code);
+    line-height: 1; letter-spacing: 0; font-style: normal; text-transform: none;
   }
-  .palette .kbd--mod .keycap__other { display: none; }
-  .palette .kbd--mod[data-platform='other'] .keycap__apple { display: none; }
-  .palette .kbd--mod[data-platform='other'] .keycap__other { display: inline; }
+  .kbd--mod .keycap__apple { display: inline-flex; align-items: center; }
+  .kbd--mod .keycap__other { display: none; }
+  .kbd--mod[data-platform='other'] .keycap__apple { display: none; }
+  .kbd--mod[data-platform='other'] .keycap__other { display: inline; }
 
   /* ── the combobox: her words are searched in her face ── */
   .pl-field {
@@ -259,13 +262,15 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-grp + .pl-grp { margin-block-start: var(--s-2); }
   .pl-g {
     position: sticky; inset-block-start: 0; z-index: var(--z-raised);
-    display: flex; justify-content: space-between; gap: var(--s-3); margin: 0;
-    padding: var(--s-3) var(--s-5) var(--s-2); background: var(--sheet); color: var(--ink-2);
+    display: flex; justify-content: space-between; gap: var(--s-3); margin: 0 0 var(--s-1);
+    padding: var(--s-3) var(--s-5) calc(var(--s-2) + var(--s-1)); background: var(--sheet); color: var(--ink-2);
+    /* a lower edge, so rows scrolling under the sticky head are cut cleanly, never shown as glyph slivers */
+    border-block-end: var(--lw-object) solid var(--line-1);
   }
   .pl-g__meta { color: var(--ink-3); }
   .pl-opt {
     position: relative; display: grid; grid-template-columns: 5.25rem minmax(0, 1fr) auto; align-items: baseline; gap: var(--s-3);
-    min-block-size: 44px; padding: var(--s-2) var(--s-5); cursor: pointer; color: var(--ink);
+    min-block-size: calc(var(--s-7) - var(--s-1)); padding: var(--s-2) var(--s-5); cursor: pointer; color: var(--ink);
   }
   .pl-opt[aria-selected='true'] { background: var(--paper-2); }
   /* the redline marks the current row */
@@ -273,18 +278,20 @@ const subParts = t.keys.sub.split('{mod}');
     content: ''; position: absolute; inset-block: var(--s-1); inset-inline-start: 0; inline-size: var(--lw-cut); background: var(--rust);
   }
   .pl-opt__code {
-    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; letter-spacing: var(--tr-code);
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
     font-variant-numeric: tabular-nums; color: var(--rust); white-space: nowrap;
   }
   .pl-opt--action .pl-opt__code, .pl-opt--external .pl-opt__code { color: var(--ink-2); align-self: center; }
-  .pl-opt--passage .pl-opt__code { color: var(--clay); font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 400; }
-  .pl-opt__main { display: grid; gap: 2px; min-inline-size: 0; }
-  .pl-opt__t { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: 1.4; text-wrap: pretty; }
-  .pl-opt--sheet .pl-opt__t, .pl-opt--external .pl-opt__t, .pl-opt--level .pl-opt__t, .pl-opt--detail .pl-opt__t { font-size: var(--fs-body); line-height: 1.3; }
+  /* a passage hangs its ¶ in a narrow first column: her sentence gets the width, not a sheet-number gutter */
+  .pl-opt.pl-opt--passage { grid-template-columns: var(--s-4) minmax(0, 1fr) auto; }
+  .pl-opt--passage .pl-opt__code { color: var(--clay); font-family: var(--font-serif); font-size: var(--fs-body); font-weight: var(--wt-body); }
+  .pl-opt__main { display: grid; gap: var(--lw-cut); min-inline-size: 0; }
+  .pl-opt__t { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-ui); text-wrap: pretty; }
+  .pl-opt--sheet .pl-opt__t, .pl-opt--external .pl-opt__t, .pl-opt--level .pl-opt__t, .pl-opt--detail .pl-opt__t { font-size: var(--fs-body); line-height: var(--lh-code); }
   .pl-opt--level .pl-opt__main { display: flex; align-items: baseline; gap: var(--s-3); }
   .pl-opt__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .pl-opt__why { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.4; }
-  .pl-opt__lead { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pl-opt__why { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: var(--lh-ui); }
+  .pl-opt__lead { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: var(--wt-body); color: var(--ink); font-variant-numeric: tabular-nums; }
   .pl-opt__side { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--ink-3); white-space: nowrap; text-align: end; }
   .pl-opt--passage .pl-opt__side { color: var(--ink-2); }
   .pl-opt.is-here .pl-opt__side { color: var(--rust); }
@@ -295,7 +302,7 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-tray { overflow: hidden; margin-inline: calc(var(--s-5) - var(--s-2)) var(--s-3); }
   .pl-tray__in { display: flex; flex-wrap: wrap; margin-inline-start: calc(-1 * var(--s-4)); }
   .pl-opt.pl-opt--chip {
-    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 44px; margin-inline-start: var(--s-4); padding: 0 var(--s-2);
+    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: calc(var(--s-7) - var(--s-1)); margin-inline-start: var(--s-4); padding: 0 var(--s-2);
     font-family: var(--font-sans); font-size: var(--fs-ui); color: var(--ink-2);
   }
   .pl-opt--chip::after {
@@ -303,14 +310,17 @@ const subParts = t.keys.sub.split('{mod}');
     position: absolute; inset-inline-start: calc(-1 * var(--s-4)); inline-size: var(--s-4); text-align: center;
     color: var(--ink-3); pointer-events: none;
   }
-  .pl-opt--chip .pl-opt__t { font-family: inherit; font-size: inherit; line-height: 1.2; }
+  .pl-opt--chip .pl-opt__t { font-family: inherit; font-size: inherit; line-height: var(--lh-code); }
   .pl-opt--chip[aria-selected='true'] { color: var(--ink); }
   /* on a chip the redline runs under the label instead of down the edge */
   .pl-opt--chip[aria-selected='true']::before { inset-block: auto var(--s-2); inset-inline: var(--s-2); inline-size: auto; block-size: var(--lw-cut); }
 
-  .pl-empty { padding: var(--s-5); }
+  /* the message sits directly under the field (the empty list leaves the flow), inset like a group head */
+  .pl-empty { padding: var(--s-5) var(--s-5) var(--s-1); }
   .pl-empty[hidden] { display: none; }
-  .pl-empty__msg { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body); color: var(--ink-2); }
+  .pl-empty__msg { margin: 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body); color: var(--ink-2); }
+  /* after a miss the suggestions follow the message: "Try one of these" + the chips */
+  .pl-empty[data-hint='on'] + .pl-chips { padding-block-start: var(--s-2); }
 
   /* ── keys ── */
   .pl-keys { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; padding-block-end: var(--s-3); }
@@ -319,8 +329,8 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-keys__t th, .pl-keys__t td { padding: var(--s-2) var(--s-3); border-block-start: var(--lw-object) solid var(--line-1); text-align: start; vertical-align: baseline; }
   .pl-keys__t tr > :first-child { padding-inline-start: var(--s-5); }
   .pl-keys__t tr > :last-child { padding-inline-end: var(--s-5); }
-  .pl-keys__k { white-space: nowrap; font-weight: 400; inline-size: 7.5rem; }
-  .pl-keys__or { margin-inline: 4px; color: var(--ink-3); font-family: var(--font-mono); font-size: var(--fs-code-sm); }
+  .pl-keys__k { white-space: nowrap; font-weight: var(--wt-body); inline-size: 7.5rem; }
+  .pl-keys__or { margin-inline: var(--s-1); color: var(--ink-3); font-family: var(--font-mono); font-size: var(--fs-code-sm); }
   .pl-keys__label { font-family: var(--font-serif); font-size: var(--fs-body-sm); }
   .pl-keys__where { color: var(--ink-3); text-align: end !important; }
   .pl-keys__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-2) var(--s-5); }
@@ -328,25 +338,26 @@ const subParts = t.keys.sub.split('{mod}');
   /* the switch sits compact at the head's end: "Shortcuts ● On" */
   .palette .pl-keys__switch .pswitch { grid-template-columns: auto auto; gap: var(--s-3); inline-size: auto; }
   .pl-keys__note { margin: 0; padding: var(--s-3) var(--s-5) 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); }
-  .pl-keys__note .kbd { margin-inline: 3px; font-style: normal; }
+  .pl-keys__note .kbd { margin-inline: var(--s-1); }
 
   /* ── footer: the promise ── */
   .pl-foot {
+    margin-block-start: auto; /* pinned to the dialog's foot whatever sits above it */
     display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-5);
     padding: var(--s-3) var(--s-5); border-block-start: var(--lw-object) solid var(--line-2); background: var(--sheet);
   }
   .pl-foot__note { flex: 1 1 18rem; margin: 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--ink-2); }
   .pl-foot__keys { display: flex; gap: var(--s-4); margin: 0; color: var(--ink-3); }
-  .pl-foot__keys span { display: inline-flex; align-items: center; gap: 4px; }
+  .pl-foot__keys span { display: inline-flex; align-items: center; gap: var(--s-1); }
 
   /* ── phones: full screen ── */
   @media (max-width: 767.98px) {
     .palette { inline-size: 100vw; max-inline-size: 100vw; block-size: 100svh; max-block-size: 100svh; margin: 0; border: 0; box-shadow: none; }
     .pl-opt { grid-template-columns: 4.25rem minmax(0, 1fr) auto; padding-inline: var(--m); }
     /* a passage's citation drops under the sentence; short kinds (sheet, level, detail, action) stay on the row */
-    .pl-opt--passage { grid-template-columns: 4.25rem minmax(0, 1fr); }
+    .pl-opt.pl-opt--passage { grid-template-columns: var(--s-4) minmax(0, 1fr); }
     .pl-opt--passage .pl-opt__side { grid-column: 2; justify-self: start; }
-    .pl-g, .pl-head, .pl-field, .pl-chips, .pl-foot { padding-inline: var(--m); }
+    .pl-g, .pl-head, .pl-field, .pl-chips, .pl-empty, .pl-foot { padding-inline: var(--m); }
     .pl-tray { margin-inline: calc(var(--m) - var(--s-2)); }
     .pl-foot__keys { display: none; }
   }

@@ -54,7 +54,10 @@ const rev = narrative(nf.revFinal);
 
   <script is:inline>
     (() => { const r = document.querySelector('[data-path-row]'), p = r && r.querySelector('[data-path]');
-      if (p) { let t = location.pathname; try { t = decodeURI(t); } catch (e) {} p.textContent = t; r.hidden = false; } })();
+      if (p) { let t = location.pathname; try { t = decodeURI(t); } catch (e) {}
+        /* long paths break at their segment boundaries first (a <wbr> after every "/") */
+        t.split('/').forEach((s, i, a) => { p.append(s); if (i < a.length - 1) { p.append('/'); p.append(document.createElement('wbr')); } });
+        r.hidden = false; } })();
   </script>
 </Base>
 
@@ -125,7 +128,7 @@ const rev = narrative(nf.revFinal);
   .nf__main { display: grid; gap: var(--s-6); justify-items: start; min-inline-size: 0; }
   .nf__head { display: grid; gap: var(--s-3); }
   .nf__label { margin: 0; color: var(--ink-2); }
-  .nf__no { font-family: var(--font-mono); font-size: var(--fs-label-lg); font-weight: 500; letter-spacing: var(--tr-code); color: var(--rust); }
+  .nf__no { font-family: var(--font-mono); font-size: var(--fs-label-lg); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--rust); }
   .nf__h {
     margin: 0; font-family: var(--font-serif); font-size: var(--fs-title); font-weight: var(--wt-title);
     line-height: var(--lh-title); letter-spacing: var(--tr-title); text-wrap: balance;
@@ -139,7 +142,7 @@ const rev = narrative(nf.revFinal);
   }
   :global(html:not(.js)) .nf__cloud { display: none; } /* without JS there is no path to hold */
   .nf__svg { position: absolute; max-inline-size: none; overflow: visible; pointer-events: none; z-index: -1; }
-  .nf__fill { fill: var(--blush); fill-opacity: 0.55; opacity: 0; transition: opacity var(--dur-3) var(--ease-ui) var(--dur-6); }
+  .nf__fill { fill: color-mix(in srgb, var(--blush) 55%, transparent); opacity: 0; transition: opacity var(--dur-3) var(--ease-ui) var(--dur-6); }
   .nf__line {
     fill: none; stroke: var(--rust); stroke-width: var(--lw-border); stroke-linejoin: round;
     stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset var(--dur-6) var(--ease-draft);
@@ -157,8 +160,8 @@ const rev = narrative(nf.revFinal);
   .nf__req[hidden] { display: none; }
   .nf__req-k { color: var(--ink-2); }
   .nf__path {
-    font-family: var(--font-mono); font-size: var(--fs-lede-sm); font-weight: 500; letter-spacing: 0; color: var(--ink);
-    overflow-wrap: anywhere; word-break: break-all;
+    font-family: var(--font-mono); font-size: var(--fs-lede-sm); font-weight: var(--wt-code); letter-spacing: 0; color: var(--ink);
+    overflow-wrap: anywhere;
   }
 
   /* ── the title block: a strip of four cells sized to their contents (2 × 2 on phones) ── */
@@ -169,12 +172,12 @@ const rev = narrative(nf.revFinal);
   .nf__tb div { display: grid; gap: var(--s-2); align-content: start; padding: var(--s-3) var(--s-5) var(--s-4) var(--s-4); min-inline-size: 0; }
   .nf__tb div + div { border-inline-start: var(--lw-object) solid var(--line-2); }
   .nf__tb dt { color: var(--ink-2); }
-  .nf__tb dd { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body); line-height: 1.25; }
-  .nf__tb .nf__code { font-family: var(--font-mono); font-size: var(--fs-body-sm); font-weight: 500; color: var(--rust); }
+  .nf__tb dd { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body); line-height: var(--lh-code); }
+  .nf__tb .nf__code { font-family: var(--font-mono); font-size: var(--fs-body-sm); font-weight: var(--wt-code); color: var(--rust); }
 
   .nf__index { border-block-start: var(--lw-object) solid var(--line-2); }
   .nf__back { padding-block: var(--s-2) 0; }
-  .nf__back a { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: 44px; text-decoration: none; color: var(--ink); }
+  .nf__back a { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: calc(var(--s-7) - var(--s-1)); text-decoration: none; color: var(--ink); }
   .nf__back a:hover { color: var(--rust-deep); }
 
   @media (max-width: 767.98px) {

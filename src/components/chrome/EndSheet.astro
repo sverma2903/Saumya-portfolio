@@ -61,7 +61,7 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
       </div>
       <div class="tb-cell">
         <dt class="t-label">{t.set}</dt>
-        <dd><span class="endsheet__code">{t.setValue}</span><span class="endsheet__years">{t.setYears}</span></dd>
+        <dd class="endsheet__set"><span class="endsheet__code">{t.setValue}</span><span class="endsheet__years">{t.setYears}</span></dd>
       </div>
       <div class="tb-cell tb-cell--settings" data-js-only>
         <dt class="t-label">{t.settings}</dt>
@@ -92,12 +92,16 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   // print (§4.10): a lazy image that was never scrolled to would print as an empty frame — fetch them all first
   addEventListener('beforeprint', () => {
     document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = 'eager'; });
+    // external CTAs print their address without the query string (print.css: attr(data-print-url))
+    document.querySelectorAll<HTMLAnchorElement>('a.cta[href^="http"], :is(.cta-row, .case-head__actions) a[href^="http"]').forEach((a) => {
+      try { const u = new URL(a.href); a.dataset.printUrl = u.origin + (u.pathname === '/' ? '' : u.pathname); } catch { /* keep the href */ }
+    });
   });
   document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
     b.addEventListener('click', async () => {
       const ok = await copyText(b.dataset.copy ?? '');
       if (ok) {
-        toast(b.dataset.copied ?? '');
+        toast(b.dataset.copied ?? '', b);
         b.classList.add('is-done');
         window.setTimeout(() => b.classList.remove('is-done'), 1600);
       }
@@ -123,16 +127,18 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   .endsheet__contact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-6); }
   .endsheet__email {
     font-family: var(--font-serif); font-size: var(--fs-lede); font-weight: var(--wt-lede); letter-spacing: var(--tr-lede);
-    line-height: 1.2; color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 6px; text-decoration-color: var(--line-3);
+    line-height: var(--lh-code); color: var(--ink); text-decoration-thickness: var(--lw-object); text-underline-offset: calc(var(--s-1) + var(--lw-cut));
+    text-decoration-color: var(--line-3);
     overflow-wrap: anywhere;
   }
   .endsheet__email:hover { color: var(--rust-deep); text-decoration-color: currentColor; }
   .endsheet__acts { display: flex; flex-wrap: wrap; gap: var(--s-3); }
   .endsheet__copy.is-done { border-color: var(--rust); color: var(--rust-deep); }
 
-  /* the title block: outer border in ink, inner rules in line-2 */
+  /* the title block: outer border in ink, inner rules in line-2. Four one-line cells over a Settings row, so no cell
+     is stretched by the switches (≥ 768) */
   .endsheet__tb {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(15rem, 1.35fr);
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     margin: 0; border: var(--lw-border) solid var(--ink); background: var(--paper);
   }
   .tb-cell { display: grid; align-content: start; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-4); min-inline-size: 0; }
@@ -141,12 +147,21 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   .tb-cell dd {
     margin: 0; font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
   }
-  .endsheet__time, .endsheet__code {
-    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
+  /* every value in one voice (serif, body-sm, ink); the time in tabular figures; only the sheet range is a code */
+  .endsheet__time { font-variant-numeric: tabular-nums; }
+  .endsheet__set { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); }
+  .endsheet__code {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
   }
-  .endsheet__time { font-size: var(--fs-body-sm); letter-spacing: 0; }
-  .endsheet__years { display: block; color: var(--ink-2); }
-  .endsheet__settings { display: grid; gap: 0; }
+  .endsheet__years { color: var(--ink-2); }
+
+  /* Settings: its own row — the label, then the three switches side by side, each state right beside its name */
+  .tb-cell--settings {
+    grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--s-6);
+    padding-block: var(--s-2); border-inline-start: 0 !important; border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .endsheet__settings { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-7); }
+  .endsheet__settings :global(.pswitch) { inline-size: auto; grid-template-columns: auto auto; gap: var(--s-3); }
 
   /* base line */
   .endsheet__base {
@@ -155,21 +170,19 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   }
   .endsheet__copyright, .endsheet__colophon { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body-sm); color: var(--ink-2); }
   .endsheet__colophon { font-style: italic; flex: 1 1 24rem; }
-  .endsheet__top { display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 44px; text-decoration: none; color: var(--ink); }
+  .endsheet__top { display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: calc(var(--s-7) - var(--s-1)); text-decoration: none; color: var(--ink); }
   .endsheet__top:hover { color: var(--rust-deep); }
   .endsheet__top .t-code { color: var(--rust); }
 
-  @media (max-width: 1279.98px) {
-    .endsheet__tb { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .tb-cell--settings { grid-column: 1 / -1; border-inline-start: 0 !important; border-block-start: var(--lw-object) solid var(--line-2); }
-    .tb-cell--settings .endsheet__settings { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--s-6); }
-  }
   @media (max-width: 767.98px) {
     .endsheet__in { padding-block: var(--s-7) var(--s-4); gap: var(--s-5); }
     .endsheet__tb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tb-cell:nth-child(3) { border-inline-start: 0; }
     .tb-cell:nth-child(n + 3) { border-block-start: var(--lw-object) solid var(--line-2); }
-    .tb-cell--settings .endsheet__settings { grid-template-columns: minmax(0, 1fr); }
+    /* phones: the label over a full-width list of switches (name at the start, state at the end of each row) */
+    .tb-cell--settings { grid-template-columns: minmax(0, 1fr); padding-block: var(--s-3) var(--s-2); }
+    .endsheet__settings { display: grid; gap: 0; }
+    .endsheet__settings :global(.pswitch) { inline-size: 100%; grid-template-columns: minmax(0, 1fr) auto; }
   }
   /* print: the end sheet itself is chrome; only the running footer prints, repeated on every page (print.css) */
   @media print {

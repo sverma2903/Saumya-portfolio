@@ -13,19 +13,77 @@ type WithVT = Event & { viewTransition?: ViewTransition | null };
 
 const root = document.documentElement;
 const motionOff = () => root.dataset.motion === 'reduce';
+const KEY = 'sv:vt-plates';
+
+/* Plates morph only when BOTH ends are on screen. A plate whose other end is below the fold would slide across the
+   new page during the cut and leave the screen — a stray image, not a cut. So:
+   · pageswap (old): an off-screen plate is un-named (it stays in the old page's snapshot); the names still on screen
+     are handed to the new document through sessionStorage.
+   · pagereveal (new, before its first render): a plate is kept only if it is on screen AND the old page had it on
+     screen. An old plate left without a partner (its new end is off screen or absent) does not move: it is clipped by
+     the same section cut as the old page around it (same curve, same duration, from its recorded rect), so it leaves
+     with the old sheet instead of fading or sliding over the new one. */
+const namedPlates = () =>
+  Array.from(document.querySelectorAll<HTMLElement>('[style*="view-transition-name: plate-"], [style*="view-transition-name:plate-"]'));
+const onScreen = (el: Element) => {
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+};
+const plateName = (el: HTMLElement) => el.style.viewTransitionName;
+// un-named plates get their names back once the transition is over (or when the old page returns from the bfcache),
+// so the next navigation from this page can morph them again
+const unnamed: [HTMLElement, string][] = [];
+const unname = (el: HTMLElement) => { unnamed.push([el, el.style.viewTransitionName]); el.style.viewTransitionName = 'none'; };
+const rename = () => { for (const [el, n] of unnamed.splice(0)) el.style.viewTransitionName = n; };
+addEventListener('pageshow', rename);
 
 addEventListener('pageswap', (e) => {
   const vt = (e as WithVT).viewTransition;
-  if (vt && motionOff()) vt.skipTransition();
+  if (!vt) return;
+  if (motionOff()) { vt.skipTransition(); return; }
+  const kept: { n: string; l: number; w: number }[] = [];
+  for (const el of namedPlates()) {
+    if (onScreen(el)) { const r = el.getBoundingClientRect(); kept.push({ n: plateName(el), l: r.left, w: r.width }); }
+    else unname(el);
+  }
+  try { sessionStorage.setItem(KEY, JSON.stringify(kept)); } catch { /* storage off: pagereveal keeps what is on screen */ }
 });
 
 addEventListener('pagereveal', (e) => {
   const vt = (e as WithVT).viewTransition;
+  let old: { n: string; l: number; w: number }[] | null = null;
+  try { old = JSON.parse(sessionStorage.getItem(KEY) ?? 'null'); sessionStorage.removeItem(KEY); } catch { old = null; }
+  if (!Array.isArray(old)) old = null;
   if (!vt) return;
   if (motionOff()) { vt.skipTransition(); return; }
+  const paired = new Set<string>();
+  for (const el of namedPlates()) {
+    const name = plateName(el);
+    if (onScreen(el) && (!old || old.some((o) => o.n === name))) paired.add(name);
+    else unname(el);
+  }
+  const back = root.dataset.page === 'home';
+  const orphans = (old ?? []).filter((o) => /^plate-[\w-]+$/.test(o?.n) && Number.isFinite(o.l) && Number.isFinite(o.w) && !paired.has(o.n));
+  let sheet: HTMLStyleElement | null = null;
+  if (orphans.length) {
+    // the cut's leading edge is at p·vw (forward: the new sheet shows left of it) or (1 − p)·vw (back: right of it);
+    // in the plate's own box that edge is an inset that moves linearly, so these keyframes ride the same curve
+    const vw = innerWidth;
+    sheet = document.createElement('style');
+    sheet.textContent = orphans.map((o, i) => {
+      const k = `vt-orphan-${i}`;
+      const [a, b] = back
+        ? [`inset(0 ${o.l + o.w - vw}px 0 0)`, `inset(0 ${o.l + o.w}px 0 0)`]
+        : [`inset(0 0 0 ${-o.l}px)`, `inset(0 0 0 ${vw - o.l}px)`];
+      return `@keyframes ${k}{from{clip-path:${a}}to{clip-path:${b}}}` +
+        `::view-transition-group(${o.n}){animation:none!important}` +
+        `::view-transition-old(${o.n}){animation:${k} var(--dur-4) var(--ease-draft) both!important;opacity:1!important}`;
+    }).join('');
+    document.head.append(sheet);
+  }
   root.dataset.vt = 'cut';
-  root.dataset.vtDir = root.dataset.page === 'home' ? 'back' : 'forward';
-  const done = () => { delete root.dataset.vt; delete root.dataset.vtDir; };
+  root.dataset.vtDir = back ? 'back' : 'forward';
+  const done = () => { delete root.dataset.vt; delete root.dataset.vtDir; sheet?.remove(); rename(); };
   vt.finished.then(done, done);
 });
 

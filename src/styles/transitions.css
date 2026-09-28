@@ -1,7 +1,7 @@
 /* ==========================================================================
    transitions.css · WP1. SM3 "Cut to sheet": native cross-document View Transitions (no router, no interception).
 
-   · The new sheet is revealed by a section cut: a clip-path wipe (--dur-4, --ease-pen) with a rust long–short
+   · The new sheet is revealed by a section cut: a clip-path wipe (--dur-4, --ease-draft) with a rust long–short
      dash line riding its leading edge. Back to the index (the new page is A-000) cuts the other way.
    · The plate you chose morphs into the case cover (plate-<slug>, same 16:10 box both sides; WP3/WP5 name them).
    · The sheet number rolls like a ticker (sheetno: the title bar's / bottom bar's number, never both rendered).
@@ -14,7 +14,7 @@
 
 @view-transition { navigation: auto; }
 
-/* ---------- every group: the page cut's duration and pen easing ---------- */
+/* ---------- every group: the page cut's duration; morphs (plates) settle on the pen curve ---------- */
 ::view-transition-group(*) {
   animation-duration: var(--dur-4);
   animation-timing-function: var(--ease-pen);
@@ -29,7 +29,8 @@
 ::view-transition-new(root),
 ::view-transition-new(vt-titlebar),
 ::view-transition-new(vt-bottombar) {
-  animation: vt-cut var(--dur-4) var(--ease-pen) both;
+  /* the cut is drafted, not snapped: the line-draw curve keeps the sweep (and the line on its edge) legible end to end */
+  animation: vt-cut var(--dur-4) var(--ease-draft) both;
   /* the UA pairs old/new with plus-lighter for its cross-fade; an opaque cut must composite normally */
   mix-blend-mode: normal;
 }
@@ -64,7 +65,7 @@
   view-transition-name: vt-cutline;
 }
 ::view-transition-old(vt-cutline) { animation: none; opacity: 0; }
-::view-transition-new(vt-cutline) { animation: vt-line var(--dur-4) var(--ease-pen) both; mix-blend-mode: normal; }
+::view-transition-new(vt-cutline) { animation: vt-line var(--dur-4) var(--ease-draft) both; mix-blend-mode: normal; }
 :root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(vt-cutline) { animation-name: vt-line-back; }
 /* the line rides exactly on the wipe's leading edge (same curve, same duration) */
 @keyframes vt-line      { from { transform: translateX(0); }     to { transform: translateX(100vw); } }

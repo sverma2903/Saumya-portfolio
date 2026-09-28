@@ -35,7 +35,7 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     <span class="titlebar__no sheetno t-code">{sheetNo}</span>
     <span class="titlebar__sep" aria-hidden="true">·</span><span class="sr-only">, </span>
     {page.sheetTitleIsHers
-      ? <span class="titlebar__title" data-v>{page.sheetTitle}</span>
+      ? <><span class="titlebar__title" data-v data-fit-title>{page.sheetTitle}</span><span class="titlebar__title titlebar__cut" aria-hidden="true" data-fit-cut hidden></span></>
       : page.kind === 'home'
         ? <span class="titlebar__title" data-home-title data-cover={t.coverSheet} data-index={t.drawingIndex}>{page.sheetTitle}</span>
         : <span class="titlebar__title">{page.sheetTitle}</span>}
@@ -54,7 +54,7 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     </ul>
   </nav>
   <button type="button" class="titlebar__list" data-js-only data-palette-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K">
-    <kbd class="keycap" aria-hidden="true" data-keycap>
+    <kbd class="kbd kbd--mod titlebar__keycap" aria-hidden="true" data-keycap>
       <span class="keycap__apple"><Icon name="keycap-cmd" size={12} />K</span><span class="keycap__other">{t.keycapOther}</span>
     </kbd>
     <span class="titlebar__list-label t-label">{t.sheetList}</span>
@@ -85,14 +85,45 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     }, { rootMargin: '0px 0px -60% 0px' }).observe(index);
   }
 
+  // Her long case titles: when the running head can't hold the whole title, it is cut back to the last whole word
+  // (never a word fragment). The full title stays in the DOM for assistive tech (sr-only); the cut copy is aria-hidden.
+  // Measured on load, on resize, when the fonts land and when the level label appears — never on scroll.
+  const full = document.querySelector<HTMLElement>('[data-fit-title]');
+  const cut = document.querySelector<HTMLElement>('[data-fit-cut]');
+  const fitTitle = () => {
+    if (!full || !cut) return;
+    cut.hidden = true;
+    full.classList.remove('sr-only');
+    if (!full.getClientRects().length || full.scrollWidth <= full.clientWidth) return;
+    const words = (full.textContent ?? '').trim().split(/\s+/);
+    full.classList.add('sr-only');
+    cut.hidden = false;
+    const put = (n: number) => { cut.textContent = `${words.slice(0, n).join(' ').replace(/[\s,:;·–—-]+$/, '')}…`; };
+    let lo = 1, hi = words.length - 1, best = 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      put(mid);
+      if (cut.scrollWidth <= cut.clientWidth) { best = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    put(best);
+  };
+  if (full && cut) {
+    fitTitle();
+    let w = 0;
+    new ResizeObserver((es) => { const nw = Math.round(es[0].contentRect.width); if (nw !== w) { w = nw; fitTitle(); } }).observe(full.parentElement!);
+    document.fonts?.ready.then(fitTitle);
+  }
+
   // the running head's live level (WP5 → sv:level {index, label, elev})
   const level = document.querySelector<HTMLElement>('[data-titlebar-level]');
   const label = level?.querySelector<HTMLElement>('[data-level-label]');
   if (level && label) {
     listen('sv:level', (d) => {
-      if (!d || typeof d.label !== 'string' || !d.label) { level.hidden = true; return; }
+      if (!d || typeof d.label !== 'string' || !d.label) { if (!level.hidden) { level.hidden = true; fitTitle(); } return; }
+      const changed = label.textContent !== d.label || level.hidden;
       if (label.textContent !== d.label) label.textContent = d.label;
       level.hidden = false;
+      if (changed) fitTitle();
     });
   }
 </script>
@@ -113,8 +144,15 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     padding-inline-end: var(--s-5); text-decoration: none; color: var(--ink); white-space: nowrap;
   }
   .titlebar__brand :global(.titlebar__mark) { color: var(--rust); }
+  /* at 22px the mark's dashed construction set blurs into a halo: here it draws only the compass circle and the
+     baseline, solid, at one device pixel (--lw-dim), so the hover reads as two crisp drafting lines */
+  .titlebar__brand :global(.mark__cons) { stroke-dasharray: none; }
+  .titlebar__brand :global(.mark__cons > *) { vector-effect: non-scaling-stroke; stroke-width: var(--lw-dim); }
+  .titlebar__brand :global(.mark__cons > path:first-of-type) { display: none; }
+  /* the focus ring sits inside the cell, like every other cell of the strip (never across the bar's rules) */
+  .titlebar__brand:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
   /* Newsreader 420 at 18px (§4.1) */
-  .titlebar__name { font-family: var(--font-serif); font-size: calc(var(--fs-label) * 1.5); font-weight: var(--wt-index); letter-spacing: -0.005em; line-height: 1; transform: translateY(-0.5px); }
+  .titlebar__name { font-family: var(--font-serif); font-size: calc(var(--fs-label) * 1.5); font-weight: var(--wt-index); letter-spacing: var(--tr-lede); line-height: 1; }
   .titlebar__brand:hover { color: var(--ink); }
   .titlebar__brand:hover .titlebar__name { color: var(--rust-deep); }
 
@@ -131,6 +169,7 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
   }
   .titlebar__sep, .titlebar__dash { flex: none; color: var(--ink-3); }
   .titlebar__title { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+  .titlebar__cut[hidden] { display: none; }
   .titlebar__level { flex: none; display: inline-flex; gap: var(--s-2); color: var(--rust); }
   .titlebar__level[hidden] { display: none; }
 
@@ -139,18 +178,18 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
   .titlebar__nav ul { display: flex; align-items: stretch; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
   .titlebar__nav li { display: flex; }
   .titlebar__nav a {
-    position: relative; display: inline-flex; align-items: center; gap: 3px;
+    position: relative; display: inline-flex; align-items: center; gap: var(--s-1);
     padding-inline: var(--s-2); color: var(--ink); text-decoration: none; white-space: nowrap;
   }
   .titlebar__nav a:hover { color: var(--rust-deep); }
-  .titlebar__nav a :global(.icon) { color: var(--ink-2); transform: translateY(-1px); }
+  .titlebar__nav a :global(.icon) { color: var(--ink-2); transform: translateY(calc(-1 * var(--lw-object))); }
   .titlebar__nav a:hover :global(.icon) { color: currentColor; }
   /* current page: a 2px rust rule on the bar's lower edge (plus aria-current for AT) */
   .titlebar__nav a[aria-current='page']::after {
     content: ''; position: absolute; inset-inline: var(--s-2); inset-block-end: calc(-1 * var(--lw-object));
     block-size: var(--lw-cut); background: var(--rust);
   }
-  .titlebar__nav a:focus-visible { outline-offset: -2px; }
+  .titlebar__nav a:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
 
   /* ── the Sheet list: the last cell of the strip ── */
   .titlebar__list {
@@ -159,18 +198,16 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     color: var(--ink); transition: background-color var(--dur-1) var(--ease-ui), color var(--dur-1) var(--ease-ui);
   }
   .titlebar__list:hover { background: var(--paper-2); color: var(--rust-deep); }
-  .titlebar__list:focus-visible { outline-offset: -3px; }
-  .keycap {
-    display: inline-flex; align-items: center; justify-content: center; min-inline-size: 2.4em; block-size: 22px;
-    padding-inline: 5px; border: var(--lw-object) solid var(--line-3); border-block-end-width: 2px; border-radius: var(--r-1);
-    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; line-height: 1;
-  }
-  .keycap__apple { display: inline-flex; align-items: center; gap: 1px; }
-  .keycap__apple :global(.icon) { transform: translateY(0.5px); }
-  .keycap__other { display: none; }
-  .keycap[data-platform='other'] .keycap__apple { display: none; }
-  .keycap[data-platform='other'] .keycap__other { display: inline; }
+  .titlebar__list:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
+  /* the keycap itself is the shared .kbd (Palette.astro), so ⌘K looks the same here and in the Sheet list */
+  .titlebar__keycap { padding-inline: var(--s-2); }
 
+  /* 1280–1439: the long case titles need every pixel; the cells tighten their padding before the title is cut */
+  @media (max-width: 1439.98px) {
+    .titlebar__head { padding-inline: var(--s-4); }
+    .titlebar__nav { padding-inline: var(--s-2) var(--s-4); }
+    .titlebar__list { padding-inline-start: var(--s-4); }
+  }
   @media (max-width: 1279.98px) {
     .titlebar__title, .titlebar__sep { display: none; }
     .titlebar__head { padding-inline: var(--s-4); }

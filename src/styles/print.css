@@ -25,8 +25,8 @@
     border-block-start: var(--lw-object) solid var(--ink);
     font-family: var(--font-mono);
     font-size: var(--fs-code-sm);
-    line-height: 1.55;
-    letter-spacing: 0.01em;
+    line-height: var(--lh-body-sm);
+    letter-spacing: 0;
     color: var(--ink-2);
   }
   @bottom-right {
@@ -36,7 +36,7 @@
     border-block-start: var(--lw-object) solid var(--ink);
     font-family: var(--font-mono);
     font-size: var(--fs-code);
-    font-weight: 500;
+    font-weight: var(--wt-code);
     color: var(--ink);
   }
 }
@@ -44,12 +44,16 @@
 @media print {
   :root {
     --bar: 0px;
+    /* ONE print measure: every block (header, Decision schedule, Key plan, chapters, 404) aligns to the @page margin
+       box, exactly like the running footer; the on-screen page gutter would indent some blocks and not others */
+    --m: 0px !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   /* the paper is the page: no vellum tint, no texture */
   html, body { background: none !important; }
   body { padding: 0 !important; }
+  .shell { padding-inline: 0 !important; max-inline-size: none !important; }
   html { scroll-padding: 0 !important; }
 
   /* ---------- chrome that never prints ---------- */
@@ -116,12 +120,16 @@
     background: none !important; line-height: inherit;
   }
   article.case .btn svg { display: inline-block; vertical-align: -0.15em; margin-inline-start: 0.2em; }
+  /* the printed address is origin + path (EndSheet's beforeprint writes data-print-url): a 200-character query string
+     would dominate page 1; the live link stays in the PDF's link annotation. Without JS the whole href prints. */
   a.cta[href^='http']::after,
   :is(.cta-row, .case-head__actions) a[href^='http']::after {
     content: attr(href);
     display: block; margin-block-start: 1mm;
-    font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: 400; letter-spacing: 0; text-transform: none;
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm); letter-spacing: 0; text-transform: none;
     overflow-wrap: anywhere; color: var(--ink-2); text-decoration: none;
   }
+  a.cta[href^='http'][data-print-url]::after,
+  :is(.cta-row, .case-head__actions) a[href^='http'][data-print-url]::after { content: attr(data-print-url); }
   a { text-decoration-color: var(--line-3); }
 }

@@ -29,17 +29,34 @@ export async function copyText(text: string): Promise<boolean> {
   return ok;
 }
 
-/** Show a status message in the toast region for 1.6 s (announced politely by screen readers). */
-export function toast(message: string): void {
+/**
+ * Show a status message in the toast region for 1.6 s (announced politely by screen readers). With `anchor`, the chip
+ * is laid over that control (same box, centred), so the confirmation reads as the click's own feedback and covers
+ * nothing else; without one (e.g. from the Sheet list, which has closed) it sits bottom-centre.
+ */
+export function toast(message: string, anchor?: Element | null): void {
   const el = document.querySelector<HTMLElement>('.toast[role="status"]');
   if (!el) return;
   const text = el.querySelector<HTMLElement>('[data-toast-text]') ?? el;
+  const chip = el.querySelector<HTMLElement>('.toast__chip') ?? el;
   window.clearTimeout(timer);
   // re-announce the same message: clear first, then set on the next frame
   text.textContent = '';
   el.classList.remove('is-on');
   requestAnimationFrame(() => {
     text.textContent = message;
+    const r = anchor?.getBoundingClientRect();
+    if (r && r.width) {
+      // laid over the control itself, centred on it: the button reads "✓ Copied" for the moment, covering nothing else
+      el.classList.add('is-anchored');
+      el.style.setProperty('--toast-w', `${Math.round(r.width)}px`);
+      el.style.setProperty('--toast-h', `${Math.round(r.height)}px`);
+      const w = Math.max(chip.offsetWidth, r.width);
+      el.style.setProperty('--toast-x', `${Math.round(Math.max(0, r.left + r.width / 2 - w / 2))}px`);
+      el.style.setProperty('--toast-y', `${Math.round(r.top)}px`);
+    } else {
+      el.classList.remove('is-anchored');
+    }
     el.classList.add('is-on');
     timer = window.setTimeout(() => {
       el.classList.remove('is-on');

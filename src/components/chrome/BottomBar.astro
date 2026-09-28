@@ -94,7 +94,7 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
     border-inline-end: var(--lw-object) solid var(--line-2);
   }
   .bottombar__home:hover { color: var(--rust-deep); }
-  .bottombar__home:focus-visible, .bottombar__centre:focus-visible { outline-offset: -4px; }
+  .bottombar__home:focus-visible, .bottombar__centre:focus-visible { outline-offset: calc(-1 * var(--s-1)); }
 
   .bottombar__centre {
     display: flex; align-items: center; justify-content: center; gap: var(--s-3);
@@ -105,11 +105,11 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
   .bottombar__centre:active { background: var(--paper-2); }
   :global(html.js) .bottombar__centre--nojs { display: none; }
   .bottombar__level { display: inline-flex; align-items: center; gap: var(--s-2); min-inline-size: 0; }
-  .bottombar__level :global(.sym-datum) { color: var(--rust); transform: translateY(0.5px); }
+  .bottombar__level :global(.sym-datum) { color: var(--rust); }
   .bottombar__label { overflow: hidden; text-overflow: ellipsis; }
   .bottombar__elev {
     font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: 1; color: var(--ink-2);
-    font-variant-numeric: tabular-nums; margin-inline-start: 2px;
+    font-variant-numeric: tabular-nums; margin-inline-start: var(--lw-cut);
   }
   .bottombar__caret { flex: none; color: var(--ink-2); }
   .bottombar__centre[aria-expanded='true'] .bottombar__caret { transform: rotate(180deg); }
@@ -117,7 +117,7 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
   .bottombar__sheet {
     display: flex; align-items: center; padding-inline: var(--s-4) var(--m);
     border-inline-start: var(--lw-object) solid var(--line-2);
-    font-size: calc(var(--fs-code) * 1.5); letter-spacing: 0.02em; color: var(--ink); /* Plex Mono 18 (§4.2) */
+    font-size: calc(var(--fs-code) * 1.5); letter-spacing: calc(var(--tr-code) / 2); color: var(--ink); /* Plex Mono 18 (§4.2) */
     view-transition-name: sheetno;
   }
   @media (min-width: 1024px) { .bottombar { display: none; } }

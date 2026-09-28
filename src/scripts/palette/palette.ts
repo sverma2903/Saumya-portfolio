@@ -211,7 +211,7 @@ function render(): void {
   const u = ui;
   const mode = u.dlg.dataset.mode ?? 'home';
   u.home.hidden = mode !== 'home';
-  u.chips.hidden = mode !== 'home';
+  setChips(mode === 'home', false);
   u.results.hidden = mode !== 'results';
   u.keys.hidden = mode !== 'keys';
   u.list.hidden = mode === 'keys';
@@ -229,6 +229,11 @@ function renderResults(q: string): void {
     showEmpty(u.t.searching, false);
     return;
   }
+  // every pass starts clean: a message left by an earlier pass ("Searching the set") must not outlive it
+  u.empty.hidden = true;
+  u.list.hidden = false;
+  u.input.setAttribute('aria-expanded', 'true');
+  setChips(false, false);
   const c = corpus;
   const cur = currentPage(c);
   const toks = tokens(q);
@@ -362,12 +367,26 @@ function arrowIcon(): SVGSVGElement {
   return svg;
 }
 
+/** Nothing to list: the message sits right under the field (the empty list is taken out of the flow); after a
+ *  finished search that found nothing, the suggestion chips follow it under "Try one of these". */
 function showEmpty(msg: string, withHint: boolean): void {
   if (!ui) return;
   ui.empty.hidden = false;
+  ui.list.hidden = true;
+  ui.input.setAttribute('aria-expanded', 'false');
   const m = ui.empty.querySelector<HTMLElement>('[data-pl-empty-msg]');
   if (m) m.textContent = msg;
   ui.empty.dataset.hint = withHint ? 'on' : 'off';
+  setChips(withHint, withHint);
+}
+
+/** Show or hide the suggestion chips; after a miss they are introduced as "Try one of these", otherwise "Try". */
+function setChips(show: boolean, afterMiss: boolean): void {
+  if (!ui) return;
+  ui.chips.hidden = !show;
+  const l = ui.chips.querySelector<HTMLElement>('[data-pl-chips-label]');
+  const want = afterMiss ? ui.t.noneHint : ui.t.tryLabel;
+  if (l && want && l.textContent !== want) l.textContent = want;
 }
 
 const fillN = (s: string, n: number) => s.replace('{n}', String(n));

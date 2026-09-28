@@ -53,7 +53,7 @@ const spec = {
 <style>
   .pswitch {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-4);
-    inline-size: 100%; min-block-size: 32px; padding-block: 2px;
+    inline-size: 100%; min-block-size: var(--s-6); padding-block: 0;
     font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
     text-align: start;
   }
@@ -64,15 +64,15 @@ const spec = {
   }
   /* the dot: a drafting "on" mark — filled rust when on, a hollow ring when off */
   .pswitch__dot {
-    inline-size: 10px; block-size: 10px; border-radius: var(--r-dot);
+    inline-size: calc(var(--s-2) + var(--lw-cut)); block-size: calc(var(--s-2) + var(--lw-cut)); border-radius: var(--r-dot);
     border: var(--lw-border) solid var(--ink-2); background: transparent;
     transition: background-color var(--dur-2) var(--ease-ui), border-color var(--dur-2) var(--ease-ui);
   }
   .pswitch[aria-checked='true'] .pswitch__dot { background: var(--rust); border-color: var(--rust); }
   .pswitch[aria-checked='true'] .pswitch__state { color: var(--ink); }
-  .pswitch__on, .pswitch__off { min-inline-size: 2.2em; }
+  .pswitch__on, .pswitch__off { min-inline-size: var(--s-6); }
   .pswitch[aria-checked='true'] .pswitch__off, .pswitch[aria-checked='false'] .pswitch__on { display: none; }
   .pswitch:hover .pswitch__label { color: var(--rust-deep); }
   .pswitch:hover .pswitch__dot { border-color: var(--rust); }
-  @media (pointer: coarse) { .pswitch { min-block-size: 44px; } }
+  @media (pointer: coarse) { .pswitch { min-block-size: calc(var(--s-7) - var(--s-1)); } }
 </style>
