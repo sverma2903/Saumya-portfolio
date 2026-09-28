@@ -51,6 +51,10 @@ export interface Staging {
   zoom?: 'deep' | 'soft' | 'none';
   /** baked phones: the device silhouette as CSS polygon() points, in % of the canvas (see the header) */
   outline?: string;
+  /** a device cropped out of a white canvas that is NOT a baked phone GIF: a clip-path removing only the canvas corners
+      around the device (§6.4 exception 1). U-Up's MSXXSF is the top of a phone on white: its rounded top corners
+      (a ≈ 36 native px radius, fitted to its edge rows) sit on 26 px of white; the phone runs out of the bottom edge, so only the top is clipped. */
+  corners?: string;
   wide?: boolean;
   gif?: { secs: number; frames: number; poster: number };
   video?: { secs: number; audio?: boolean; remote?: boolean };
@@ -105,7 +109,7 @@ export const staging: Record<string, Staging> = {
   'B4i82MXuCijqdjx0mPV84ZzTM8M.jpg': { cap: 200 }, 'uEhkOCukMrK1gyMJTTyB3rNCTYA.png': { cap: 240 },
   'Ba0xoRNtdEJFDv0wUIc2Gb1aMo.jpg': { cap: 420 }, 'kwWf2Uhq8nsR3xcQ2etNd26L5iI.png': { cap: 420 }, 'IOkPZ3gG1rQACi2A5gntj0ODzVs.jpg': { cap: 420 },
   'a9Ks6XtxlvRgtDf1JChl7LQakk.png': { cap: 520 }, 'GSYkrkshJsH7cULPBcUm93qbcM.png': { cap: 520 },
-  'lmyeINAE6IwVaP6vGOdUrlN18s.jpg': { cap: 440 }, 'MSXXSFArimIHXfSG04aBaXtykFs.png': { cap: 260 },
+  'lmyeINAE6IwVaP6vGOdUrlN18s.jpg': { cap: 440 }, 'MSXXSFArimIHXfSG04aBaXtykFs.png': { cap: 260, corners: 'inset(3.13% 0 0 0 round 8.3% 8.3% 0 0 / 4.3% 4.3% 0 0)' },
   '34zvVOLJJnfshfSOljrVF0VDwg.jpg': { cap: 240 }, 'Sdi9fpuOtTfiQvOQArynv2SXDg.jpg': { cap: 240 }, 'YzCRzNFsLxivDz0SfvWzny8I8Hc.jpg': { cap: 240 },
   'X0xZsaG4ay0wrDS9K0KhSUHDc.jpg': { cap: 360 }, 'csEDEwbynLWgcVEg3KKy0deu5gE.jpg': { cap: 360 },
   'fcOBmTs2rsYyBZvOIwHLaP0.png': { cap: 112 }, '93xfJ7BYpODYoVdbmzvCfqCKwWA.png': { cap: 112 },

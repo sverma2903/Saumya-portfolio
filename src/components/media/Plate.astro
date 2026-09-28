@@ -119,7 +119,7 @@ const clipBaked = resolvedFrame === 'phone-baked'
     : stTop.clip
       ? `clip-path: inset(${stTop.clip} round ${stTop.radius ?? 13}% / ${r4((stTop.radius ?? 13) * (ft.w / ft.h))}%)`
       : ''
-  : '';
+  : stTop.corners ? `clip-path: ${stTop.corners}` : '';
 const viewStyle = [
   `aspect-ratio: ${staged ? r4(boxAspect) : `${ft.w} / ${ft.h}`}`,
   stage ? `background: ${stage}` : '',
@@ -244,7 +244,8 @@ const rootAttrs = {
                   ) : (
                     <img class="plate__media" style={style} width={f.w} height={f.h} data-gif data-src={f.src} alt={la} decoding="async" data-poster={st.gif?.poster} data-frames={st.gif?.frames} aria-describedby={desc} />
                   )}
-                  <noscript><img class="plate__media plate__media--ns" style={style} src={f.src} width={f.w} height={f.h} alt={la} loading="lazy" decoding="async" /></noscript>
+                  {/* the LCP GIF already has a real src: without JS it renders itself, so it has no twin */}
+                  {!(lcpGif && isTop) && <noscript><img class="plate__media plate__media--ns" style={style} src={f.src} width={f.w} height={f.h} alt={la} loading="lazy" decoding="async" /></noscript>}
                   {devCanvas && <canvas class="plate__poster" hidden aria-hidden="true"></canvas>}
                 </D>
               );
@@ -268,11 +269,13 @@ const rootAttrs = {
     {controls && ctlVariant !== 'bar' && secs && <MediaControls part="progress" variant={ctlVariant} secs={secs} />}
     {controls && ctlVariant === 'below' && <MediaControls variant="below" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
     {fig?.caption && !fig.capId && <template data-cap set:html={rich(fig.caption)} />}
+    {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+       that breaks the `+` spacing rules between blocks */}
+    <script>
+      import '../../scripts/media/plates';
+    </script>
   </div>
 </Wrap>
-<script>
-  import '../../scripts/media/plates';
-</script>
 <style>
   .plate { position: relative; min-inline-size: 0; }
   .plate--staged { inline-size: 100%; }
@@ -294,8 +297,13 @@ const rootAttrs = {
   .plate--plate .plate__mat { background: var(--plate); box-shadow: 0 0 0 var(--lw-object) var(--line-2); }
   /* print: photographs as prints — an 8px --plate border and a soft shadow; the aspect never changes */
   .plate--print .plate__mat { background: var(--plate); padding: var(--s-2); box-shadow: var(--shadow-plate); }
-  /* before: her intentionally dated material on a --before surround */
-  .plate--before .plate__mat { background: var(--before); padding: var(--s-4); }
+  /* before: her intentionally dated material on a --before surround. --before alone is the paper's own value (it read
+     as nothing, and her screenshot as 16px mis-indented), so the surround is drawn as material: the 45° hatch of
+     existing work over --before, with an object-line edge */
+  .plate--before .plate__mat {
+    background: var(--hatch-45), var(--before); padding: var(--s-4);
+    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
+  }
   /* phone / bezel-dark: a device ring around her flat screen (geometry inline: her square corners are never hidden) */
   .plate--phone .plate__mat { background: var(--bezel); }
   .plate--bezel-dark .plate__mat { background: var(--bezel-dark); }
@@ -305,7 +313,8 @@ const rootAttrs = {
   .plate--phone-video .plate__view { clip-path: inset(0 round 5% / 2.3%); }
   /* phone-baked: clipped to the device silhouette (inline polygon), sized BY HEIGHT so the phones read as one size */
   .plate--phone-baked { inline-size: fit-content; max-inline-size: 100%; margin-inline: auto; }
-  .plate--phone-baked .plate__view { block-size: var(--ph, min(480px, 72svh)); inline-size: auto; }
+  .plate--phone-baked { --_ph: min(480px, 72svh); } /* component geometry: a baked phone's height outside a walkthrough */
+  .plate--phone-baked .plate__view { block-size: var(--ph, var(--_ph)); inline-size: auto; }
   /* a device on a stage (Play's pinned plates, a card): the device box sits in the stage like the layer would; its
      media fills the content box (the ring is padding), and a GIF's poster canvas overlaps it (one grid cell) */
   .plate__dev { position: absolute; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }
@@ -333,7 +342,7 @@ const rootAttrs = {
     /* just below the centre, so the drafting X's file label (dims · format · size, centred) stays readable above it */
     position: absolute; inset: calc(50% + var(--s-5)) auto auto 50%; translate: -50% 0; z-index: calc(var(--z-raised) + 1);
     display: inline-flex; align-items: center; gap: var(--s-2);
-    min-block-size: 44px; padding: var(--s-2) var(--s-4);
+    min-block-size: var(--hit); padding: var(--s-2) var(--s-4);
     font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
     font-variation-settings: var(--wdth-label); letter-spacing: var(--tr-label-lg); text-transform: uppercase;
     white-space: nowrap;
@@ -341,13 +350,13 @@ const rootAttrs = {
     border: var(--lw-border) solid var(--ink);
   }
   .plate__sound:hover { color: var(--rust-deep); }
-  .plate__sound :global(.plate__sound-i) { inline-size: 14px; block-size: 14px; }
+  .plate__sound :global(.plate__sound-i) { inline-size: var(--s-4); block-size: var(--s-4); }
   :global(.plate[data-played]) .plate__sound { display: none; }
   /* before its first play, the sound video offers only "Play · 0:48 · sound"; then Pause, Restart and Mute appear */
   .plate:has(.plate__sound):not([data-played]) :global(:is(.mc, .mprog)) { display: none; }
 
   @media (forced-colors: active) {
-    .plate--plate .plate__mat, .plate--before .plate__mat, .plate--print .plate__mat { outline: 1px solid CanvasText; }
+    .plate--plate .plate__mat, .plate--before .plate__mat, .plate--print .plate__mat { outline: var(--lw-object) solid CanvasText; }
   }
   @media print {
     .plate__open, .plate__poster, .plate__sound { display: none; }

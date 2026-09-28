@@ -15,6 +15,7 @@ import { setState } from './state';
 // without ImageDecoder (Safari) the paused phone holds the GIF's first frame (firstFrame), so Pause still stops the
 // motion and never empties the stage
 import { decodePoster, firstFrame } from './gif';
+import { isHeld, onHold } from './hold';
 
 const wide = matchMedia('(min-width: 1024px)');
 
@@ -67,7 +68,7 @@ function wire(grid: HTMLElement): void {
       front = nextFront; shown = i;
       setState(stage, paused ? 'paused' : 'playing', { restartProgress: true });
     };
-    if (!near || far) { setState(stage, 'idle'); shown = -1; return; }
+    if (!near || far || isHeld()) { setState(stage, 'idle'); shown = -1; return; }
     if (paused) {
       const nw = Number(img.getAttribute('width')) || 400;
       const nh = Number(img.getAttribute('height')) || 800;
@@ -126,6 +127,11 @@ function wire(grid: HTMLElement): void {
     show(active);
   });
 
+  // the Enlarged detail is open over the page: the stage stands down (parked), and comes back on the active step
+  onHold((held) => {
+    if (!sticky) return;
+    if (held) { if (shown !== -1) park(); } else if (near && !far) { shown = -1; show(active); }
+  });
   wide.addEventListener('change', mode);
   onPref('motion', mode);
   mode();

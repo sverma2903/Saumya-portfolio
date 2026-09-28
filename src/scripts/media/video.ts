@@ -12,6 +12,7 @@ import { observe, viewportMargin } from '../core/io';
 import { motionOK } from '../core/dom';
 import { on as onPref } from '../core/prefs';
 import { setState } from './state';
+import { isHeld, onHold } from './hold';
 
 interface Vid {
   v: HTMLVideoElement;
@@ -42,6 +43,8 @@ function park(x: Vid): void {
 
 function evaluate(x: Vid): void {
   if (x.far) { park(x); return; }
+  // the Enlarged detail is open over the page: a playing video pauses (its source and the reader's choice are kept)
+  if (isHeld()) { if (!x.v.paused) x.v.pause(); return; }
   if (x.sound) return; // never automatic
   if (x.near) attach(x);
   const want = x.visible && (x.choice === 'play' || (x.choice === 'auto' && motionOK()));
@@ -130,4 +133,5 @@ export function attachAllForPrint(): void {
   for (const x of vids.values()) if (!x.sound) attach(x);
 }
 
+onHold(() => { for (const x of vids.values()) evaluate(x); });
 onPref('motion', () => { for (const x of vids.values()) { x.choice = x.plate.hasAttribute('data-still') ? 'pause' : 'auto'; evaluate(x); } });

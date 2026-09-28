@@ -49,17 +49,18 @@ const m = chrome.wp4b.media;
 )}
 <style>
   /* ---------- buttons ---------- */
-  .mc { display: inline-flex; align-items: center; }
+  /* component geometry: a fine-pointer button is one toolbar row tall (the browser bar's --_bar where it sits in one) */
+  .mc { --_row: 28px; display: inline-flex; align-items: center; }
   .mc__b {
     position: relative;
     display: grid; place-items: center;
-    inline-size: var(--_b, 28px); block-size: var(--_b, 28px);
+    inline-size: var(--_b, var(--_row)); block-size: var(--_b, var(--_row));
     color: var(--ink-2);
     transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
   }
   .mc__b:hover { color: var(--rust); }
-  .mc__b::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: 44px; block-size: 44px; translate: -50% -50%; }
-  .mc__b :global(.mc__i) { inline-size: 16px; block-size: 16px; }
+  .mc__b::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: var(--hit); block-size: var(--hit); translate: -50% -50%; }
+  .mc__b :global(.mc__i) { inline-size: var(--s-4); block-size: var(--s-4); }
   /* the toggle shows Pause while playing, Play otherwise (the scripts set data-playing on the group) */
   .mc[data-playing] :global(.mc__i--play) { display: none; }
   .mc[data-playing] :global(.mc__i--pause) { display: block; }
@@ -72,7 +73,7 @@ const m = chrome.wp4b.media;
 
   /* bar: toolbar buttons at the right of the browser bar */
   .mc--bar { block-size: 100%; }
-  .mc--bar .mc__b { --_b: var(--_bar, 28px); }
+  .mc--bar .mc__b { --_b: var(--_bar, var(--_row)); }
 
   /* overlay: bottom-right over the media; hover/focus on fine pointers, always on coarse ones */
   .mc--overlay {
@@ -85,12 +86,12 @@ const m = chrome.wp4b.media;
   :global(:is(.plate:hover, .plate:focus-within)) .mc--overlay, .mc--overlay:not([data-playing]) { opacity: 1; }
   @media (pointer: coarse) {
     .mc--overlay { opacity: 1; }
-    .mc--overlay .mc__b { --_b: 44px; }
+    .mc--overlay .mc__b { --_b: var(--hit); }
   }
   /* below: a quiet row under a phone, centred */
   .mc--below { justify-content: center; gap: var(--s-1); }
   .mc--below .mc__b { --_b: var(--s-6); color: var(--_on-stage, var(--ink-2)); }
-  @media (pointer: coarse) { .mc--below .mc__b { --_b: 44px; } }
+  @media (pointer: coarse) { .mc--below .mc__b { --_b: var(--hit); } }
 
   /* ---------- the loop hairline ---------- */
   .mprog { display: block; block-size: var(--lw-cut); overflow: hidden; pointer-events: none; }

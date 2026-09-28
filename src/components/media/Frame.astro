@@ -27,6 +27,7 @@ const { class: cls } = Astro.props;
 </div>
 <style>
   .brw {
+    /* component geometry: the bar is one toolbar row (fine pointer), taller for a coarse one */
     --_bar: 28px;
     position: relative;
     border: var(--lw-object) solid var(--line-2);
@@ -41,9 +42,9 @@ const { class: cls } = Astro.props;
     padding-inline: var(--s-3) var(--s-1);
     background: color-mix(in srgb, var(--acc-soft) 30%, var(--sheet));
     border-block-end: var(--lw-object) solid var(--line-2);
-    border-radius: calc(var(--r-frame) - 1px) calc(var(--r-frame) - 1px) 0 0;
+    border-radius: calc(var(--r-frame) - var(--lw-object)) calc(var(--r-frame) - var(--lw-object)) 0 0;
   }
-  .brw__dots { display: flex; gap: 6px; flex: none; }
+  .brw__dots { display: flex; gap: var(--s-2); flex: none; }
   .brw__dots i { inline-size: var(--s-2); block-size: var(--s-2); border-radius: var(--r-dot); background: var(--line-3); }
   .brw__tools { display: flex; align-items: center; min-inline-size: 0; block-size: 100%; }
   .brw__view { position: relative; }

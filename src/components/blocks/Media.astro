@@ -81,16 +81,16 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
       </ul>
     ) : gallery ? (
       <GalleryWrap {...galleryWrapProps}>
-      <ul class:list={['gallery', { 'gallery--phones': phones }]} style={`--cols: ${block.cols ?? items.length}`} role="list">
+      <ul class:list={['gallery', { 'gallery--phones': phones, 'gallery--lettered': !!ctx.figLetters?.length && !phones }]} style={`--cols: ${block.cols ?? items.length}`} role="list">
         {items.map((mm, i) => {
           const st = stagingOf(mm);
           const plate = <Plate layers={[mm]} alt={alt(fileOf(mm))} frame={frameFor(mm)} fig={figFor(mm, i)} zoom={zoomFor(mm)} />;
           return (
             <li class="gallery__item">
               {st.strip ? (
-                <Strip height={st.strip} aspect={facts(mm).aspect} all={!!st.stripAll} fig={figFor(mm, i)?.no}>{plate}</Strip>
+                <Strip height={st.strip} aspect={facts(mm).aspect} all={!!st.stripAll} fig={figFor(mm, i)?.no} letter={ctx.figLetters?.[i]}>{plate}</Strip>
               ) : plate}
-              {ctx.figLetters?.[i] && <span class="gallery__letter" aria-hidden="true" data-chrome>{ctx.figLetters[i]}</span>}
+              {!st.strip && ctx.figLetters?.[i] && <span class="gallery__letter" aria-hidden="true" data-chrome>{ctx.figLetters[i]}</span>}
             </li>
           );
         })}
@@ -155,9 +155,14 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
   }
   /* ≥ 1280, non-wide: the caption sits in the notes column; a clay leader with a dot terminal joins it to the plate */
   @media (min-width: 1280px) {
+    /* the leader never runs longer than --s-9: past that (a 200px logo, a 440px sketch) the note hangs beside the plate
+       instead, moved left by the excess, into the empty measure next to the plate (the figure's grid row holds only the
+       plate there, so nothing else can sit in that space) */
     .fig:not(.is-wide):not(.blk--nested) > .fig__cap {
-      --_lead: calc(var(--gap, 40px) + max(0px, var(--measure) - var(--_pw, var(--measure))));
+      --_full: calc(var(--gap, var(--s-7)) + max(0px, var(--measure) - var(--_pw, var(--measure))));
+      --_lead: min(var(--_full), var(--s-9));
       position: relative;
+      translate: calc(var(--_lead) - var(--_full)) 0;
     }
     .fig:not(.is-wide):not(.blk--nested) > .fig__cap::before,
     .fig:not(.is-wide):not(.blk--nested) > .fig__cap::after {
@@ -170,8 +175,9 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
       border-block-start: var(--lw-dim) solid var(--clay);
     }
     .fig:not(.is-wide):not(.blk--nested) > .fig__cap::after {
-      inset-inline-end: calc(100% + var(--_lead) - var(--s-2) - 3px);
-      inline-size: 5px; block-size: 5px; border-radius: var(--r-dot); background: var(--clay);
+      --_dot: calc(var(--s-1) + var(--lw-dim));
+      inset-inline-end: calc(100% + var(--_lead) - var(--s-2) - var(--_dot) / 2 - var(--lw-dim) / 2);
+      inline-size: var(--_dot); block-size: var(--_dot); border-radius: var(--r-dot); background: var(--clay);
       translate: 0 -50%;
       margin-block-start: calc(var(--lw-dim) / 2);
     }
@@ -184,6 +190,11 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   }
   .gallery__item { display: grid; gap: var(--s-2); min-inline-size: 0; justify-items: start; }
+  /* lettered galleries: each item spans two rows of the gallery (media, letter) as a subgrid, so the letters of one row
+     share a line under the tallest print instead of stepping with each print's height */
+  .gallery--lettered { grid-auto-rows: auto; row-gap: var(--s-4); }
+  .gallery--lettered > .gallery__item { grid-row: span 2; grid-template-rows: subgrid; row-gap: var(--s-2); align-items: start; }
+  .gallery--lettered > .gallery__item > .gallery__letter { grid-row: 2; }
   .gallery__item > :global(.plate), .gallery__item > :global(.strip) { inline-size: 100%; }
   .gallery__letter {
     font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3);
@@ -196,7 +207,7 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
   .gallery--phones { gap: var(--s-4); align-items: end; }
   @media (max-width: 767.98px) {
     .gallery--phones { display: flex; gap: var(--s-3); padding-block-end: var(--s-2); }
-    .gallery--phones > .gallery__item { flex: 0 0 160px; scroll-snap-align: start; }
+    .gallery--phones > .gallery__item { flex: 0 0 calc(var(--s-10) + var(--s-6)); scroll-snap-align: start; } /* 160px phones */
   }
 
   /* ---------- logo schedule (frame 'soft'): C-4 overflow fixed — n equal cells at every width ---------- */
@@ -224,5 +235,5 @@ const galleryWrapProps = phones ? { variant: 'row' as const, fig: ctx.fig } : {}
   @media (max-width: 479.98px) { .logos__tag { inset: var(--s-1) auto auto var(--s-1); } }
 
   /* a single flat phone screen: sized like a phone, not like a page */
-  .fig__main > :global(.fig__phone) { max-inline-size: 280px; }
+  .fig__main > :global(.fig__phone) { max-inline-size: calc(2 * var(--s-10) + var(--s-5)); } /* 280px: a phone's width */
 </style>

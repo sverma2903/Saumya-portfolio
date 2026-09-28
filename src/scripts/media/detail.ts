@@ -16,6 +16,7 @@
  */
 import Panzoom, { type PanzoomObject } from '@panzoom/panzoom';
 import { motionOK } from '../core/dom';
+import { setHold } from './hold';
 
 type Kind = 'image' | 'gif' | 'video';
 interface Item {
@@ -407,7 +408,7 @@ function flipFrom(el: Element): void {
   const ease = css('--ease-pen', 'ease-out');
   flip.animate([{ transform: `translate(${tx}px, ${ty}px) scale(${s})` }, { transform: 'none' }], { duration: dur, easing: ease });
   dlg!.animate([{ backgroundColor: 'transparent' }, { backgroundColor: getComputedStyle(dlg!).backgroundColor }], { duration: dur, easing: ease });
-  panel.animate([{ transform: 'translateX(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: dur, easing: ease });
+  panel.animate([{ transform: `translateX(${css('--s-4', '16px')})`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: dur, easing: ease });
 }
 
 export function open(el: Element, from?: HTMLElement | null): void {
@@ -418,11 +419,16 @@ export function open(el: Element, from?: HTMLElement | null): void {
   trigger = from ?? null;
   byKeyboard = !!from && from.matches(':focus-visible');
   if (!dlg.open) dlg.showModal();
+  setHold(true);
   panel.removeAttribute('data-open');
   q('[data-dt-handle]').setAttribute('aria-expanded', 'false');
   show(at);
   if (motionOK() && !byKeyboard && list[at].plate) flipFrom(list[at].el);
-  q('[data-dt-fig]').focus({ preventScroll: true });
+  // focus lands on the FIG heading for screen readers; its ring shows only once the reader Tabs back to it (a shortcut
+  // key after opening must not box the heading)
+  const head = q('[data-dt-fig]');
+  head.setAttribute('data-autofocus', '');
+  head.focus({ preventScroll: true });
 }
 
 function close(): void {
@@ -431,6 +437,7 @@ function close(): void {
 
 dlg?.addEventListener('close', () => {
   clearMedia();
+  setHold(false);
   const plate = items[idx]?.plate;
   items = [];
   const back = trigger && trigger.isConnected && trigger.getClientRects().length ? trigger
@@ -516,6 +523,7 @@ canvas.addEventListener('pointerup', (e) => {
 dlg?.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target as HTMLElement;
+  if (e.key === 'Tab') q('[data-dt-fig]').removeAttribute('data-autofocus');
   if (t === scrub) return; // the range owns its arrows
   byKeyboard = true;
   const onButton = t.closest('button, a[href]') != null;
@@ -552,3 +560,5 @@ function relayout(): void {
   onZoom();
 }
 new ResizeObserver(() => relayout()).observe(canvas);
+// once focus has left the FIG heading, coming back to it (Shift+Tab) shows the ring as usual
+dlg?.querySelector('[data-dt-fig]')?.addEventListener('blur', (e) => (e.currentTarget as HTMLElement).removeAttribute('data-autofocus'));

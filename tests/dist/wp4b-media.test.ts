@@ -11,7 +11,7 @@ beforeAll(() => {
 });
 
 describe.each(PAGES)('%s · media loading policy', (page) => {
-  test('GIFs and videos carry no src in HTML (only the page LCP GIF), and each has a <noscript> twin', () => {
+  test('GIFs and videos carry no src in HTML (only the page LCP GIF), and each (but that one) has a <noscript> twin', () => {
     const { root } = load(page);
     const gifs = root.querySelectorAll('img[data-gif]');
     const eager = gifs.filter((g) => g.hasAttribute('src'));
@@ -34,7 +34,8 @@ describe.each(PAGES)('%s · media loading policy', (page) => {
       expect(v.hasAttribute('autoplay')).toBe(false);
     }
     const twins = root.querySelectorAll('noscript').map((n) => n.innerHTML);
-    for (const m of [...gifs, ...vids]) {
+    // the LCP GIF has a real src, so it renders without JS by itself: a twin would paint it twice
+    for (const m of [...gifs.filter((g) => !g.hasAttribute('src')), ...vids]) {
       const src = (m.getAttribute('data-src') ?? m.getAttribute('src') ?? '').replace(/#t=[\d.]+$/, '');
       expect(twins.some((t) => t.includes(`src="${src}"`)), `no <noscript> twin for ${src}`).toBe(true);
     }

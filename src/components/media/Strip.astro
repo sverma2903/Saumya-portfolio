@@ -27,8 +27,10 @@ interface Props {
   /** 'FIG. 3.2' (names the region and the Enlarge button) */
   fig?: string;
   enlarge?: boolean;
+  /** a gallery item's letter (a b c): it leads the tool row, so it sits right under its own image at every width */
+  letter?: string;
 }
-const { height = 0, aspect = 1, variant = 'image', all = false, fig, enlarge = variant === 'image' } = Astro.props;
+const { height = 0, aspect = 1, variant = 'image', all = false, fig, enlarge = variant === 'image', letter } = Astro.props;
 const m = chrome.wp4b.media;
 const label = fig ? fill(m.scrollable, { fig }) : undefined;
 const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspect * 10000) / 10000}` : undefined;
@@ -37,7 +39,8 @@ const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspec
   <div class="strip__win" data-strip-win tabindex={all ? '0' : undefined} role={all ? 'region' : undefined} aria-label={all ? label : undefined} data-label={label}>
     <div class="strip__track"><slot /></div>
   </div>
-  <div class="strip__bar">
+  <div class:list={['strip__bar', { 'strip__bar--lettered': letter }]}>
+    {letter && <span class="strip__letter" aria-hidden="true" data-chrome>{letter}</span>}
     <span class="strip__hint" aria-hidden="true"><Icon name="drag" size={16} />{m.drag}</span>
     {enlarge && fig && (
       <button type="button" class="strip__enlarge" data-strip-enlarge data-js-only aria-label={fill(m.enlargeLabel, { fig })}>
@@ -45,10 +48,12 @@ const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspec
       </button>
     )}
   </div>
+  {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+     that breaks the `+` spacing rules between blocks */}
+  <script>
+    import '../../scripts/media/strip';
+  </script>
 </div>
-<script>
-  import '../../scripts/media/strip';
-</script>
 <style>
   .strip { --_fade: var(--s-6); position: relative; min-inline-size: 0; }
   .strip__bar { display: none; }
@@ -73,13 +78,24 @@ const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspec
   .strip[data-at-start] .strip__win { --_fl: 0px; }
   .strip[data-at-end] .strip__win { --_fr: 0px; }
   .strip__win[data-dragging] { cursor: grabbing; user-select: none; }
-  .strip__win:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .strip__win:focus-visible { outline: var(--lw-cut) solid var(--focus); outline-offset: var(--s-1); }
   /* in an image strip the plate's own enlarge cover yields to scrolling: the Enlarge button below opens the viewer
      (in a row, each item is its own figure: a tap opens that one, a drag is swallowed by strip.ts) */
   .strip--image .strip__win[data-strip-on] :global(.plate__open) { pointer-events: none; }
   .strip--all .strip__win :global(.plate__open) { cursor: grab; }
 
   .strip__bar { align-items: center; justify-content: space-between; gap: var(--s-3); margin-block-start: var(--s-2); }
+  /* a lettered strip (a gallery item): the letter leads the row, the hint follows it, Enlarge keeps the far end */
+  .strip__bar--lettered .strip__hint { margin-inline-end: auto; }
+  .strip__letter {
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3);
+    line-height: 1;
+  }
+  /* above 768 a (non-filmstrip) strip is just its plate: its bar shows only the letter, where a gallery letter goes */
+  @media (min-width: 768px) {
+    .strip:not(.strip--all) .strip__bar--lettered { display: flex; }
+    .strip:not(.strip--all) .strip__bar--lettered > :not(.strip__letter) { display: none; }
+  }
   .strip__hint {
     display: inline-flex; align-items: center; gap: var(--s-2);
     font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
@@ -87,13 +103,13 @@ const style = variant === 'image' ? `--sh: ${height}px; --sa: ${Math.round(aspec
   }
   .strip__enlarge {
     display: inline-flex; align-items: center; gap: var(--s-2);
-    min-block-size: 44px; padding: 0 var(--s-3);
+    min-block-size: var(--hit); padding: 0 var(--s-3);
     font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
     font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink);
     border: var(--lw-object) solid var(--line-3); background: var(--sheet);
   }
   .strip__enlarge:hover { color: var(--rust-deep); border-color: var(--ink); }
-  @media (hover: hover) and (pointer: fine) { .strip__enlarge { min-block-size: 32px; } }
+  @media (hover: hover) and (pointer: fine) { .strip__enlarge { min-block-size: var(--s-6); } }
   @media print {
     .strip__win { overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
     .strip__track { inline-size: auto !important; }

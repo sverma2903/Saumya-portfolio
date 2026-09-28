@@ -15,6 +15,7 @@ import { chrome } from '../../data/chrome';
 import { openDetail } from './plates';
 import { phNote, setState } from './state';
 import { freezePlate, pausePlate, posterPlate } from './gif';
+import { isHeld, onHold } from './hold';
 
 const wide = matchMedia('(min-width: 1024px)');
 const TH = [0, 0.35, 0.5, 0.75, 1];
@@ -118,7 +119,7 @@ function wire(root: HTMLElement): void {
     select(from + 1, false);
   }
 
-  const mayPlay = (i: number) => visible && !userPaused.has(i) && (motionOK() || chosen);
+  const mayPlay = (i: number) => !isHeld() && visible && !userPaused.has(i) && (motionOK() || chosen);
 
   function select(i: number, byUser: boolean) {
     if (byUser) { chosen = true; auto = false; userPaused.delete(i); }
@@ -164,7 +165,7 @@ function wire(root: HTMLElement): void {
 
   /** stacked: only the most visible step plays */
   function stackedPlay() {
-    if (desktop) return;
+    if (desktop || isHeld()) return;
     let best = -1;
     for (const [k, r] of ratios.entries()) if (r >= 0.35 && (best < 0 || r > ratios[best])) best = k;
     for (const k of panels.keys()) if (k !== best) stop(k);
@@ -225,6 +226,12 @@ function wire(root: HTMLElement): void {
     observe(p, (en) => { if (!en.isIntersecting) stop(k, true); }, { rootMargin: viewportMargin(3) });
   }
 
+  // the Enlarged detail is open over the page: stand down (the reader's choices are kept), resume on close
+  onHold((held) => {
+    if (held) { for (const k of panels.keys()) if (plates[k].dataset.state === 'playing' || plates[k].dataset.state === 'loading') stop(k); return; }
+    if (!desktop) { stackedPlay(); return; }
+    if (mayPlay(active)) play(active);
+  });
   wide.addEventListener('change', mode);
   onPref('motion', () => {
     if (!motionOK()) { for (const k of panels.keys()) if (plates[k].dataset.state === 'playing' || plates[k].dataset.state === 'loading') stop(k); }

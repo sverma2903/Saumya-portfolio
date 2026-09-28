@@ -32,8 +32,8 @@ const widest = Math.max(...blocks.map((b) => facts(b.media[0]).aspect));
 const first = blocks[0].media[0];
 const firstSecs = stagingOf(first).gif?.secs ?? 10;
 ---
-<div class:list={['blk', 'blk--run', 'is-wide', 'wkp', { 'wkp--dark': dark }]} data-block="run" data-renderer="phone" data-plan="keep">
-  <div class="blk__main wkp__grid" data-walk style={`--_w: ${Math.round(widest * 10000) / 10000}`}>
+<div class:list={['blk', 'blk--run', 'is-wide', 'wkp', { 'wkp--dark': dark }]} data-block="run" data-renderer="phone" data-plan="keep" style={`--_w: ${Math.round(widest * 10000) / 10000}`}>
+  <div class="blk__main wkp__grid" data-walk>
     <ol class="wkp__steps" role="list">
       {blocks.map((b, i) => {
         const ctx = { ...ctxs[i], inRun: true };
@@ -72,15 +72,34 @@ const firstSecs = stagingOf(first).gif?.secs ?? 10;
       </div>
     </div>
   </div>
+  {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+     that breaks the `+` spacing rules between blocks */}
+  <script>
+    import '../../scripts/media/walkthrough';
+  </script>
 </div>
-<script>
-  import '../../scripts/media/walkthrough';
-</script>
 <style>
   /* §6.1: walkthroughs take --flow-xxl above and below (a heading stays tight to what it introduces) */
-  :global(.blk:not(.blk--h)) + .wkp { margin-block-start: var(--flow-xxl); }
-  .wkp + :global(.blk) { margin-block-start: var(--flow-xxl); }
-  .wkp { --ph: min(480px, 72svh); }
+  /* another component's module script may render between two blocks (it is written where the component first
+     appears): the rhythm steps over it */
+  :global(.blk:not(.blk--h)) + .wkp, :global(.blk:not(.blk--h)) + :global(script) + .wkp { margin-block-start: var(--flow-xxl); }
+  .wkp + :global(.blk), .wkp + :global(script) + :global(.blk) { margin-block-start: var(--flow-xxl); }
+  /* --ph, the phone's height, is sized by the viewport's height AND capped by its column's width, so the phone and its
+     stage never outgrow their track (a tall-but-narrow viewport, 1024 × 900, gave a 560px phone a 316px column). The
+     walkthrough's grid is a size container (not the root: .blk is a subgrid, which containment would break): --_col is the phone column's width (the whole block when stacked, 5/12 at ≥ 1024),
+     --_pad the stage panel's inline padding. (--_w, the widest phone's aspect, is inline on the root, so --ph resolves
+     here and cqi where it is used.) The stacked height is lower than the sticky spec's min(560px, 70vh): stacked, three
+     phones follow one another in the flow, and at 560px each would fill a laptop screen by itself. */
+  .wkp__grid { container-type: inline-size; }
+  .wkp {
+    /* component geometry: the phone's height caps, sticky (§6.2: min(560px, 70vh)) and stacked */
+    --_ph-max: 560px;
+    --_ph-stacked: 480px;
+    --_col: 100cqi;
+    --_pad: var(--s-4);
+    --_fit: calc((var(--_col) - 2 * var(--_pad)) / var(--_w, 0.6));
+    --ph: min(var(--_ph-stacked), 72svh, var(--_fit));
+  }
   .wkp__grid { min-inline-size: 0; }
   .wkp__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--flow-xl); }
   .wkp__step { margin: 0 !important; }
@@ -89,6 +108,9 @@ const firstSecs = stagingOf(first).gif?.secs ?? 10;
   .wkp__lede { font-size: var(--fs-lede-sm); line-height: var(--lh-lede-sm); color: var(--ink); }
   .wkp__html { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
   .wkp__fig { margin: var(--flow-m) 0 0; display: grid; gap: var(--s-2); }
+  /* stacked (below 1024): the stage panel is as wide as its phone plus a --s-9 margin each side at most, so a tablet's
+     measure doesn't turn every step into a full-width slab of colour; it keeps the text's left edge */
+  .wkp__fig .wkp__panel { max-inline-size: calc(var(--ph) * var(--_w, 0.6) + 2 * var(--s-9)); }
   .wkp__panel {
     display: grid; place-items: center;
     padding: var(--s-6) var(--s-4);
@@ -105,10 +127,20 @@ const firstSecs = stagingOf(first).gif?.secs ?? 10;
   @media (min-width: 1024px) {
     /* the phone is centred on the viewport (§6.2); --_below is what hangs under it (panel padding, the gap, the
        controls + FIG line, a margin), so the whole stage always fits a short viewport (1280×800, 1024×768) */
+    /* the phone column is 5/12 of the block (6fr + 5fr tracks with an --s-7 gap), in both the sticky and the split
+       stacked layout; its panel has --s-6 on every side */
+    .wkp { --_col: calc((100cqi - var(--s-7)) * 5 / 11); --_pad: var(--s-6); }
     :global(html.js:not([data-motion="reduce"])) .wkp {
       --_below: calc(var(--s-6) + var(--s-3) + var(--s-8) + var(--s-4));
-      --ph: min(560px, 70vh, calc(100vh - 2 * var(--_below)));
+      --ph: min(var(--_ph-max), 70vh, calc(100vh - 2 * var(--_below)), var(--_fit));
     }
+    /* stacked at ≥ 1024 (no JS, Motion off): the sticky layout's rhythm without the stickiness — each step's text in
+       6/12, its own phone beside it in 5/12, on a stage panel only as large as its phone */
+    .wkp__grid:not([data-sticky]) .wkp__step {
+      display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); column-gap: var(--s-7); align-items: center;
+    }
+    .wkp__grid:not([data-sticky]) .wkp__fig { margin: 0; }
+    .wkp__grid:not([data-sticky]) .wkp__fig .wkp__panel { padding: var(--s-6); }
     :global(html.js:not([data-motion="reduce"])) .wkp__grid[data-sticky] {
       display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); column-gap: var(--s-7); align-items: start;
     }

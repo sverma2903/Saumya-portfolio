@@ -32,7 +32,13 @@ const r = (n: number) => `${Math.round(n * 1000) / 1000}%`;
 )}
 <style>
   /* ---------- wrapper: the 28px band the strings are drawn in ---------- */
-  .dims { --_band: 28px; --_at: 13px; position: relative; }
+  /* geometry: the band the strings are drawn in, the dimension line's offset from the view, the extension lines'
+     overshoot past it and their gap from the media, the 45° tick's length */
+  .dims {
+    --_band: calc(var(--s-5) + var(--s-1)); --_at: calc(var(--s-3) + var(--lw-dim));
+    --_over: calc(var(--s-1) + var(--lw-dim)); --_gap: var(--lw-cut); --_tick: calc(var(--s-2) + var(--lw-dim));
+    position: relative;
+  }
   @media (hover: hover) and (pointer: fine) {
     .dims { padding-block-start: var(--_band); padding-inline-start: var(--_band); }
   }
@@ -45,19 +51,19 @@ const r = (n: number) => `${Math.round(n * 1000) / 1000}%`;
   /* horizontal dimension line, --_at above the view, spanning the media's width */
   .dim__line--x {
     inset-inline-start: var(--l); inline-size: var(--w);
-    inset-block-start: calc(-1 * var(--_at, 13px)); block-size: 0;
+    inset-block-start: calc(-1 * var(--_at)); block-size: 0;
     border-block-start: var(--lw-dim) solid var(--line-2);
     transform-origin: 0 50%;
   }
   /* vertical dimension line, --_at left of the view, spanning the media's height */
   .dim__line--y {
     inset-block-start: var(--t); block-size: var(--h);
-    inset-inline-start: calc(-1 * var(--_at, 13px)); inline-size: 0;
+    inset-inline-start: calc(-1 * var(--_at)); inline-size: 0;
     border-inline-start: var(--lw-dim) solid var(--line-2);
     transform-origin: 50% 0;
   }
   /* 45° architectural ticks at both ends */
-  .dim__line i { position: absolute; display: block; inline-size: 9px; block-size: 0; border-block-start: var(--lw-dim) solid var(--ink-2); rotate: -45deg; }
+  .dim__line i { position: absolute; display: block; inline-size: var(--_tick); block-size: 0; border-block-start: var(--lw-dim) solid var(--ink-2); rotate: -45deg; }
   .dim__line--x i { inset-block-start: calc(-0.5 * var(--lw-dim)); translate: -50% -50%; }
   .dim__line--x i:first-child { inset-inline-start: 0; }
   .dim__line--x i:nth-child(2) { inset-inline-start: 100%; }
@@ -77,13 +83,13 @@ const r = (n: number) => `${Math.round(n * 1000) / 1000}%`;
   .dim__line--y b { inset-block-start: 50%; inset-inline-start: 0; translate: -50% -50%; rotate: -90deg; }
   /* extension lines: from the media's edges out past the dimension lines (dashed where they cross the stage) */
   .dim__ext--l, .dim__ext--r {
-    inset-block-start: calc(-1 * var(--_at, 13px) - 5px); block-size: calc(var(--t) + var(--_at, 13px) + 5px - 2px);
+    inset-block-start: calc(-1 * var(--_at) - var(--_over)); block-size: calc(var(--t) + var(--_at) + var(--_over) - var(--_gap));
     inline-size: 0; border-inline-start: var(--lw-dim) dashed var(--line-2);
   }
   .dim__ext--l { inset-inline-start: var(--l); }
   .dim__ext--r { inset-inline-start: calc(var(--l) + var(--w)); }
   .dim__ext--t, .dim__ext--b {
-    inset-inline-start: calc(-1 * var(--_at, 13px) - 5px); inline-size: calc(var(--l) + var(--_at, 13px) + 5px - 2px);
+    inset-inline-start: calc(-1 * var(--_at) - var(--_over)); inline-size: calc(var(--l) + var(--_at) + var(--_over) - var(--_gap));
     block-size: 0; border-block-start: var(--lw-dim) dashed var(--line-2);
   }
   .dim__ext--t { inset-block-start: var(--t); }

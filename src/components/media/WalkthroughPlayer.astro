@@ -60,14 +60,18 @@ const BOX = 2876 / 2046; // the common frame box (4 of the 5 files are 1.406–1
       );
     })}
   </div>
+  {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+     that breaks the `+` spacing rules between blocks */}
+  <script>
+    import '../../scripts/media/player';
+  </script>
 </div>
-<script>
-  import '../../scripts/media/player';
-</script>
 <style>
   /* §6.1: walkthroughs take --flow-xxl above and below (a heading stays tight to what it introduces) */
-  :global(.blk:not(.blk--h)) + .wkpl { margin-block-start: var(--flow-xxl); }
-  .wkpl + :global(.blk) { margin-block-start: var(--flow-xxl); }
+  /* another component's module script may render between two blocks (it is written where the component first
+     appears): the rhythm steps over it */
+  :global(.blk:not(.blk--h)) + .wkpl, :global(.blk:not(.blk--h)) + :global(script) + .wkpl { margin-block-start: var(--flow-xxl); }
+  .wkpl + :global(.blk), .wkpl + :global(script) + :global(.blk) { margin-block-start: var(--flow-xxl); }
   /* ---------- stacked (default: < 1024, no JS): lede i, then file i ---------- */
   .wkpl__grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--flow-m); min-inline-size: 0; }
   .wkpl__tabs { display: contents; }
@@ -83,7 +87,9 @@ const BOX = 2876 / 2046; // the common frame box (4 of the 5 files are 1.406–1
 
   /* ---------- the player (≥ 1024 with JS): tablist | one frame ---------- */
   @media (min-width: 1024px) {
-    :global(html.js) .wkpl__grid { grid-template-columns: 300px minmax(0, 1fr); column-gap: var(--s-7); align-items: start; row-gap: 0; }
+    /* the step list is 300px (§6.2 WalkthroughPlayer): component geometry */
+    :global(html.js) .wkpl { --_list: 300px; }
+    :global(html.js) .wkpl__grid { grid-template-columns: var(--_list) minmax(0, 1fr); column-gap: var(--s-7); align-items: start; row-gap: 0; }
     :global(html.js) .wkpl__tabs {
       display: flex; flex-direction: column; grid-column: 1; grid-row: 1;
       border-block-start: var(--lw-object) solid var(--line-2);
@@ -97,7 +103,7 @@ const BOX = 2876 / 2046; // the common frame box (4 of the 5 files are 1.406–1
       transition: background-color var(--dur-1) var(--ease-ui);
     }
     :global(html.js) .wkpl__tab::before {
-      content: ''; position: absolute; inset-block: -1px; inset-inline-start: 0; inline-size: var(--lw-cut);
+      content: ''; position: absolute; inset-block: calc(-1 * var(--lw-object)); inset-inline-start: 0; inline-size: var(--lw-cut);
       background: transparent; transition: background-color var(--dur-2) var(--ease-ui);
     }
     :global(html.js) .wkpl__tab[aria-selected="true"]::before { background: var(--rust); }
@@ -107,7 +113,7 @@ const BOX = 2876 / 2046; // the common frame box (4 of the 5 files are 1.406–1
     :global(html.js) .wkpl__tab[aria-selected="true"] .wkpl__n { color: var(--rust); }
     :global(html.js) .wkpl__tab:hover .wkpl__lede { color: var(--ink); }
     :global(html.js) .wkpl__tab:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
-    :global(html.js) .wkpl__tab:focus-visible { outline-offset: -2px; }
+    :global(html.js) .wkpl__tab:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
     :global(html.js) .wkpl__panel { order: 0; grid-column: 2; grid-row: 1; }
   }
 </style>

@@ -28,6 +28,9 @@ const f = facts(media);
     background: var(--plate);
     color: var(--print-ink);           /* drawn ON a print: never themed (the X stays legible in Dusk) */
     pointer-events: none;
+    /* the void never reaches past its box: on a plate narrower than its label (a bare About plate at 320) the label
+       wraps inside it, and anything still wider is clipped, never pushed into the page's scroll width */
+    overflow: hidden;
     transition: opacity var(--dur-2) var(--ease-ui), visibility 0s linear var(--dur-2);
   }
   .ph--fill { position: absolute; inset: 0; block-size: 100%; }
@@ -40,7 +43,7 @@ const f = facts(media);
     background: var(--plate);        /* the label masks the X where it crosses it */
     font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm);
     line-height: var(--lh-code-sm); letter-spacing: var(--tr-code-sm); font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    max-inline-size: 100%; text-align: center; text-wrap: balance;
   }
   .ph__state:empty { display: none; }
   .ph__state {

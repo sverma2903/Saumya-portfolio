@@ -108,8 +108,13 @@ const m = chrome.wp4b.media;
   .detail::backdrop { background: var(--scrim); }
   .detail:not([open]) { display: none; }
   .dt {
+    /* component geometry: the title-block panel (§4.5: 320–344px), a button row (fine pointer), the mobile sheet's
+       collapsed height (its handle) */
+    --_panel: clamp(calc(var(--s-10) + var(--s-11)), 24vw, calc(var(--s-10) + var(--s-11) + var(--s-5)));
+    --_btn: calc(var(--s-6) + var(--s-1));
+    --_sheet: calc(var(--s-8) + var(--s-2));
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 344px);
+    grid-template-columns: minmax(0, 1fr) var(--_panel);
     inline-size: 100%; block-size: 100%;
   }
 
@@ -119,7 +124,7 @@ const m = chrome.wp4b.media;
   .dt__canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: zoom-in; }
   .dt__canvas[data-zoomed] { cursor: grab; }
   .dt__canvas[data-zoomed]:active { cursor: grabbing; }
-  .dt__canvas:focus-visible { outline: 2px solid var(--plate); outline-offset: -4px; }
+  .dt__canvas:focus-visible { outline: var(--lw-cut) solid var(--plate); outline-offset: calc(-1 * var(--s-1)); }
   .dt__flip { position: absolute; inset: 0; transform-origin: 0 0; }
   .dt__item { position: absolute; inset-inline-start: 0; inset-block-start: 0; }
   .dt__media { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; max-inline-size: none; user-select: none; -webkit-user-drag: none; }
@@ -163,9 +168,11 @@ const m = chrome.wp4b.media;
     letter-spacing: var(--tr-code); line-height: var(--lh-code); color: var(--ink);
   }
   .dt__fig:focus { outline: none; }
-  .dt__fig:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .dt__fig:focus-visible:not([data-autofocus]) { outline: var(--lw-cut) solid var(--focus); outline-offset: var(--s-1); }
   .dt__count { font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .dt__cap { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); font-style: italic; color: var(--ink); text-wrap: pretty; }
+  /* balance, not pretty: her short captions ('… Pain Points - HomePage') must not break before a spaced hyphen, which
+     would read as a list dash (her words and order are untouched; only the line break moves) */
+  .dt__cap { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); font-style: italic; color: var(--ink); text-wrap: balance; }
   .dt__cap:empty { display: none; }
   .dt__cap :global(strong) { font-style: normal; }
   /* the file facts as a title block: cells with a small caps key over the value; the file name gets the whole row
@@ -203,7 +210,7 @@ const m = chrome.wp4b.media;
   .dt__nav { display: flex; justify-content: space-between; gap: var(--s-2); margin-block-start: auto; padding-block-start: var(--s-4); border-block-start: var(--lw-object) solid var(--line-2); }
   .dt__b {
     display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
-    min-block-size: 36px; min-inline-size: 36px; padding: 0 var(--s-3);
+    min-block-size: var(--_btn); min-inline-size: var(--_btn); padding: 0 var(--s-3);
     font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); letter-spacing: .04em;
     font-variation-settings: var(--wdth-label);
     color: var(--ink); background: var(--sheet);
@@ -234,29 +241,29 @@ const m = chrome.wp4b.media;
     color: var(--ink); background: var(--sheet); border: var(--lw-border) solid var(--ink);
   }
   .dt__close:hover { color: var(--rust-deep); }
-  .dt__close kbd { font-family: var(--font-mono); font-size: var(--fs-code-sm); color: var(--ink-3); padding: 1px var(--s-1); border: var(--lw-object) solid var(--line-2); border-radius: var(--r-1); text-transform: none; }
-  @media (pointer: coarse) { .dt__b { min-block-size: 44px; min-inline-size: 44px; } }
+  .dt__close kbd { font-family: var(--font-mono); font-size: var(--fs-code-sm); color: var(--ink-3); padding: var(--lw-object) var(--s-1); border: var(--lw-object) solid var(--line-2); border-radius: var(--r-1); text-transform: none; }
+  @media (pointer: coarse) { .dt__b { min-block-size: var(--hit); min-inline-size: var(--hit); } }
 
   /* ---------- mobile (and portrait tablets, where a side panel would halve the stage): full-screen stage, the panel
      as a bottom sheet (72px handle ↔ 50vh) ---------- */
   @media (max-width: 767.98px), (max-width: 1023.98px) and (orientation: portrait) {
     .dt { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-    .dt__panel { border-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); max-block-size: 72px; transition: max-block-size var(--dur-3) var(--ease-pen); }
+    .dt__panel { border-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); max-block-size: var(--_sheet); transition: max-block-size var(--dur-3) var(--ease-pen); }
     .dt__panel[data-open] { max-block-size: 50vh; max-block-size: 50dvh; }
     .dt__handle {
-      display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: var(--s-3);
-      min-block-size: 72px; padding: var(--s-3) var(--s-4) var(--s-2); padding-inline-end: calc(var(--s-4) + 52px);
+      display: grid; grid-template-columns: minmax(0, 1fr) var(--hit); align-items: center; gap: var(--s-3);
+      min-block-size: var(--_sheet); padding: var(--s-3) var(--s-4) var(--s-2); padding-inline-end: calc(var(--s-4) + var(--hit) + var(--s-2));
       text-align: start;
     }
-    .dt__handle-bar { position: absolute; inset: var(--s-2) auto auto 50%; translate: -50% 0; inline-size: 36px; block-size: var(--s-1); border-radius: var(--r-dot); background: var(--line-3); }
-    .dt__handle-t { display: grid; gap: 2px; min-inline-size: 0; }
+    .dt__handle-bar { position: absolute; inset: var(--s-2) auto auto 50%; translate: -50% 0; inline-size: var(--_btn); block-size: var(--s-1); border-radius: var(--r-dot); background: var(--line-3); }
+    .dt__handle-t { display: grid; gap: calc(var(--s-1) / 2); min-inline-size: 0; }
     .dt__handle-t > :first-child { font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); }
     .dt__handle-cap { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* open: the whole caption is in the body, so the handle keeps only the FIG number */
     .dt__panel[data-open] .dt__handle-cap { display: none; }
     .dt__body { padding: var(--s-2) var(--s-4) var(--s-4); }
     .dt__head { display: none; }
-    .dt__close { position: absolute; inset: var(--s-3) var(--s-3) auto auto; margin: 0; inline-size: 44px; min-block-size: 44px; padding: 0; }
+    .dt__close { position: absolute; inset: var(--s-3) var(--s-3) auto auto; margin: 0; inline-size: var(--hit); min-block-size: var(--hit); padding: 0; }
     .dt__close span, .dt__close kbd { display: none; }
   }
   @media print { .detail { display: none !important; } }

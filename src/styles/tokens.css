@@ -122,6 +122,8 @@
   --space-chapter: clamp(96px, 10vw, 160px);
   /* radii — drafting is square */
   --r-0: 0; --r-1: 2px; --r-frame: 6px; --r-dot: 999px;
+  /* WP4b: the minimum touch target (WCAG 2.5.5): coarse-pointer buttons, and the hit area around small fine-pointer ones */
+  --hit: 44px;
   /* line weights — a real drafting hierarchy */
   --lw-cut: 2px;       /* section cut lines, section-mark line */
   --lw-border: 1.25px; /* title blocks, detail-title rules, buttons */

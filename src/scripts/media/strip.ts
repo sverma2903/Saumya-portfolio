@@ -13,6 +13,18 @@ function wire(strip: HTMLElement): void {
   if (!win || strip.dataset.wired) return;
   strip.dataset.wired = '';
   const all = strip.classList.contains('strip--all');
+  // an image strip's plate cover (the full-size Enlarge over the image) yields to the explicit Enlarge button while the
+  // strip scrolls: out of the tab order and the a11y tree too, so keyboard users meet ONE "Enlarge FIG. n" (a cover as
+  // wide as the image, inside a narrow window, would also show a mostly clipped focus ring)
+  const cover = strip.classList.contains('strip--image') ? strip.querySelector<HTMLElement>('.plate__open') : null;
+  const coverTab = cover?.getAttribute('tabindex') ?? null;
+  const coverHidden = cover?.getAttribute('aria-hidden') ?? null;
+  const setCover = (on: boolean) => {
+    if (!cover) return;
+    const restore = (a: string, v: string | null) => (v == null ? cover.removeAttribute(a) : cover.setAttribute(a, v));
+    if (on) { cover.tabIndex = -1; cover.setAttribute('aria-hidden', 'true'); }
+    else { restore('tabindex', coverTab); restore('aria-hidden', coverHidden); }
+  };
 
   const edges = rafThrottle(() => {
     const max = win.scrollWidth - win.clientWidth;
@@ -22,6 +34,7 @@ function wire(strip: HTMLElement): void {
   const sync = () => {
     const on = all || narrow.matches;
     win.toggleAttribute('data-strip-on', on);
+    setCover(on && !!strip.querySelector('[data-strip-enlarge]'));
     if (on) {
       win.tabIndex = 0;
       win.setAttribute('role', 'region');

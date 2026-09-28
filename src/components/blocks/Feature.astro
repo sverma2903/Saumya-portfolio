@@ -80,19 +80,21 @@ const hasText = !!(block.kicker || block.n || block.title || block.lede || block
 <style>
   /* §6.1: a feature takes --flow-xl above and below (a heading keeps its own tighter step). The space between a feature
      and a Plan-view omit-run wrapper is the wrapper's (WP5's OmitRun; chapters are grids, so margins never collapse). */
-  :global(.blk:not(.blk--h)) + .feature { margin-block-start: var(--flow-xl); }
-  .feature + :global(.blk) { margin-block-start: var(--flow-xl); }
+  /* another component's module script may render between two blocks (it is written where the component first
+     appears): the rhythm steps over it */
+  :global(.blk:not(.blk--h)) + .feature, :global(.blk:not(.blk--h)) + :global(script) + .feature { margin-block-start: var(--flow-xl); }
+  .feature + :global(.blk), .feature + :global(script) + :global(.blk) { margin-block-start: var(--flow-xl); }
   .feature__grid { display: grid; gap: var(--flow-m); min-inline-size: 0; }
   .feature__text { display: grid; gap: var(--s-3); align-content: start; max-inline-size: var(--measure); min-inline-size: 0; }
   .feature__head { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
   .feature__kicker {
-    display: inline-block; padding: 3px var(--s-2) 2px;
+    display: inline-block; padding: var(--s-1) var(--s-2) calc(var(--s-1) - var(--lw-object));
     font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
     line-height: var(--lh-code); color: var(--rust);
     border: var(--lw-object) solid currentColor;
   }
   .feature__n {
-    display: inline-grid; place-items: center; min-inline-size: 28px; block-size: var(--s-5); padding-inline: var(--s-1);
+    display: inline-grid; place-items: center; min-inline-size: calc(var(--s-5) + var(--s-1)); block-size: var(--s-5); padding-inline: var(--s-1);
     font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code);
     color: var(--ink); border: var(--lw-object) solid var(--ink); font-variant-numeric: tabular-nums;
   }
@@ -107,15 +109,18 @@ const hasText = !!(block.kicker || block.n || block.title || block.lede || block
      its box, and at 1440 that 43px gutter is the sticky Levels rail's edge (a hanging leader would touch its View box).
      See wt-notes/wp4b.md → "for the integrator". */
   .feature__items { list-style: none; margin: 0; padding: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
-  .feature__items > li { position: relative; padding-block: 14px; padding-inline-start: 44px; }
+  /* leader geometry: a --_lead line ending in a --_dot dot, then --s-4 to her text; the line sits on the first line's
+     x-height (0.81em below the item's padding edge at --lh-body) */
+  .feature__items { --_pad: var(--s-3); --_lead: calc(var(--s-5) + var(--s-1)); --_dot: calc(var(--s-1) + var(--lw-cut)); }
+  .feature__items > li { position: relative; padding-block: var(--_pad); padding-inline-start: calc(var(--_lead) + var(--s-4)); }
   .feature__items > li + li { border-block-start: var(--lw-object) solid var(--line-1); }
   .feature__items > li::before {
-    content: ''; position: absolute; inset-inline-start: 0; inset-block-start: calc(14px + 0.81em);
-    inline-size: 28px; border-block-start: var(--lw-dim) solid var(--clay);
+    content: ''; position: absolute; inset-inline-start: 0; inset-block-start: calc(var(--_pad) + 0.81em);
+    inline-size: var(--_lead); border-block-start: var(--lw-dim) solid var(--clay);
   }
   .feature__items > li::after {
-    content: ''; position: absolute; inset-inline-start: 26px; inset-block-start: calc(14px + 0.81em - 3px);
-    inline-size: 6px; block-size: 6px; border-radius: var(--r-dot); background: var(--clay);
+    content: ''; position: absolute; inset-inline-start: calc(var(--_lead) - var(--_dot) + var(--lw-dim)); inset-block-start: calc(var(--_pad) + 0.81em + var(--lw-dim) / 2);
+    inline-size: var(--_dot); block-size: var(--_dot); border-radius: var(--r-dot); background: var(--clay); translate: 0 -50%;
   }
 
   .feature__fig { margin: 0; min-inline-size: 0; display: grid; gap: var(--s-2); }

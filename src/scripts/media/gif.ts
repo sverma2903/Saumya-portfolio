@@ -17,6 +17,7 @@ import { motionOK } from '../core/dom';
 import { on as onPref } from '../core/prefs';
 import { chrome } from '../../data/chrome';
 import { phNote, setState } from './state';
+import { isHeld, onHold } from './hold';
 
 const LARGE = 400_000;
 const MAX_LARGE = 2;
@@ -200,7 +201,10 @@ function evaluate(): void {
   const large = all.filter((g) => !g.far && isLarge(g) && (wants(g) || live(g)))
     .sort((a, b) => rank(b) - rank(a) || b.ratio - a.ratio);
   const blocked = new Set(large.slice(MAX_LARGE));
+  const held = isHeld();
   for (const g of all) {
+    // the Enlarged detail is open over the page: nothing behind it decodes (its state and the reader's choice are kept)
+    if (held) { if (live(g)) park(g); continue; }
     g.autoPaused = blocked.has(g);
     const st = g.plate.dataset.state;
     if (g.far) { if (st !== 'parked' && st !== 'idle') park(g); continue; }
@@ -290,4 +294,5 @@ export function mountAllForPrint(): void {
 }
 
 // the Motion switch is a fresh, site-wide choice: it resets every per-GIF choice (a still plate stays still)
+onHold(() => schedule());
 onPref('motion', () => { for (const g of gifs.values()) g.choice = g.still ? 'pause' : 'auto'; schedule(); });
