@@ -36,15 +36,17 @@ const hp = parts(h.planHintPointer);
 const ht = parts(h.planHintTouch);
 /** the plan's accessible name: the owner-gated sentence (N) once approved; until then two shipped labels, no pointer talk */
 const planName = narrative(h.planLabel) ?? `${hp.site} · ${h.section}`;
-/** Her headline, verbatim. The only change is typographic: her compound "AI-assisted" may not break at its hyphen
- *  (a nowrap span around the word; the text — and every test's view of it — is unchanged). */
-const headline = home.headline.replace('AI-assisted', '<span class="cover__nb">AI-assisted</span>');
+/** Her headline and sub, verbatim. The only change is typographic: her compounds "AI-assisted" and "front-end" may not
+ *  break at their hyphens (a nowrap span around the word; the text — and every test's view of it — is unchanged). */
+const nb = (html: string, word: string) => html.replace(word, `<span class="cover__nb">${word}</span>`);
+const headline = nb(home.headline, 'AI-assisted');
+const sub = nb(home.sub, 'front-end');
 ---
 <section class="cover" id="cover" aria-labelledby="cover-h" data-cover data-el={h.el} data-north={h.north}>
   <div class="cover__text" data-text>
     <p class="cover__eyebrow t-label-lg"><span class="cover__sheet t-code">{SHEET}</span><span class="cover__rule" aria-hidden="true"></span><span>{h.coverSheet}</span></p>
     <h1 id="cover-h" class="cover__h" data-v><Fragment set:html={headline} /> <Ornament /></h1>
-    <p class="cover__sub" data-v set:html={home.sub} />
+    <p class="cover__sub" data-v set:html={sub} />
     <p class="cover__ctas">
       <a class="btn cover__btn" href="#index" data-v>{labels.selected}</a>
       <a class="cover__connect" href={links.email} data-v>{home.connect}</a>
@@ -102,7 +104,7 @@ const headline = home.headline.replace('AI-assisted', '<span class="cover__nb">A
     text-wrap: balance;
   }
   .cover__h :global(.hl) { color: var(--rust-2); }
-  .cover__h :global(.cover__nb) { white-space: nowrap; }
+  .cover :global(.cover__nb) { white-space: nowrap; }
   .cover__sub {
     margin-block-start: var(--s-5);
     max-inline-size: 32em;
@@ -120,9 +122,10 @@ const headline = home.headline.replace('AI-assisted', '<span class="cover__nb">A
     transition: background-position var(--dur-3) var(--ease-pen), color var(--dur-1) var(--ease-ui);
   }
   .cover__btn:hover { background-position: 0 0, 0 0; }
+  /* the secondary action sits under the button's weight: body-sm, its cap height ≈ the button label's */
   .cover__connect {
-    font-size: var(--fs-body);
-    line-height: var(--lh-body);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
     color: var(--ink);
     text-underline-offset: var(--s-1);
   }

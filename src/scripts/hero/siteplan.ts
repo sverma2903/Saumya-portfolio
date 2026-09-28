@@ -4,8 +4,10 @@
  * hour, the rust isoline and cut-plane poché at the survey elevation — with Section A–A drawn by section2d.ts on the
  * same x-axis. Ported from the prototype (concepts/drawing-set §I) with the spec's nine changes.
  *
- * Settle and stop (SPEC §2.7 law 4, WCAG 2.2.2): drafting-in (2.0 s) + demo (2.4 s) + settle (0.4 s) = 4.8 s from the
- * first frame, then 0 frames. After that it renders only on input and stops as soon as the eased values converge.
+ * Settle and stop (SPEC §2.7 law 4, WCAG 2.2.2): drafting-in (2.0 s) + demo (2.2 s) + settle (0.4 s) = 4.6 s from the
+ * first frame, then 0 frames — the rest pose is drawn on the last frame that lands before 4.6 s + one frame interval,
+ * so even at a few frames a second the motion is over well inside 4.8 s. After that it renders only on input and
+ * stops as soon as the eased values converge.
  *
  * Contracts (SPEC §8.3): reads html[data-gl] (head script: 'maybe' | 'no') and sets 'live' after its first frame or
  * 'no' on failure / context loss / Motion off; subscribes to prefs `motion` and the `sv:theme` event; stores
@@ -16,22 +18,22 @@
  */
 import { Hpx, crossingX, intervalFor, landforms, layoutPrimitives, restPose, sunDir, sunHour, REST_CUT, REST_FOCUS, SURVEY_X } from '../../lib/terrain.js';
 import type { Site } from '../../lib/terrain.js';
-import { createOverlay, type Landform, type Palette, type RGB, type Rect, type Scene, type Type } from './section2d';
+import { createOverlay, CUT_INSET_BOTTOM, CUT_INSET_TOP, CUT_INSET_X, type Landform, type Palette, type RGB, type Rect, type Scene, type Type } from './section2d';
 import { on as onPref } from '../core/prefs';
 import { listen } from '../core/bus';
 import { idle } from '../core/dom';
 import { onVisibility } from '../core/io';
 
 // ── timing (SPEC SM1 loop) ────────────────────────────────────────────────────────────────────────────────────────
-const REVEAL_MS = 2000, DEMO_MS = 2400, SETTLE_MS = 400;   // 4.8 s → WCAG 2.2.2 (< 5 s)
+const REVEAL_MS = 2000, DEMO_MS = 2200, SETTLE_MS = 400;   // 4.6 s (+ ≤ 1 frame) → WCAG 2.2.2 (< 5 s)
 const T_END = REVEAL_MS + DEMO_MS + SETTLE_MS;
 const T_DRAWN = 2200;                                     // every drafting channel is at 1 (≤ 2.25 s)
 const RETURN_MS = 600;                                    // light eases back to the sun when the pointer leaves
 const BOOST = 4;                                          // pointer input during drafting-in: finish 4× faster
 // demo keyframes: the isoline breathes 9 → 13 → +12.00, the cut glides 50 → 58 → 55 %, the light swings ±15°
-const K_FOCUS: [number, number][] = [[REVEAL_MS, 9], [REVEAL_MS + 1500, 13], [T_END, REST_FOCUS]];
-const K_CUT: [number, number][] = [[REVEAL_MS, 0.5], [REVEAL_MS + 1500, 0.58], [T_END, REST_CUT]];
-const K_ANG: [number, number][] = [[REVEAL_MS, 0], [REVEAL_MS + 800, 15], [REVEAL_MS + 2000, -15], [T_END, 0]];
+const K_FOCUS: [number, number][] = [[REVEAL_MS, 9], [REVEAL_MS + 1400, 13], [T_END, REST_FOCUS]];
+const K_CUT: [number, number][] = [[REVEAL_MS, 0.5], [REVEAL_MS + 1400, 0.58], [T_END, REST_CUT]];
+const K_ANG: [number, number][] = [[REVEAL_MS, 0], [REVEAL_MS + 750, 15], [REVEAL_MS + 1850, -15], [T_END, 0]];
 // ── input and budget ──────────────────────────────────────────────────────────────────────────────────────────────
 const KEY_STEP = 16, KEY_STEP_BIG = 64;
 const VISIBLE = 0.35;
@@ -75,81 +77,96 @@ function keyed(k: [number, number][], t: number, ease: (x: number) => number): n
 }
 
 // ── the fragment shader: the prototype's, with uInk/uRust, uLightDir (local-hour sun), the cut-plane poché, an
-//    adaptive cross-hatch switch, quiet zones (headline, section band) and edge fades. `H` mirrors lib/terrain.js. ──
+//    adaptive cross-hatch switch, quiet zones (headline, section band) and edge fades. `H` mirrors lib/terrain.js
+//    (GROUND_OUT = 12). Notes (kept out of the GLSL string so they are not shipped):
+//    · fc is css px, y down. The slope `fh` is per pixel: one-sided differences 1.2 css px either side, the steeper of
+//      the two on each axis. Unlike fwidth (constant over 2×2 pixel quads, and spiking where the pyramid's faces meet)
+//      it is smooth from pixel to pixel, so lines do not stair-step along a crease. Metres per device px, × 4/π so the
+//      lines keep fwidth's average weight (fwidth is |∂x| + |∂y|, 4/π × the gradient on average over directions).
+//    · graphite contours: distance (device px) to the nearest level, index contour every 5th, faded where they crowd.
+//      A level can coincide with a dead-flat surface (the mesa's plateau is exactly +15.00, a contour level), and a
+//      "line" there would fill the plateau: lines — and the rust isoline — need a slope (`sloped`).
+//    · drafted in: the lowest levels ink first, rising to the summits. Quiet zones: under the headline (28%), under
+//      the section band, soft frame edges.
+//    · hatching on the slopes turned away from the light (45°, cross-hatch in deep shade), 6 css px pitch: a whole
+//      number of device px at the fine-pointer caps (6 at DPR 1, 9 at 1.5) so it does not beat against the pixel grid;
+//      its edge widens by the browser's upscale (uAA = devicePixelRatio / canvas DPR ≥ 1).
+//    · the rust isoline at the survey elevation is a plan annotation: it fades out over the last 24 px inside the plan
+//      box, so it ends like a drawn line short of the box (and of the keyboard focus frame just outside it).
+//    · cut-plane poché: everything ABOVE the plan cut is cut material (never below +6: only the three landforms).
+//    · composite (premultiplied): graphite → poché (rust, under) → isoline (rust, over).
 const VS = `#version 300 es
 void main(){ vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2)); gl_Position = vec4(p * 2. - 1., 0., 1.); }`;
 const FS = `#version 300 es
 precision highp float;
 uniform vec2 uRes, uRange, uLightDir;
-uniform float uDpr, uUnit, uReveal, uInterval, uFocus, uIso, uHatch, uCross, uGain;
+uniform float uDpr, uAA, uUnit, uReveal, uInterval, uFocus, uIso, uHatch, uCross, uGain;
 uniform vec3 uTri, uCirc, uInk, uRust;
 uniform vec4 uSq, uText, uQuiet, uFade, uPlan;
 out vec4 o;
 const float S3 = 1.7320508;
-float base(vec2 p){ return 2.2*sin(p.x*3.1+.4)*sin(p.y*2.7-.2) + 1.4*sin(p.x*5.3+p.y*3.9+1.3) + .6*sin(p.x*9.7-p.y*7.1+.7) + 1.2*p.x; }
+float base(vec2 p){ return 2.2*sin(p.x*3.1+.8)*sin(p.y*2.7-.3) + 1.4*sin(p.x*5.3+p.y*3.9+1.3) + .6*sin(p.x*9.7-p.y*7.1+.7) + 1.2*p.x; }
 float sdTri(vec2 p, float r){ p.x = abs(p.x) - r; p.y = p.y + r/S3; if (p.x + S3*p.y > 0.) p = vec2(p.x - S3*p.y, -S3*p.x - p.y) / 2.; p.x -= clamp(p.x, -2.*r, 0.); return -length(p) * sign(p.y); }
 float sdBox(vec2 p, float b, float r){ vec2 d = abs(p) - b + r; return length(max(d, 0.)) + min(max(d.x, d.y), 0.) - r; }
 float H(vec2 p){
   float d = length(p - uCirc.xy) / uCirc.z; float dome = d < 1. ? 11. * (1. + cos(3.14159265 * d)) : 0.;
   float mesa = 15. * (1. - smoothstep(-.045, .05, sdBox(p - uSq.xy, uSq.z, uSq.w)));
   float st = sdTri(vec2(p.x - uTri.x, -(p.y - uTri.y)), uTri.z); float pyr = 26. * clamp(-st / (uTri.z / S3), 0., 1.);
-  return base(p) + max(dome, max(mesa, pyr));
+  float land = max(dome, max(mesa, pyr));
+  return base(p) * (1. - smoothstep(0., 12., land)) + land;
 }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float inBox(vec2 q, vec4 r, float f){ vec2 e = max(r.xy - q, q - r.zw); return 1. - smoothstep(0., f, max(e.x, e.y)); }
 float ramp(float d, float w){ return w > .5 ? smoothstep(0., w, d) : 1.; }
 void main(){
-  vec2 fc = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uDpr;   // css px, y down
+  vec2 fc = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uDpr;
   vec2 p = fc / uUnit;
   float h = H(p);
-  // graphite contours: distance (device px) to the nearest level, index contour every 5th, faded where they crowd
-  float f = h / uInterval, fw = fwidth(f);
+  float e = 1.2 / uUnit;
+  float hE = H(p + vec2(e, 0.)), hW = H(p - vec2(e, 0.)), hS = H(p + vec2(0., e)), hN = H(p - vec2(0., e));
+  float fh0 = 1.27 * length(vec2(max(abs(hE - h), abs(h - hW)), max(abs(hS - h), abs(h - hN)))) / (1.2 * uDpr);
+  float fh = max(fh0, 1e-4);
+  float f = h / uInterval, fw = fh / uInterval;
   float dist = abs(fract(f + .5) - .5) / max(fw, 1e-4);
   float idx = step(abs(mod(floor(f + .5), 5.)), .01);
   float wpx = mix(.55, 1.05, idx) * uDpr;
-  float line = (1. - smoothstep(wpx - .6, wpx + .6, dist)) * (1. - smoothstep(.28, .55, fw / uDpr));
+  float sloped = smoothstep(1e-6, 1e-5, fh0);
+  float line = (1. - smoothstep(wpx - .6, wpx + .6, dist)) * (1. - smoothstep(.28, .55, fw / uDpr)) * sloped;
   float grain = .72 + .28 * hash(floor(fc * 1.3));
   float press = .82 + .18 * sin(p.x * 37. + p.y * 23. + h * .7);
-  // drafted in: the lowest levels ink first, rising to the summits
   float R = mix(uRange.x - 3., uRange.y + 3.5, uReveal);
   float drawn = 1. - smoothstep(R - 3.5, R, h);
-  // quiet zones: under the headline (28%), under the section band, soft frame edges
   vec2 res = uRes / uDpr;
   float inText = inBox(fc, uText, 90.);
   float edge = ramp(fc.y, uFade.x) * ramp(res.y - fc.y, uFade.y) * ramp(fc.x, uFade.z) * ramp(res.x - fc.x, uFade.w);
   float fade = mix(1., .28, inText) * mix(1., .14, inBox(fc, uQuiet, 18.)) * edge;
   float aC = line * mix(.16, .34, idx) * grain * press * drawn * fade * uGain;
-  // cartographic hatching on the slopes turned away from the light (45°, cross-hatch in deep shade)
-  float e = 1.2 / uUnit, Sc = 260.;
-  float hx = (H(p + vec2(e, 0.)) - H(p - vec2(e, 0.))) / (2. * e) / Sc;
-  float hy = (H(p + vec2(0., e)) - H(p - vec2(0., e))) / (2. * e) / Sc;
+  float Sc = 260.;
+  float hx = (hE - hW) / (2. * e) / Sc;
+  float hy = (hS - hN) / (2. * e) / Sc;
   vec3 n = normalize(vec3(-hx, -hy, 1.));
   vec3 L = normalize(vec3(uLightDir * .82, .58));
   float shade = clamp(L.z - dot(n, L), 0., 1.);
   float slope = length(vec2(hx, hy));
   float w1 = sin(fc.y * .045 + fc.x * .013) * .7;
-  float s1 = abs(fract((fc.x + fc.y + w1) / 5.5) - .5) * 5.5;
-  float s2 = abs(fract((fc.x - fc.y - w1) / 5.5) - .5) * 5.5;
-  float hat = (1. - smoothstep(.3, .95, s1)) * smoothstep(.06, .2, shade)
-            + (1. - smoothstep(.3, .95, s2)) * smoothstep(.3, .5, shade) * .8 * uCross;
+  float s1 = abs(fract((fc.x + fc.y + w1) / 6.) - .5) * 6.;
+  float s2 = abs(fract((fc.x - fc.y - w1) / 6.) - .5) * 6.;
+  float hat = (1. - smoothstep(.3, .95 * uAA, s1)) * smoothstep(.06, .2, shade)
+            + (1. - smoothstep(.3, .95 * uAA, s2)) * smoothstep(.3, .5, shade) * .8 * uCross;
   float aH = hat * .26 * smoothstep(.03, .1, slope) * grain * uHatch * fade * drawn * uGain;
-  // the rust isoline at the survey elevation — a plan annotation, so it stays inside the plan box
-  float inPlan = inBox(fc, uPlan, 10.);
-  float fh = max(fwidth(h), 1e-4);
-  float aR = (1. - smoothstep(.8 * uDpr, 1.9 * uDpr, abs(h - uFocus) / fh)) * .9 * uIso * inPlan * mix(1., .5, inText);
-  // cut-plane poché: everything ABOVE the plan cut is cut material (never below +6: only the three landforms)
+  float inPlan = inBox(fc, uPlan + vec4(24., 24., -24., -24.), 24.);
+  float aR = (1. - smoothstep(.8 * uDpr, 1.9 * uDpr, abs(h - uFocus) / fh)) * sloped * .9 * uIso * inPlan * mix(1., .5, inText);
   float cutZ = max(uFocus, 6.);
   float above = smoothstep(cutZ - fh * .5, cutZ + fh * .5, h);
   float stripe = 1. - smoothstep(.35, 1., abs(fract((fc.x - fc.y) / 7.) - .5) * 7.);
   float aP = above * stripe * .10 * uIso * inPlan * fade;
-  // composite (premultiplied): graphite → poché (rust, under) → isoline (rust, over)
   float a = max(aC, aH);
   vec3 col = uInk * a;
   col = col * (1. - aP) + uRust * aP; a = a + aP * (1. - a);
   col = col * (1. - aR) + uRust * aR; a = a + aR * (1. - a);
   o = vec4(col, a);
 }`;
-const UNIFORMS = ['uRes', 'uRange', 'uLightDir', 'uDpr', 'uUnit', 'uReveal', 'uInterval', 'uFocus', 'uIso', 'uHatch', 'uCross', 'uGain',
+const UNIFORMS = ['uRes', 'uRange', 'uLightDir', 'uDpr', 'uAA', 'uUnit', 'uReveal', 'uInterval', 'uFocus', 'uIso', 'uHatch', 'uCross', 'uGain',
   'uTri', 'uCirc', 'uInk', 'uRust', 'uSq', 'uText', 'uQuiet', 'uFade', 'uPlan'] as const;
 type Loc = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
@@ -222,8 +239,12 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   const hour = hp !== null && Number.isFinite(Number(hp)) ? Math.max(0, Math.min(24, Number(hp))) : nowD.getHours() + nowD.getMinutes() / 60;
   const [sdx, sdy] = sunDir(hour);
   const sunAng = Math.atan2(sdy, sdx);
-  const tm = Math.round(sunHour(hour) * 60);
-  const time = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(2000, 0, 1, Math.floor(tm / 60) % 24, tm % 60));
+  // the detail reads the visitor's own clock in their locale's format (SPEC SM1 change 6); only the light falls back to
+  // 17:24 at night, and then the glyph is a moon
+  const tm = Math.round(hour * 60) % (24 * 60);
+  const clock = hp !== null ? new Date(2000, 0, 1, Math.floor(tm / 60), tm % 60) : nowD;
+  const time = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' }).format(clock);
+  const night = sunHour(hour) !== hour;
 
   // ── tokens: colours, type, easings ──
   const probe = document.createElement('span');
@@ -296,7 +317,9 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   let rest = { cutY: 0, surveyX: 0, focus: REST_FOCUS };
   let textQ = [-1e4, -1e4, -1e4, -1e4], quiet = [-1e4, -1e4, -1e4, -1e4], fadeE = [0, 40, 0, 0];
   let pc = { x: 0, y: 0 };
-  let legend: { y1: number; y2: number } | null = null;
+  let legend: { y1: number; y2: number; right: number } | null = null;
+  let hint: Rect | null = null;
+  const hintEl = root.querySelector<HTMLElement>('.cover__hint');
   let laidOut = false;
 
   /** DPR policy (SPEC SM1 change 8): 1.5 fine / 1.25 coarse, 1.0 on the low tier, and never more than 2.4 MP */
@@ -342,7 +365,14 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     // the section title's two lines (HTML), for the graphic scale
     const lines = legendEl ? Array.from(legendEl.querySelectorAll('p > span')) : [];
     legend = null;
-    if (lines.length >= 2) { const a = rel(lines[0]), b = rel(lines[1]); if (a.h && b.h) legend = { y1: a.y + a.h / 2, y2: b.y + b.h / 2 }; }
+    if (lines.length >= 2) {
+      const a = rel(lines[0]), b = rel(lines[1]), t = rel(lines[0].parentElement!);
+      if (a.h && b.h) legend = { y1: a.y + a.h / 2, y2: b.y + b.h / 2, right: t.x + Math.max(a.w, b.w) };
+    }
+    // the hint row's words (its first and last visible spans)
+    hint = null;
+    const spans = hintEl ? Array.from(hintEl.children).filter((e) => (e as HTMLElement).offsetWidth > 0) : [];
+    if (spans.length) { const a = rel(spans[0]), b = rel(spans[spans.length - 1]), p = rel(hintEl!); hint = { x: a.x, y: p.y, w: b.x + b.w - a.x, h: p.h }; }
     sizeCanvases();
     laidOut = true;
     // keep the pose meaningful in the new geometry (touch: the cut always follows the scroll position)
@@ -371,6 +401,10 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     if (v.focus !== undefined) { st.focus = v.focus; st.focusT = v.focus; }
   }
   const drawn = () => { st.reveal = st.plot = st.grid = st.ui = st.hatch = st.iso = 1; };
+  /** the cut line stays far enough inside the plan box that its section heads never leave it */
+  const clampCut = (y: number) => Math.max(plan.y + CUT_INSET_TOP, Math.min(plan.y + plan.h - CUT_INSET_BOTTOM, y));
+  /** …and the survey point (its cross, 6 px either way) stays on the drawn cut line, between the section heads */
+  const clampSx = (x: number) => Math.max(plan.x + CUT_INSET_X + 8, Math.min(plan.x + plan.w - CUT_INSET_X - 8, x));
 
   // ── timeline: drafting-in, demo, settle ──
   let tl: null | { t0: number; demo: boolean; boostAt: number; boostT: number } = null;
@@ -384,13 +418,13 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     st.iso = eUi(clamp01((t - 1500) / 600));
   }
   function demo(t: number) {
-    const cut = plan.y + plan.h * keyed(K_CUT, t, eBreath);
+    const cut = clampCut(plan.y + plan.h * keyed(K_CUT, t, eBreath));
     const focus = keyed(K_FOCUS, t, eBreath);
     const sx = crossingX(U, cut, focus, plan.x + 4, plan.x + plan.w - 4, rest.surveyX) ?? st.sx;
     setNow({ ang: sunAng + keyed(K_ANG, t, eBreath) * DEG, cut, focus, sx });
   }
   /** advance the timeline; returns true while it still needs frames */
-  function stepTimeline(now: number): boolean {
+  function stepTimeline(now: number, dt: number): boolean {
     if (!tl) return false;
     if (tl.t0 < 0) tl.t0 = now;
     const tAbs = at ?? now - tl.t0;
@@ -398,7 +432,9 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     drafting(t);
     if (tl.demo) demo(tAbs);
     if (st.reveal >= 1 && !restOnly && at === null) markDrafted();
-    const done = tl.demo ? tAbs >= T_END : t >= T_DRAWN;
+    // end on the last frame before the end: if the next frame (at the current interval) would land past it, this one
+    // draws the rest pose, so the motion never runs past T_END + one frame however slow the frames are
+    const done = tl.demo ? tAbs + dt >= T_END : t >= T_DRAWN;
     if (at !== null || done) {
       if (at === null) { drawn(); if (tl.demo) setNow(restValues()); }
       tl = null;
@@ -424,10 +460,13 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   }
 
   // ── controllers ──
-  function survey(x: number, y: number, instant: boolean) {
+  /** the survey point: the cut line follows y (within its travel), the isoline takes the level at (x, y); the keyboard's
+   *  virtual point always sits on the cut line */
+  function survey(x: number, y: number, instant: boolean, onCut = instant) {
     x = Math.max(plan.x, Math.min(plan.x + plan.w, x));
-    y = Math.max(plan.y, Math.min(plan.y + plan.h, y));
-    const v = { cut: y, sx: x, focus: Hpx(x, y, U), ang: Math.atan2(y - pc.y, x - pc.x) };
+    y = onCut ? clampCut(y) : Math.max(plan.y, Math.min(plan.y + plan.h, y));
+    const v = { cut: clampCut(y), sx: clampSx(x), focus: Hpx(x, y, U), ang: Math.atan2(y - pc.y, x - pc.x) };
+    if (onCut) v.focus = Hpx(v.sx, v.cut, U);
     if (instant) setNow(v);
     else { st.cutT = v.cut; st.sxT = v.sx; st.focusT = v.focus; st.angT = v.ang; }
     return v;
@@ -457,7 +496,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   function scrollCut(instant: boolean) {
     const pr = planEl!.getBoundingClientRect();
     const prog = clamp01((innerHeight * 0.5 - pr.top) / Math.max(1, pr.height));
-    const cut = plan.y + prog * plan.h;
+    const cut = clampCut(plan.y + prog * plan.h);
     const sx = tapX ?? plan.x + plan.w * SURVEY_X;
     const v = { cut, sx, focus: tapFocus ?? REST_FOCUS, ang: sunAng };
     if (instant) setNow(v); else { st.cutT = v.cut; st.sxT = v.sx; st.focusT = v.focus; st.angT = v.ang; }
@@ -490,6 +529,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     g.useProgram(prog);
     g.uniform2f(loc.uRes, glCanvas!.width, glCanvas!.height);
     g.uniform1f(loc.uDpr, glCanvas!.width / W);
+    g.uniform1f(loc.uAA, Math.max(1, (devicePixelRatio || 1) / (glCanvas!.width / W)));
     g.uniform1f(loc.uUnit, U.unit);
     g.uniform1f(loc.uReveal, st.reveal);
     g.uniform2f(loc.uRange, range[0], range[1]);
@@ -506,7 +546,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     g.uniform4f(loc.uText, textQ[0], textQ[1], textQ[2], textQ[3]);
     g.uniform4f(loc.uQuiet, quiet[0], quiet[1], quiet[2], quiet[3]);
     g.uniform4f(loc.uFade, fadeE[0], fadeE[1], fadeE[2], fadeE[3]);
-    g.uniform4f(loc.uPlan, plan.x - 6, plan.y - 6, plan.x + plan.w + 6, plan.y + plan.h + 6);
+    g.uniform4f(loc.uPlan, plan.x, plan.y, plan.x + plan.w, plan.y + plan.h);
     g.uniform3f(loc.uInk, ink[0] / 255, ink[1] / 255, ink[2] / 255);
     g.uniform3f(loc.uRust, rust[0] / 255, rust[1] / 255, rust[2] / 255);
     g.clearColor(0, 0, 0, 0);
@@ -515,8 +555,8 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     const scene: Scene = {
       W, H: Hh, plan, sect, U, forms,
       grid: st.grid, ui: st.ui, iso: st.iso, plot: st.plot,
-      cut: st.cut, sx: st.sx, ang: st.ang, restCut: rest.cutY, tag: st.tag, marker: st.marker,
-      time, el: EL, north: NORTH, legend,
+      cut: st.cut, sx: st.sx, ang: st.ang, restCut: rest.cutY, restSx: rest.surveyX, tag: st.tag, marker: st.marker,
+      time, night, el: EL, north: NORTH, legend, hint,
     };
     overlay.draw(scene, pal, type);
   }
@@ -537,7 +577,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     if (needLayout) { needLayout = false; layout(); }
     if (st.ctl === 'pointer') pointerFrame(now);
     if (st.ctl === 'touch' && scrolled) { scrolled = false; scrollCut(false); }
-    let busy = stepTimeline(now);
+    let busy = stepTimeline(now, dt);
     busy = stepEase(dt, now) || busy;
     // adaptive tier: the median frame interval while drafting in
     if (tl && dt > 0 && !pinnedTier && tier === 'hi') {
@@ -584,8 +624,8 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     // a touch on a laptop whose main pointer is fine (a hybrid) points at the spot, like the mouse would
     if (!coarse) { ptr = { x: e.clientX, y: e.clientY }; if (st.ctl !== 'pointer') takeOver('pointer', e.timeStamp); kick(); return; }
     const fr = frameEl!.getBoundingClientRect();
-    tapX = e.clientX - fr.left;
-    tapFocus = Hpx(tapX, e.clientY - fr.top, U);
+    tapX = clampSx(e.clientX - fr.left);
+    tapFocus = Hpx(e.clientX - fr.left, e.clientY - fr.top, U);
     if (st.ctl !== 'touch') takeOver('touch');
     scrolled = true;
     kick();
@@ -637,11 +677,14 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     mq.addEventListener('change', () => { needLayout = true; kick(); watchDpr(); }, { once: true });
   };
   watchDpr();
+  // start once the COVER is ≥ 35% visible (SPEC SM1) — not the drawing block, which on a short phone sits below the
+  // fold with its static drawing already hidden; draw whenever any of the drawing is on screen
+  onVisibility(root, (v) => { if (v && !started) begin(); }, VISIBLE);
   onVisibility(frameEl, (v) => {
     visible = v;
-    if (v) { if (!started) begin(); else if (dirty) kick(); }
+    if (v) { if (dirty) kick(); }
     else if (tl && at === null) { finishTimeline(); dirty = true; } // scrolled away mid-drafting: it is simply finished
-  }, VISIBLE);
+  });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && dirty) kick(); });
 
   listen('sv:theme', () => { readPalette(); kick(); });

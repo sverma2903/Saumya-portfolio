@@ -10,7 +10,7 @@
  * every text is Plex Mono ≥ --fs-code-sm (11.5px) — codes and numbers only — and △ ○ □ ▼ ☀ are drawn as vectors
  * because the font subsets do not carry them.
  */
-import { Hpx, base, formatLevel, sectionScale } from '../../lib/terrain.js';
+import { Hpx, formatLevel, landform, sectionScale } from '../../lib/terrain.js';
 import type { Site } from '../../lib/terrain.js';
 
 export type RGB = [number, number, number];
@@ -34,22 +34,35 @@ export interface Scene {
   tag: { x: number; y: number } | null;
   /** keyboard survey marker (the plan box has focus) */
   marker: boolean;
-  /** the sun's time, e.g. '17:24' */
-  time: string;
+  /** the rest pose's survey x (the projector), which the leaders keep clear of */
+  restSx: number;
+  /** the visitor's local time in their locale's format, e.g. '17:24'; night = outside 06:00–18:00 (a moon, not a sun) */
+  time: string; night: boolean;
   /** chrome codes: 'EL', 'N' */
   el: string; north: string;
-  /** the centres of the section title's two lines (HTML legend), so the graphic scale sits on the same lines */
-  legend: { y1: number; y2: number } | null;
+  /** the section title (HTML legend): the centres of its two lines, so the graphic scale sits on the same lines,
+   *  and its right edge, so the north arrow and the scale keep clear of it */
+  legend: { y1: number; y2: number; right: number } | null;
+  /** the hint row's words (HTML, "Site plan · move to cut A–A"), kept clear by the north arrow and the leaders */
+  hint: Rect | null;
 }
 
 const TAU = Math.PI * 2;
 const BEYOND: [number, number][] = [[0.035, 0.6], [0.075, 0.42], [0.13, 0.28]]; // [metres north of the cut (units), alpha]
-const HEAD_R = 11;                  // section-head bubble radius
+/** section-head bubble radius; the head's arrow reaches HEAD_R + 7 above the cut line */
+export const HEAD_R = 11;
+/** how far inside the plan box the cut line may travel, so its heads never leave the plan (siteplan.ts clamps to it) */
+export const CUT_INSET_TOP = HEAD_R + 7 + 4, CUT_INSET_BOTTOM = HEAD_R + 4;
+/** the drawn cut line runs between the heads: from CUT_INSET_X inside either end of the plan box */
+export const CUT_INSET_X = 2 * HEAD_R + 4;
+const SCALE_M = [50, 40, 25, 20, 10];   // graphic scale lengths (m), the longest that fits the legend row
 
 const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${Math.max(0, Math.min(1, a))})`;
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-interface Leader { form: Landform; dot: [number, number]; elbow: [number, number]; end: [number, number]; dir: 1 | -1; text: string; w: number }
+interface Leader { form: Landform; dot: [number, number]; elbow: [number, number]; end: [number, number]; dir: 1 | -1; text: string; w: number; box: Rect }
+const hit = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });
 
 export function createOverlay(canvas: HTMLCanvasElement) {
   const c = canvas.getContext('2d', { alpha: true })!;
@@ -95,29 +108,37 @@ export function createOverlay(canvas: HTMLCanvasElement) {
   /**
    * Leader placement: from each spot point a straight leader that leaves the footprint (found by marching out until
    * the landform term vanishes), a short shoulder, then the label. Directions are tried in order (45° up, 30°, 60°,
-   * level, then down; right before left); the first whose label box stays inside the plan box and clear of every
-   * landform, the other labels, the north arrow and the rest pose's cut line wins. No room (phones): no leaders.
+   * level, then down; the pyramid's leader leaves by its west side first, away from the survey point, the others by
+   * the east); the first whose label box stays inside the plan box and clear of every landform, the other labels, the
+   * hint row and the rest pose's cut line — and whose leader stays clear of the rest pose's projector — wins.
+   * No room (phones): no leaders.
    */
   function placeLeaders(s: Scene, ty: Type) {
-    const key = `${s.W}|${s.H}|${s.plan.x}|${s.plan.y}|${s.plan.w}|${s.plan.h}|${s.restCut}|${ty.code}|${ty.mono}`;
+    const key = `${s.W}|${s.H}|${s.plan.x}|${s.plan.y}|${s.plan.w}|${s.plan.h}|${s.restCut}|${s.restSx}|${ty.code}|${ty.mono}`;
     if (key === leaderKey) return;
     leaderKey = key;
     c.font = `500 ${ty.code}px ${ty.mono}`;
-    const p = s.plan, pad = 6, u = s.U.unit;
-    const form = (x: number, y: number) => Hpx(x, y, s.U) - base(x / u, y / u) > 0.25; // on a landform?
-    // keep clear of the north arrow, and of the cut line A–A and its heads at the rest pose
-    const taken: Rect[] = [northBox(s), { x: p.x, y: s.restCut - 16, w: p.w, h: 32 }];
-    const hit = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const p = s.plan, inset = 6, u = s.U.unit;
+    const form = (x: number, y: number) => landform(x / u, y / u, s.U) > 0.25; // on a landform?
+    // keep clear of the hint row, and of the cut line A–A and its heads at the rest pose
+    const taken: Rect[] = [{ x: p.x, y: s.restCut - 16, w: p.w, h: 32 }];
+    if (s.hint) taken.push(pad(s.hint, 4));
+    // the rest pose's survey cross and projector: a leader must not run through them
+    const proj: Rect = { x: s.restSx - 10, y: s.restCut - 10, w: 20, h: p.y + p.h - s.restCut + 10 };
+    const crosses = (a: [number, number], b: [number, number]) => {
+      for (let i = 0; i <= 12; i++) { const x = a[0] + ((b[0] - a[0]) * i) / 12, y = a[1] + ((b[1] - a[1]) * i) / 12; if (x >= proj.x && x <= proj.x + proj.w && y >= proj.y && y <= proj.y + proj.h) return true; }
+      return false;
+    };
     const onAnyForm = (r: Rect) => {
       for (let i = 0; i <= 3; i++) for (let j = 0; j <= 2; j++) if (form(r.x + (r.w * i) / 3, r.y + (r.h * j) / 2)) return true;
       return false;
     };
     leaders = [];
     if (p.w < 560) return; // phones: the small plan has no room for leaders (a second-visit detail on larger sheets)
-    // preference order: 45° up, then 30° up, then level, then down; right before left
-    const dirs: [number, number][] = [];
-    for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [1, -1]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
     for (const f of s.forms) {
+      const first = f.kind === 'tri' ? -1 : 1;
+      const dirs: [number, number][] = [];
+      for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
       const text = formatLevel(f.top);
       const w = 14 + c.measureText(text).width;
       for (const [dx, dy] of dirs) {
@@ -130,23 +151,52 @@ export function createOverlay(canvas: HTMLCanvasElement) {
         const side = dx >= 0 ? 1 : -1;
         const endX = elbow[0] + side * 16;
         const box: Rect = { x: side > 0 ? endX + 3 : endX - 3 - w, y: elbow[1] - 9, w, h: 18 };
-        const inside = box.x >= p.x + pad && box.x + box.w <= p.x + p.w - pad && box.y >= p.y - 18 && box.y + box.h <= p.y + p.h - pad;
+        const inside = box.x >= p.x + inset && box.x + box.w <= p.x + p.w - inset && box.y >= p.y - 18 && box.y + box.h <= p.y + p.h - inset;
         if (!inside || taken.some((q) => hit(box, q)) || onAnyForm(box)) continue;
-        leaders.push({ form: f, dot, elbow, end: [endX, elbow[1]], dir: side as 1 | -1, text, w });
+        if (crosses(dot, elbow) || crosses(elbow, [endX, elbow[1]])) continue;
+        leaders.push({ form: f, dot, elbow, end: [endX, elbow[1]], dir: side as 1 | -1, text, w, box });
         taken.push(box);
         break;
       }
     }
   }
 
-  /** north arrow: circle at the plan box's top-right corner, N above it, the sun's time below */
-  function northGeo(s: Scene) {
-    const r = 13;
-    return { x: s.plan.x + s.plan.w - r - 18, y: s.plan.y + r + 16, r };
+  /**
+   * The graphic scale: at the TRUE scale of both drawings under the section's right end, the bar on the section
+   * title's first line and its figures on the second. 0–50 M, or the longest of 40 / 25 / 20 / 10 M that clears the
+   * title on a narrow sheet.
+   */
+  function scaleGeo(s: Scene, pxPerM: number) {
+    const x1 = s.sect.x + s.sect.w;
+    const y1 = s.legend?.y1 ?? s.sect.y + s.sect.h + 21, y2 = s.legend?.y2 ?? y1 + 18;
+    const clear = (s.legend?.right ?? s.sect.x) + 24;
+    let m = SCALE_M[0];
+    for (const v of SCALE_M) { m = v; if (x1 - 26 - v * pxPerM >= clear) break; }
+    const bw = m * pxPerM;
+    return { m, bw, bx: x1 - bw - 26, y1, y2 };
   }
-  function northBox(s: Scene): Rect {
-    const n = northGeo(s);
-    return { x: n.x - n.r - 44, y: n.y - n.r - 22, w: n.r * 2 + 50, h: n.r * 2 + 52 };
+
+  /**
+   * The north arrow, the sun's (or the moon's) glyph and the local time — never inside the plan box, where the cut
+   * line travels. On a wide sheet it sits in the legend row, left of the graphic scale (as on a title block); on a
+   * narrow one, at the right end of the hint row, N beside the needle. The time is left out if the row has no room.
+   */
+  function northGeo(s: Scene, ty: Type, scaleX: number) {
+    c.font = `500 ${ty.code}px ${ty.mono}`;
+    const tw = c.measureText(s.time).width;
+    const glyph = 16; // the sun / moon glyph and its gap before the time
+    if (s.legend && s.sect.w >= 480) {
+      const r = 13, yc = (s.legend.y1 + s.legend.y2) / 2;
+      const right = scaleX - 28, cx = right - tw - glyph - 10 - r;
+      return { x: cx, y: yc, r, row: false, tx: cx + r + 10, showTime: cx - r - 8 > s.legend.right + 16, box: { x: cx - r - 4, y: yc - r - 22, w: right - cx + r + 8, h: 2 * r + 26 } as Rect };
+    }
+    const r = 8, right = s.plan.x + s.plan.w;
+    const yc = s.hint ? s.hint.y + s.hint.h / 2 + 0.5 : s.plan.y - 16;
+    const nw = c.measureText(s.north).width;
+    const hintEnd = s.hint ? s.hint.x + s.hint.w : -Infinity;
+    const withTime = right - (nw + 5 + 2 * r + 10 + glyph + tw) >= hintEnd + 12;
+    const cx = withTime ? right - tw - glyph - 10 - r : right - r - 1;
+    return { x: cx, y: yc, r, row: true, tx: cx + r + 10, showTime: withTime, box: { x: cx - r - nw - 9, y: yc - r - 2, w: right - (cx - r - nw - 9), h: 2 * r + 4 } as Rect };
   }
 
   function draw(s: Scene, pal: Palette, ty: Type) {
@@ -263,14 +313,29 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       }
     }
 
+    const scale = scaleGeo(s, sc.pxPerM);
+    const north = northGeo(s, ty, scale.bx);
+    placeLeaders(s, ty);
+
     if (s.ui > 0) {
       c.globalAlpha = s.ui;
-      // ── cut line A–A across the plan, with its section heads (looking north: the half-arrows point up) ──
+      // ── cut line A–A across the plan, with its section heads (looking north: the half-arrows point up). The line
+      //    breaks around the leader labels it passes, as a drawn line breaks for lettering ──
       const cyp = crisp(s.cut);
+      const xa = plan.x + CUT_INSET_X, xb = plan.x + plan.w - CUT_INSET_X;
+      const gaps = leaders.map((L) => pad(L.box, 3)).filter((r) => cyp >= r.y && cyp <= r.y + r.h).map((r) => [r.x, r.x + r.w]).sort((p1, p2) => p1[0] - p2[0]);
       c.strokeStyle = rgba(pal.ink, 0.85);
       c.lineWidth = ty.lw.object;
       c.setLineDash(ty.dash);
-      c.beginPath(); c.moveTo(plan.x + 2 * HEAD_R + 4, cyp); c.lineTo(plan.x + plan.w - 2 * HEAD_R - 4, cyp); c.stroke();
+      c.beginPath();
+      let from = xa;
+      for (const [g0, g1] of [...gaps, [xb, xb]]) {
+        const to = Math.min(g0, xb);
+        if (to > from) { c.moveTo(from, cyp); c.lineTo(to, cyp); }
+        from = Math.max(from, g1);
+      }
+      c.lineDashOffset = 0;
+      c.stroke();
       c.setLineDash([]);
       c.font = `500 ${ty.code}px ${ty.mono}`;
       c.textAlign = 'center';
@@ -286,34 +351,46 @@ export function createOverlay(canvas: HTMLCanvasElement) {
         c.fillText('A', snap(hx), snap(s.cut + 0.5));
       }
 
-      // ── north arrow: split-fill needle, N above; a rust tick on its circle at the light's bearing; ☀ + time below ──
-      const n = northGeo(s);
+      // ── north arrow: split-fill needle, N above (beside it on a narrow sheet); a rust dot on its circle at the
+      //    light's bearing; the sun (a moon at night) and the local time beside it ──
+      const n = north;
       c.strokeStyle = rgba(pal.ink, 1);
       c.fillStyle = rgba(pal.ink, 1);
       c.lineWidth = ty.lw.object;
+      const k = n.r / 13;
       c.beginPath(); c.arc(n.x, n.y, n.r, 0, TAU); c.stroke();
-      c.beginPath(); c.moveTo(n.x, n.y - n.r + 2); c.lineTo(n.x + 5, n.y + n.r - 3); c.lineTo(n.x, n.y + n.r - 7); c.closePath(); c.fill();
-      c.beginPath(); c.moveTo(n.x, n.y - n.r + 2); c.lineTo(n.x - 5, n.y + n.r - 3); c.lineTo(n.x, n.y + n.r - 7); c.closePath(); c.stroke();
+      c.beginPath(); c.moveTo(n.x, n.y - n.r + 2 * k); c.lineTo(n.x + 5 * k, n.y + n.r - 3 * k); c.lineTo(n.x, n.y + n.r - 7 * k); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(n.x, n.y - n.r + 2 * k); c.lineTo(n.x - 5 * k, n.y + n.r - 3 * k); c.lineTo(n.x, n.y + n.r - 7 * k); c.closePath(); c.stroke();
       c.font = `500 ${ty.code}px ${ty.mono}`;
-      label(s.north, n.x, n.y - n.r - 8, rgba(pal.ink, 1), halo);
+      if (n.row) { c.textAlign = 'right'; label(s.north, n.x - n.r - 5, n.y, rgba(pal.ink, 1), halo); }
+      else label(s.north, n.x, n.y - n.r - 8, rgba(pal.ink, 1), halo);
       const lx = n.x + Math.cos(s.ang) * n.r, ly = n.y + Math.sin(s.ang) * n.r;
       c.fillStyle = rgba(pal.rust, 1);
-      c.beginPath(); c.arc(lx, ly, 2.6, 0, TAU); c.fill();
-      // ☀ + the sun's time, centred under the arrow
-      c.font = `500 ${ty.code}px ${ty.mono}`;
-      const tw = c.measureText(s.time).width;
-      const gy = n.y + n.r + 14, gx = n.x - (tw + 13) / 2 + 4;
-      c.strokeStyle = rgba(pal.rust, 1);
-      c.lineWidth = ty.lw.object;
-      c.beginPath(); c.arc(gx, gy, 2.6, 0, TAU); c.stroke();
-      c.beginPath();
-      for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; c.moveTo(gx + Math.cos(a) * 4.2, gy + Math.sin(a) * 4.2); c.lineTo(gx + Math.cos(a) * 5.8, gy + Math.sin(a) * 5.8); }
-      c.stroke();
-      c.textAlign = 'left';
-      label(s.time, gx + 9, gy, rgba(pal.ink2, 1), halo);
+      c.beginPath(); c.arc(lx, ly, 2.6 * Math.max(k, 0.8), 0, TAU); c.fill();
+      if (n.showTime) {
+        const gx = n.tx + 4, gy = n.y;
+        c.strokeStyle = rgba(pal.rust, 1);
+        c.fillStyle = rgba(pal.rust, 1);
+        c.lineWidth = ty.lw.object;
+        if (s.night) {
+          // a crescent moon: the light at night is the 17:24 sun's, but the clock is the visitor's. A disc with an
+          // offset disc cut out of it (nothing else on this canvas lies under the glyph)
+          c.save();
+          c.beginPath(); c.arc(gx, gy, 4.8, 0, TAU); c.fill();
+          c.globalCompositeOperation = 'destination-out';
+          c.beginPath(); c.arc(gx + 2.4, gy - 1.8, 4.1, 0, TAU); c.fill();
+          c.restore();
+        } else {
+          c.beginPath(); c.arc(gx, gy, 2.6, 0, TAU); c.stroke();
+          c.beginPath();
+          for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; c.moveTo(gx + Math.cos(a) * 4.2, gy + Math.sin(a) * 4.2); c.lineTo(gx + Math.cos(a) * 5.8, gy + Math.sin(a) * 5.8); }
+          c.stroke();
+        }
+        c.textAlign = 'left';
+        label(s.time, gx + 9, gy, rgba(pal.ink2, 1), halo);
+      }
 
-      // ── leaders: dot terminal at the spot point, 45° leader, shoulder, then △ +27.83 ──
-      placeLeaders(s, ty);
+      // ── leaders: dot terminal at the spot point, 45° leader, shoulder, then △ +26.00 on a paper knockout ──
       c.lineWidth = ty.lw.object;
       for (const L of leaders) {
         c.strokeStyle = rgba(pal.clay, 0.72);
@@ -330,10 +407,9 @@ export function createOverlay(canvas: HTMLCanvasElement) {
         label(L.text, sx + 8.5, L.end[1] + 0.5, rgba(pal.ink2, 1), halo);
       }
 
-      // ── graphic scale: 0 … 50 M at the TRUE scale of both drawings, under the section's right end; the bar on the
-      //    section title's first line, its figures on the second (the title is HTML, measured by siteplan.ts) ──
-      const y1 = s.legend?.y1 ?? sect.y + sect.h + 21, y2 = s.legend?.y2 ?? y1 + 18;
-      const bw = 50 * sc.pxPerM, bx = x1 - bw - 26, by = y1 - 2.5;
+      // ── graphic scale: 0 … 50 M at the TRUE scale of both drawings (the title is HTML, measured by siteplan.ts) ──
+      const { bw, bx, y1, y2, m } = scale;
+      const by = y1 - 2.5;
       c.strokeStyle = rgba(pal.ink, 1);
       c.fillStyle = rgba(pal.ink, 1);
       c.lineWidth = ty.lw.object;
@@ -345,13 +421,16 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       c.font = `400 ${ty.codeSm}px ${ty.mono}`;
       c.textAlign = 'center';
       label('0', bx, y2, rgba(pal.ink2, 1), halo);
-      label('50 M', bx + bw + c.measureText(' M').width / 2, y2, rgba(pal.ink2, 1), halo);
+      label(`${m} M`, bx + bw + c.measureText(' M').width / 2, y2, rgba(pal.ink2, 1), halo);
       c.textAlign = 'left';
       c.globalAlpha = 1;
     }
 
-    // ── the projector: from the survey point on the cut line down to the section, a ▼ and its level ──
+    // ── the projector: from the survey point on the cut line down to the section, a ▼ and its level. The level is
+    //    written beside the projector where no section line runs through it: tried right, then left, from just above
+    //    the ▼ upward along the projector ──
     const pv = s.ui * s.iso;
+    let lvBox: Rect | null = null;
     if (pv > 0 && s.plot > 0) {
       c.globalAlpha = pv;
       const lv = Hpx(s.sx, s.cut, s.U);
@@ -365,9 +444,23 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       c.beginPath(); c.moveTo(px - 5, py - 11); c.lineTo(px + 5, py - 11); c.lineTo(px, py - 2.5); c.closePath(); c.fill();
       c.font = `500 ${ty.code}px ${ty.mono}`;
       const lt = formatLevel(lv);
-      const right = px + 10 + c.measureText(lt).width < x1;
-      c.textAlign = right ? 'left' : 'right';
-      label(lt, right ? px + 9 : px - 9, py - 13, rgba(pal.rust, 1), halo);
+      const lw = c.measureText(lt).width, lh = ty.code + 2;
+      // the topmost section line at a sample: the envelope of the cut profile and the drawn "beyond" profiles
+      const topAt = (x: number) => { const i = Math.round((x - x0) / step); return i < 0 || i > N ? Infinity : Y(i <= last ? run[i] : profile[i]); };
+      const clearOf = (r: Rect) => { for (let x = r.x; x <= r.x + r.w; x += step) if (topAt(x) < r.y + r.h + 2) return false; return true; };
+      const yMin = Math.max(sect.y - 14, s.cut + 16);
+      let best: { r: Rect; right: boolean } | null = null;
+      for (let dy = 0; !best && py - 13 - dy >= yMin; dy += 4) {
+        for (const right of [true, false]) {
+          const r: Rect = { x: right ? px + 8 : px - 8 - lw, y: py - 13 - dy - lh / 2, w: lw, h: lh };
+          if (r.x < x0 - 2 || r.x + r.w > x1 + 2) continue;
+          if (clearOf(r)) { best = { r, right }; break; }
+        }
+      }
+      if (!best) { const right = px + 10 + lw < x1; best = { r: { x: right ? px + 8 : px - 8 - lw, y: py - 13 - lh / 2, w: lw, h: lh }, right }; }
+      lvBox = best.r;
+      c.textAlign = best.right ? 'left' : 'right';
+      label(lt, best.right ? best.r.x + 1 : best.r.x + best.r.w - 1, best.r.y + lh / 2, rgba(pal.rust, 1), halo);
       // the survey point on the cut line
       c.strokeStyle = rgba(pal.rust, 1);
       c.beginPath(); c.moveTo(px - 6, crisp(s.cut)); c.lineTo(px + 6, crisp(s.cut)); c.moveTo(px, s.cut - 6); c.lineTo(px, s.cut + 6); c.stroke();
@@ -375,16 +468,22 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       c.globalAlpha = 1;
     }
 
-    // ── EL tag beside the native cursor (never replacing it) ──
+    // ── EL tag beside the native cursor (never replacing it): below-right, else the first of below-left,
+    //    above-right, above-left that stays on the sheet and clear of the labels, the north arrow and the hint ──
     if (s.tag) {
       const lv = Hpx(s.tag.x, s.tag.y, s.U);
       const t = `${s.el} ${formatLevel(lv)}`;
       c.font = `500 ${ty.code}px ${ty.mono}`;
       const tw = c.measureText(t).width + 12, th = 20;
-      let tx = s.tag.x + 16, tyy = s.tag.y + 14;
-      if (tx + tw > s.W - 4) tx = s.tag.x - 16 - tw;
-      if (tyy + th > s.H - 4) tyy = s.tag.y - 14 - th;
-      tx = snap(tx); tyy = snap(tyy);
+      const avoid: Rect[] = [north.box, ...leaders.map((L) => L.box)];
+      if (lvBox) avoid.push(lvBox);
+      if (s.hint) avoid.push(s.hint);
+      const cands: [number, number][] = [
+        [s.tag.x + 16, s.tag.y + 14], [s.tag.x - 16 - tw, s.tag.y + 14], [s.tag.x + 16, s.tag.y - 14 - th], [s.tag.x - 16 - tw, s.tag.y - 14 - th],
+      ];
+      const onSheet = ([x, y]: [number, number]) => x >= 4 && x + tw <= s.W - 4 && y >= 4 && y + th <= s.H - 4;
+      const pick = cands.find((q) => onSheet(q) && !avoid.some((r) => hit({ x: q[0], y: q[1], w: tw, h: th }, pad(r, 2)))) ?? cands.find(onSheet) ?? cands[0];
+      const tx = snap(pick[0]), tyy = snap(pick[1]);
       c.fillStyle = rgba(pal.sheet, 0.94);
       c.fillRect(tx, tyy, tw, th);
       c.strokeStyle = rgba(pal.rust, 0.9);

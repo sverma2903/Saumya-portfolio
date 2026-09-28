@@ -5,8 +5,10 @@
  * (tools/siteplan-svg.mjs) import the SAME height function. The GLSL in scripts/hero/siteplan.ts mirrors `base`,
  * `sdTri`, `sdBox` and `H` term for term: change one, change both.
  *
- * Ported from the winning prototype (concepts/drawing-set/index.html §I). Kept exactly:
- *   · the height function (ground + max(dome, mesa, pyramid)),
+ * Ported from the winning prototype (concepts/drawing-set/index.html §I). Kept:
+ *   · the height function's terms (ground + max(dome, mesa, pyramid)) — with two changes, both documented below: the
+ *     ground fades out under the landforms (so the summits read +26/+22/+15 and the isolines are her exact shapes), and
+ *     two phases of the ground's first term moved (so no stray closed contour reads as a fourth mark),
  *   · the unit convention: positions and radii are in "units" of `unit = max(frameHeight, 560)` css px,
  *   · the primitive placement: tri (.20w, .64h) r .36s · circ (.70w, .27h) r .30s · sq (.74w, .77h) half .19s radius .03s.
  * Coordinates are css px relative to the GL frame's top-left (the whole cover ≥ 1024px, the drawing block below), y down.
@@ -28,9 +30,14 @@ export const POCHE_FLOOR = 6;
 export const SECTION_LO = -6;
 export const SECTION_HI = 30;
 
-/** The rolling ground the mark rises out of (units in, metres out). */
+/**
+ * The rolling ground the mark rises out of (units in, metres out). The prototype's terms; only the first term's two
+ * phases moved (.4 → .8, −.2 → −.3) so that no small closed ground contour forms anywhere on the sheet at any layout
+ * from 320 to 2560 px (the prototype's phases drew a free-standing oval that read as a fourth mark beside her △○□).
+ * Checked with marching squares over the measured layouts; range −2.2 … +5.8 m.
+ */
 export const base = (x, y) =>
-  2.2 * Math.sin(x * 3.1 + 0.4) * Math.sin(y * 2.7 - 0.2) +
+  2.2 * Math.sin(x * 3.1 + 0.8) * Math.sin(y * 2.7 - 0.3) +
   1.4 * Math.sin(x * 5.3 + y * 3.9 + 1.3) +
   0.6 * Math.sin(x * 9.7 - y * 7.1 + 0.7) +
   1.2 * x;
@@ -66,11 +73,25 @@ export const smooth = (a, b, x) => {
  * @typedef {{ x: number, y: number, w: number, h: number }} Rect   css px, frame-relative
  */
 
+/** The ground fades out as a landform rises, and is gone from GROUND_OUT (m) up (see H). */
+export const GROUND_OUT = 12;
+
 /**
- * Elevation (m) at (x, y) in units: the ground plus the highest of the three landforms.
+ * Elevation (m) at (x, y) in units: the highest of the three landforms, standing on the ground.
+ * One change to the prototype's `base + max(dome, mesa, pyr)`: the ground term fades out as a landform rises
+ * (weight 1 − smoothstep(0, GROUND_OUT, land)), so from +12.00 up every level is exactly her △, ○ and □ — the summits
+ * read +26.00, +22.00 and +15.00 on every sheet size (SPEC SM1), the mesa's plateau is flat, and an isoline at +12
+ * traces a true triangle, circle and rounded square instead of shapes sheared by the ground's tilt. The ramp is wide
+ * enough that the blend stays monotonic over the ground's whole range (d/dland ≥ 1 − 5.8 · 1.5/12 > 0).
  * @param {number} x @param {number} y @param {Site} U
  */
 export function H(x, y, U) {
+  const land = landform(x, y, U);
+  return base(x, y) * (1 - smooth(0, GROUND_OUT, land)) + land;
+}
+
+/** The highest of the three landforms at (x, y) in units (m, 0 off the landforms). @param {number} x @param {number} y @param {Site} U */
+export function landform(x, y, U) {
   const [cx, cy, cr] = U.circ;
   const d = Math.hypot(x - cx, y - cy) / cr;
   const dome = d < 1 ? 11 * (1 + Math.cos(Math.PI * d)) : 0;
@@ -79,7 +100,7 @@ export function H(x, y, U) {
   const [tx, ty, tr] = U.tri;
   const st = sdTri(x - tx, -(y - ty), tr);
   const pyr = 26 * Math.min(1, Math.max(0, -st / (tr / S3)));
-  return base(x, y) + Math.max(dome, mesa, pyr);
+  return Math.max(dome, mesa, pyr);
 }
 
 /** Elevation at frame css px. @param {number} x @param {number} y @param {Site} U */
@@ -110,9 +131,9 @@ export function layoutPrimitives(frame, plan, _sect, isNarrow = plan.w / plan.h 
 export const intervalFor = (U) => (U.s < 240 ? INTERVAL * 2 : INTERVAL);
 
 /**
- * The three landforms in css px, with their true spot levels (ground included) for the leaders — so a leader reads
- * exactly what the EL readout shows at that point. The pyramid's apex is the triangle's centroid; the dome's summit is
- * its centre (the ground's slope moves it < 1 px); the mesa's spot level is taken at the centre of its plateau.
+ * The three landforms in css px, with their spot levels for the leaders: the pyramid's apex (the triangle's centroid),
+ * the dome's summit and the mesa's plateau. The ground is gone at those heights (see H), so they read exactly
+ * +26.00, +22.00 and +15.00 on every sheet size — and agree with the EL readout at the same points.
  * @param {Site} U
  * @returns {{ kind: 'tri'|'circ'|'sq', x: number, y: number, r: number, top: number, extent: number }[]}
  *   `x, y` the spot point, `r` the footprint radius (half-size for the mesa), `extent` the centre lines' half-length.

@@ -22,7 +22,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
-  Hpx, base, layoutPrimitives, landforms, restPose, sectionScale, sunDir, formatLevel, intervalFor,
+  Hpx, landform, layoutPrimitives, landforms, restPose, sectionScale, sunDir, formatLevel, intervalFor,
   INDEX_EVERY, REST_FOCUS,
 } from '../src/lib/terrain.js';
 
@@ -42,6 +42,7 @@ const VARIANTS = [
   {
     id: 'w', frame: { x: 0, y: 0, w: 1440, h: 704 },
     plan: { x: 619.33, y: 56.32, w: 764.67, h: 394.24 }, sect: { x: 619.33, y: 492.8, w: 764.67, h: 112.64 },
+    hint: { x: 1180, y: 24.31, w: 204, h: 15.59 }, // the HTML hint row's words at 1440 × 900 (the leaders keep clear)
     cell: 3, leaders: true,
   },
   {
@@ -213,8 +214,8 @@ function variant(V) {
     + `<linearGradient id="${fadeId}y" y1="${f1(plan.y - M)}" y2="${f1(plan.y + plan.h + M)}" x1="0" x2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#000"/><stop offset="${(M * 1.6 / (plan.h + 2 * M)).toFixed(3)}" stop-color="#fff"/><stop offset="${(1 - (M * 1.6) / (plan.h + 2 * M)).toFixed(3)}" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>`
     + `<mask id="${fadeId}mx" maskUnits="userSpaceOnUse" x="${f1(vb.x)}" y="${f1(vb.y)}" width="${f1(vb.w)}" height="${f1(vb.h)}"><rect x="${f1(vb.x)}" y="${f1(vb.y)}" width="${f1(vb.w)}" height="${f1(vb.h)}" fill="url(#${fadeId}x)"/></mask>`
     + `<mask id="${fadeId}my" maskUnits="userSpaceOnUse" x="${f1(vb.x)}" y="${f1(vb.y)}" width="${f1(vb.w)}" height="${f1(vb.h)}"><rect x="${f1(vb.x)}" y="${f1(vb.y)}" width="${f1(vb.w)}" height="${f1(vb.h)}" fill="url(#${fadeId}y)"/></mask>`
-    + `<pattern id="spf-${V.id}-h1" width="5.5" height="5.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v5.5" class="spf__hl"/></pattern>`
-    + `<pattern id="spf-${V.id}-h2" width="5.5" height="5.5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><path d="M0 0v5.5" class="spf__hl"/></pattern>`
+    + `<pattern id="spf-${V.id}-h1" width="4.24" height="4.24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v4.24" class="spf__hl"/></pattern>`
+    + `<pattern id="spf-${V.id}-h2" width="4.24" height="4.24" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><path d="M0 0v4.24" class="spf__hl"/></pattern>`
     + `<pattern id="spf-${V.id}-pr" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><path d="M0 0v7" class="spf__pr"/></pattern>`
     + `<pattern id="spf-${V.id}-e" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" class="spf__el"/></pattern>`
     + `<pattern id="spf-${V.id}-s" width="64" height="64" x="${f1(-32)}" y="${f1(-32)}" patternUnits="userSpaceOnUse"><path d="M28.5 32h7M32 28.5v7" class="spf__sv"/></pattern>`
@@ -270,23 +271,37 @@ function variant(V) {
       + `<path class="spf__glyph" d="M${f1(hx - 3.4)} ${f1(cy + 4.2)}L${f1(hx)} ${f1(cy - 4.6)}L${f1(hx + 3.4)} ${f1(cy + 4.2)}M${f1(hx - 2.1)} ${f1(cy + 1)}h4.2"/>`);
   }
 
-  // ── north arrow (N drawn as a path) ──
-  const nr = 13, nx0 = plan.x + plan.w - nr - 18, ny0 = plan.y + nr + 16;
+  // ── north arrow (N drawn as a path), never inside the plan box (as live): on the wide sheet in the legend row, left
+  //    of the graphic scale; on the narrow one at the top right, above the plan, N beside the needle ──
+  const scaleBw = 50 * sc.pxPerM, scaleBx = sect.x + sect.w - scaleBw - 26;
+  const wideN = V.id === 'w';
+  const nr = wideN ? 13 : 8, k = nr / 13;
+  const nx0 = wideN ? scaleBx - 28 - nr : plan.x + plan.w - nr - 1, ny0 = wideN ? sect.y + sect.h + 30 : plan.y - 15;
+  const nGlyph = wideN
+    ? `M${f1(nx0 - 3.2)} ${f1(ny0 - nr - 4)}v-8.4l6.4 8.4v-8.4`
+    : `M${f1(nx0 - nr - 5 - 6.4)} ${f1(ny0 + 4.2)}v-8.4l6.4 8.4v-8.4`;
   out.push(`<circle class="spf__line" cx="${f1(nx0)}" cy="${f1(ny0)}" r="${nr}"/>`
-    + `<path class="spf__ink" d="M${f1(nx0)} ${f1(ny0 - nr + 2)}L${f1(nx0 + 5)} ${f1(ny0 + nr - 3)}L${f1(nx0)} ${f1(ny0 + nr - 7)}z"/>`
-    + `<path class="spf__line" d="M${f1(nx0)} ${f1(ny0 - nr + 2)}L${f1(nx0 - 5)} ${f1(ny0 + nr - 3)}L${f1(nx0)} ${f1(ny0 + nr - 7)}z"/>`
-    + `<path class="spf__glyph" d="M${f1(nx0 - 3.2)} ${f1(ny0 - nr - 4)}v-8.4l6.4 8.4v-8.4"/>`);
+    + `<path class="spf__ink" d="M${f1(nx0)} ${f1(ny0 - nr + 2 * k)}L${f1(nx0 + 5 * k)} ${f1(ny0 + nr - 3 * k)}L${f1(nx0)} ${f1(ny0 + nr - 7 * k)}z"/>`
+    + `<path class="spf__line" d="M${f1(nx0)} ${f1(ny0 - nr + 2 * k)}L${f1(nx0 - 5 * k)} ${f1(ny0 + nr - 3 * k)}L${f1(nx0)} ${f1(ny0 + nr - 7 * k)}z"/>`
+    + `<path class="spf__glyph" d="${nGlyph}"/>`);
 
   // ── leaders: the live overlay's placement rule (section2d.ts), at the rest pose ──
   if (V.leaders) {
-    const form = (x, y) => Hh(x, y) - base(x / u, y / u) > 0.25;
+    const form = (x, y) => landform(x / u, y / u, U) > 0.25;
     const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-    const taken = [{ x: nx0 - nr - 44, y: ny0 - nr - 22, w: nr * 2 + 50, h: nr * 2 + 52 }, { x: plan.x, y: cy - 16, w: plan.w, h: 32 }];
+    const taken = [{ x: plan.x, y: cy - 16, w: plan.w, h: 32 }];
+    if (V.hint) taken.push({ x: V.hint.x - 4, y: V.hint.y - 4, w: V.hint.w + 8, h: V.hint.h + 8 });
+    const proj = { x: rest.surveyX - 10, y: cy - 10, w: 20, h: plan.y + plan.h - cy + 10 };
+    const crosses = (a, b) => {
+      for (let i = 0; i <= 12; i++) { const x = a[0] + ((b[0] - a[0]) * i) / 12, y = a[1] + ((b[1] - a[1]) * i) / 12; if (x >= proj.x && x <= proj.x + proj.w && y >= proj.y && y <= proj.y + proj.h) return true; }
+      return false;
+    };
     const onAnyForm = (r) => { for (let i = 0; i <= 3; i++) for (let j = 0; j <= 2; j++) if (form(r.x + (r.w * i) / 3, r.y + (r.h * j) / 2)) return true; return false; };
-    const dirs = [];
-    for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [1, -1]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
     const charW = 7.2; // Plex Mono 500 at 12px advance
     for (const f of forms) {
+      const first = f.kind === 'tri' ? -1 : 1;
+      const dirs = [];
+      for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
       const text = formatLevel(f.top);
       const w = 14 + text.length * charW;
       for (const [dx, dy] of dirs) {
@@ -300,6 +315,7 @@ function variant(V) {
         const box = { x: side > 0 ? endX + 3 : endX - 3 - w, y: elbow[1] - 9, w, h: 18 };
         const inside = box.x >= plan.x + 6 && box.x + box.w <= plan.x + plan.w - 6 && box.y >= plan.y - 18 && box.y + box.h <= plan.y + plan.h - 6;
         if (!inside || taken.some((q) => hit(box, q)) || onAnyForm(box)) continue;
+        if (crosses(dot, elbow) || crosses(elbow, [endX, elbow[1]])) continue;
         taken.push(box);
         const sx = side > 0 ? endX + 10 : endX - w + 6;
         const sy = elbow[1];
@@ -342,12 +358,30 @@ function variant(V) {
   out.push(`<path class="spf__proj" d="M${f1(sx)} ${f1(cy + 7)}V${f1(py - 12)}"/>`
     + `<path class="spf__rust" d="M${f1(sx - 5)} ${f1(py - 11)}h10l-5 8.5z"/>`
     + `<path class="spf__rl" d="M${f1(sx - 6)} ${f1(cy)}h12M${f1(sx)} ${f1(cy - 6)}v12"/>`);
-  label(formatLevel(lv), sx + 9, py - 13, 'start', 'spf__l--rust');
+  // its level beside the projector where no section line runs through it (the live overlay's rule): right, then left,
+  // from just above the ▼ upward
+  {
+    const lt = formatLevel(lv), lw = lt.length * 7.2, lh = 14;
+    const topAt = (x) => { const i = Math.round((x - x0) / step); return i < 0 || i > N ? Infinity : sc.Y(run[i]); };
+    const clearOf = (r) => { for (let x = r.x; x <= r.x + r.w; x += step) if (topAt(x) < r.y + r.h + 2) return false; return true; };
+    const yMin = Math.max(sect.y - 14, cy + 16);
+    let best = null;
+    for (let dy = 0; !best && py - 13 - dy >= yMin; dy += 4) {
+      for (const right of [true, false]) {
+        const r = { x: right ? sx + 8 : sx - 8 - lw, y: py - 13 - dy - lh / 2, w: lw, h: lh };
+        if (r.x < x0 - 2 || r.x + r.w > x1 + 2) continue;
+        if (clearOf(r)) { best = { r, right }; break; }
+      }
+    }
+    if (!best) best = { r: { x: sx + 8, y: py - 13 - lh / 2, w: lw, h: lh }, right: true };
+    if (best.right) label(lt, best.r.x + 1, best.r.y + lh / 2, 'start', 'spf__l--rust');
+    else label(lt, best.r.x + best.r.w - 1, best.r.y + lh / 2, 'end', 'spf__l--rust');
+  }
 
   // the graphic scale: 0 … 50 M at the drawing's true scale; the bar on the section title's first line, the figures on
   // its second (the title's Bubble is 44px wide-variant, 36px on phones: its two lines centre at +21/+39 or +17/+36)
   const [ly1, ly2] = V.id === 'n' ? [17, 36] : [21, 39];
-  const bw = 50 * sc.pxPerM, bx = x1 - bw - 26, by = sect.y + sect.h + ly1 - 2.5;
+  const bw = scaleBw, bx = scaleBx, by = sect.y + sect.h + ly1 - 2.5;
   let bars = '';
   for (let i = 0; i < 5; i++) {
     const a = bx + (i * bw) / 5;
