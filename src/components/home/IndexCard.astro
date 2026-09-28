@@ -1,12 +1,45 @@
 ---
 /**
- * IndexCard · OWNER: WP3 (P0 stub). Below 1024px the index rows become cards (SM2): tag line `A-101 · PERSONAL PROJECT
- * · MAR 2026`, the 16:10 plate (lazy, view-transition-name plate-<slug>), title, italic outcome line, a one-line
- * readout, `≈ 13 min · Open →`. Never rendered together with the Viewport plate (VT names must be unique).
- * P0: not mounted yet (the rows serve every width).
+ * IndexCard · OWNER: WP3 (SPEC SM2 "Mobile / tablet"). The card-only parts of an index entry, rendered INSIDE the
+ * row's link by IndexRow: below 1024 the rows become cards (1-up < 768, 2-up 768–1023) and these parts appear —
+ *   · the 16:10 cover plate on its stage (lazy), which carries view-transition-name plate-<slug> only below 1024
+ *     (set through --_vt, never inline: the Viewport plate owns the name at ≥ 1024, and the two are never rendered
+ *     at the same width, so exactly one element per name exists on screen);
+ *   · her home-card logo on a --plate chip, where her original cards had it (between the image and the title).
+ * At ≥ 1024 both are display:none, so their lazy images never load there.
  */
 import type { Sheet } from '../../data/sheets';
-interface Props { sheet: Sheet; minutes?: number }
-const { sheet } = Astro.props;
+import { plateLayers } from '../../data/sheets';
+import { facts } from '../../lib/staging';
+import Plate from '../media/Plate.astro';
+interface Props { sheet: Sheet; part: 'plate' | 'logo' }
+const { sheet, part } = Astro.props;
+const logo = sheet.card?.logo ? facts(sheet.card.logo) : undefined;
+/** optical heights for the logo chip (same proportions as the Viewport's logo cell) */
+const LOGO_H: Record<string, number> = {
+  'CQBzyCCtXm6Sxa1H7rjdmW35A4.webp': 22,
+  'LLwKJhf5XlV3SWhOs3xldIRQFA.png': 26,
+  'o8ini5inZ7izIUkXDxD6Ryd890E.png': 16,
+  'z9qKmfXnKpQ01CHNuHDM1KgY6aE.png': 10,
+};
 ---
-<li class="icard"><a href={sheet.href}><span data-v>{sheet.title.text}</span></a></li>
+{part === 'plate' && sheet.plate && (
+  <span class="icard__plate" style={sheet.slug ? `--_vt: plate-${sheet.slug}` : undefined}>
+    <Plate layers={plateLayers(sheet.plate)} stage={sheet.plate.stage} aspect={sheet.plate.aspect} frame="bare" priority="lazy" alt="" />
+  </span>
+)}
+{part === 'logo' && logo && (
+  <span class="icard__logo"><img src={logo.src} width={logo.w} height={logo.h} alt="" loading="lazy" decoding="async" style={`--_lh: ${LOGO_H[logo.file] ?? 22}px`} /></span>
+)}
+<style>
+  .icard__plate, .icard__logo { display: none; }
+  @media (max-width: 1023.98px) {
+    .icard__plate { display: block; grid-area: plate; view-transition-name: var(--_vt, none); }
+    .icard__logo {
+      grid-area: logo; justify-self: start; display: inline-grid; place-items: center;
+      padding: var(--s-1) var(--s-2); background: var(--plate);
+      box-shadow: inset 0 0 0 var(--lw-object) var(--line-1);
+    }
+    .icard__logo img { block-size: var(--_lh); inline-size: auto; }
+  }
+</style>

@@ -155,6 +155,8 @@ export const chrome = {
       colRead: 'Read',
       minutes: '≈ {n} min',
       summary: '{n} sheets · 2023–2026 · ≈ {m} min in full',
+      /** the same line with the year span computed from her date tags (DrawingIndex) */
+      summaryYears: '{n} sheets · {from}–{to} · ≈ {m} min in full',
       external: 'External',
       open: 'Open',
     },
@@ -163,9 +165,12 @@ export const chrome = {
       readout: 'Readout',
       citedFrom: 'Cited from',
       open: 'Open sheet {no}',
+      openExternal: 'Open',
       external: 'External',
       homeCard: 'Home card',
       enlarge: 'Enlarge',
+      pause: 'Pause',
+      play: 'Play',
     },
   },
 

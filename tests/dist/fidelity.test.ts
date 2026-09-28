@@ -21,11 +21,9 @@ const KNOWN_UNREFERENCED: Record<string, string> = {
   'WKmuyMvjduOuoF05gjcNfzXln2E.png': 'LinkedIn icon → text link in the end sheet',
   'ur8o0yFJsLgAIUCuBKNHru1N4.png': 'mail icon → text link in the end sheet',
   'GhlckHHGZtYCWRi9keJEdPMrnI.png': 'PFF flat-gradient backdrop → identical CSS gradient (SPEC §6.4 exception 5, owner note §8.9)',
-  'J2cpNxdkMPJ3EZmGxbCpvSfe6E.png': 'PFF home-card composite = NfispiNG… on GhlckHHG…; superseded by the 16:10 cover plate (flag for WP3/owner)',
-  'CQBzyCCtXm6Sxa1H7rjdmW35A4.webp': 'Cloudflare home-card logo — not placed by the spec (flag for WP3/owner)',
-  'LLwKJhf5XlV3SWhOs3xldIRQFA.png': 'PFF home-card logo — not placed by the spec (flag for WP3/owner)',
-  'o8ini5inZ7izIUkXDxD6Ryd890E.png': 'CSBS home-card logo — not placed by the spec (flag for WP3/owner)',
-  'z9qKmfXnKpQ01CHNuHDM1KgY6aE.png': 'CMU home-card logo — not placed by the spec (flag for WP3/owner)',
+  // WP3: the index uses the 16:10 case cover plate (the same box as the case header, so the "cut to sheet" morph is
+  // seamless); her four home-card logos ARE placed (Viewport title block ≥ 1024, card logo chip < 1024).
+  'J2cpNxdkMPJ3EZmGxbCpvSfe6E.png': 'PFF home-card composite = NfispiNG… on GhlckHHG…; superseded by the 16:10 cover plate (WP3; owner note)',
 };
 
 describe.each(Object.keys(pages))('%s', (page) => {

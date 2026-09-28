@@ -1,35 +1,184 @@
 ---
 /**
- * IndexRow · OWNER: WP3 (P0 functional stub). One Drawing-index row (SM2): the whole row is one link —
- * sheet no. (mono), her title, her outcome line (italic), her tags, ≈ N min (chrome) and the readout repeated sr-only.
+ * IndexRow · OWNER: WP3 (SPEC SM2). One Drawing-index entry: an <li> whose whole content is ONE link.
+ *
+ *   ≥ 1024 (row)   A-101 ▸ | her title                                 | ≈ 13 min
+ *                          | her outcome line (italic)
+ *                          | HER ROLE · HER DATE (labels)
+ *                  The active row (the one the Viewport shows) gets the rust sheet number and ▸.
+ *                  Her readout is repeated here for screen readers (the Viewport is aria-hidden).
+ *   < 1024 (card)  A-101 · PERSONAL PROJECT · MAR 2026 / cover plate 16:10 / her logo / title / outcome /
+ *                  one-line readout / ≈ 13 min · Open →          ("rows become cards"; same DOM, CSS grid areas)
+ *   also rows      B-100  About — her headline   ·   ↗  Architecture Portfolio · issuu.com   (run-in, all widths)
+ *   compact        (404) sheet no. + her title, 44px rows, nothing else.
+ *
+ * Reading order (DOM) is always: sheet no., title, line, tags, readout, minutes — "A-101, Cloudflare R2 Redesign, …".
+ * Her words carry data-v; everything we add (sheet no., separators, minutes, domain, ▸, Open) is chrome.
  */
 import Glyphs from '../symbols/Glyphs.astro';
 import type { Sheet } from '../../data/sheets';
+import { about, play } from '../../content/site';
 import { chrome, fill } from '../../data/chrome';
 import { externalAttrs } from '../../lib/rich';
+import { escapeHtml } from '../../lib/text';
 import Icon from '../symbols/Icon.astro';
+import IndexCard from './IndexCard.astro';
 import Readout from './Readout.astro';
-interface Props { sheet: Sheet; minutes?: number; compact?: boolean }
-const { sheet, minutes, compact = false } = Astro.props;
+interface Props { sheet: Sheet; minutes?: number; compact?: boolean; active?: boolean }
+const { sheet, minutes, compact = false, active = false } = Astro.props;
+const key = sheet.slug ?? (sheet.kind === 'external' ? (sheet.href.includes('issuu') ? 'architecture' : 'resume') : sheet.kind);
+const isCase = sheet.kind === 'case';
+/** B-100 / C-100: her headline HTML (keeps her <em>), not the stripped line */
+const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play' ? play.headline : undefined;
+const ext = sheet.external ? externalAttrs(sheet.href) : {};
+/**
+ * The card's one-line readout (< 1024): her first figure that her outcome line does not already state
+ * ("Two of the gaps…" and "1st Place + …" are sentences of A-101's and A-104's card text; A-103's "50% reduction in
+ * navigation time" opens its card text, so its second figure is shown). A deterministic rule on her own figures.
+ */
+const outcome = sheet.line?.text ?? '';
+const lead = (v: string, l: string) => `${v} ${l.trim().split(/\s+/).slice(0, 3).join(' ')}`.trim();
+const show = sheet.readout?.lines.findIndex((l) => {
+  const joined = (l.joined ? l.value.text + l.label.text : `${l.value.text} ${l.label.text}`).trim();
+  return !outcome.includes(joined) && !outcome.includes(lead(l.value.text, l.label.text));
+}) ?? -1;
+/** her title with each hyphenated word kept whole ("E-learning", "COVID-era"): wrapping spans only, text unchanged */
+const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span class="ix__nb">$1</span>');
+const SEP = '\u00a0· ';
+const DASH = '\u00a0— ';
 ---
-<li class:list={['irow', { 'irow--compact': compact }]}>
-  <a class="irow__a" href={sheet.href} {...externalAttrs(sheet.href)} data-sheet={sheet.slug ?? sheet.kind}>
-    <span class="irow__no t-code">{sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} /> : sheet.no}</span>
-    <span class="irow__main">
-      <span class="irow__title t-index" data-v>{sheet.title.text}</span>
-      {!compact && sheet.line && <span class="irow__line t-deck ink-2" data-v>{sheet.line.text}</span>}
-      {!compact && sheet.domain && <span class="irow__line t-code ink-2">{sheet.domain}</span>}
-      {!compact && sheet.tags.length > 0 && (
-        <span class="irow__tags t-label ink-2">{sheet.tags.map((t, i) => <>{i > 0 && <span aria-hidden="true"> · </span>}<span data-v>{t.text}</span></>)}</span>
-      )}
-      {!compact && sheet.readout && <Readout readout={sheet.readout} srOnly />}
+<li class:list={['ix', compact ? 'ix--compact' : isCase ? 'ix--case' : 'ix--also', { 'is-active': active && !compact }]} data-ix={compact ? undefined : key}>
+  <a class="ix__a" href={sheet.href} {...ext} data-sheet={key}>
+    <span class="ix__no t-code">
+      {sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} class="ix__ext" /> : <span>{sheet.no}</span>}
+      {!compact && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
+      <span class="sr-only">, </span>
     </span>
-    {minutes != null && <span class="irow__min t-label ink-2"><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
+    {!compact && isCase && <IndexCard sheet={sheet} part="plate" />}
+    {!compact && isCase && <IndexCard sheet={sheet} part="logo" />}
+    {(compact || isCase) && <span class="ix__title" data-v set:html={titleHtml} />}
+    {!compact && isCase && sheet.line && <><span class="sr-only">, </span><span class="ix__line" data-v>{sheet.line.text}</span></>}
+    {!compact && !isCase && (
+      <span class="ix__run">
+        <span class="ix__title" data-v set:html={titleHtml} />
+        {lineHtml && <><span class="ix__rs" aria-hidden="true">{DASH}</span><span class="sr-only">, </span><span class="ix__line" data-v set:html={lineHtml} /></>}
+        {sheet.domain && <><span class="ix__rs" aria-hidden="true">{SEP}</span><span class="sr-only">, </span><span class="ix__domain t-code">{sheet.domain}</span></>}
+      </span>
+    )}
+    {!compact && sheet.tags.length > 0 && (
+      <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <>{i > 0 && <><span class="ix__sep" aria-hidden="true">{SEP}</span><span class="sr-only">, </span></>}<span class="ix__tag" data-v>{t.text}</span></>)}</span>
+    )}
+    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={show} /></span>}
+    {!compact && minutes != null && <span class="ix__min t-label"><span class="sr-only">, </span><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
+    {!compact && isCase && <span class="ix__open t-label" aria-hidden="true">{chrome.wp3.index.open}<Icon name="arrow-right" size={14} /></span>}
   </a>
 </li>
+
 <style>
-  .irow { border-block-start: var(--lw-object) solid var(--line-2); }
-  .irow__a { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: var(--s-4); padding-block: var(--s-4); text-decoration: none; align-items: baseline; min-block-size: 44px; }
-  .irow__main { display: grid; gap: var(--s-2); }
-  .irow--compact .irow__a { padding-block: var(--s-2); }
+  .ix { position: relative; }
+  .ix__a {
+    display: grid; column-gap: var(--s-4);
+    color: var(--ink); text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ix__a:hover { color: var(--ink); }
+  .ix__a:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
+  .ix__no { grid-area: no; display: inline-flex; align-items: baseline; gap: var(--s-2); color: var(--ink-2); white-space: nowrap; }
+  .ix__no :global(.ix__ext) { align-self: center; }
+  .ix__mark {
+    block-size: var(--s-2); inline-size: auto; fill: var(--rust);
+    opacity: 0; transform: translateX(calc(-1 * var(--s-1)));
+    transition: opacity var(--dur-1) var(--ease-ui), transform var(--dur-2) var(--ease-pen);
+  }
+  .ix__title {
+    grid-area: title; font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index);
+    line-height: var(--lh-index); letter-spacing: var(--tr-index); text-wrap: balance;
+  }
+  .ix__line {
+    grid-area: line; font-family: var(--font-serif); font-style: italic;
+    font-size: var(--fs-body-md); font-weight: var(--wt-deck); line-height: var(--lh-deck);
+    color: var(--ink-2); text-wrap: pretty;
+  }
+  .ix__title :global(.ix__nb) { white-space: nowrap; }
+  /* her <em> inside an italic line reads upright, as emphasis within italics should */
+  .ix__line :global(em) { font-style: normal; }
+  .ix__tags { grid-area: tags; color: var(--ink-2); }
+  .ix__tag { white-space: nowrap; }
+  .ix__sep { color: var(--ink-3); }
+  .ix__rd { grid-area: readout; }
+  .ix__min { grid-area: min; color: var(--ink-2); white-space: nowrap; }
+  .ix__open { grid-area: open; display: none; }
+
+  /* also rows: her label, then her line run in after a dash (B-100, C-100) or the domain (external) */
+  .ix__run { grid-area: title; text-wrap: pretty; }
+  .ix__run .ix__title { font-size: var(--fs-body-md); line-height: var(--lh-body-sm); }
+  .ix__run .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
+  .ix__rs { color: var(--ink-3); }
+  .ix__domain { color: var(--ink-2); }
+
+  /* ── ≥ 1024: the schedule row ── */
+  @media (min-width: 1024px) {
+    .ix { border-block-start: var(--lw-object) solid var(--line-2); }
+    .ix__a {
+      grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr) auto;
+      grid-template-areas:
+        'no title min'
+        'no line  line'
+        'no tags  tags';
+      padding-block: calc(var(--s-2) + var(--s-1) / 2) var(--s-4);
+      /* the hover well and the focus ring stand a little proud of the text, which keeps its column */
+      padding-inline: var(--s-2); margin-inline: calc(-1 * var(--s-2));
+      transition: background-color var(--dur-1) var(--ease-ui);
+    }
+    .ix__no, .ix__title, .ix__min { align-self: first baseline; }
+    .ix__min { padding-inline-start: var(--s-3); }
+    .ix__rd { display: contents; }
+    .ix__line { margin-block-start: calc(var(--s-1) / 2); max-inline-size: 38em; }
+    .ix__tags { margin-block-start: var(--s-3); }
+    .ix--also .ix__a { grid-template-areas: 'no title title'; padding-block: var(--s-3); }
+    .ix--also .ix__run { align-self: first baseline; }
+    .ix__a:hover { background-color: var(--sheet); }
+    /* the Viewport's sheet: rust sheet number + ▸ (never colour alone) */
+    .ix.is-active .ix__no { color: var(--rust); }
+    .ix.is-active .ix__mark { opacity: 1; transform: none; }
+  }
+
+  /* ── < 1024: rows become cards ── */
+  @media (max-width: 1023.98px) {
+    .ix--case .ix__a {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        'plate   plate'
+        'no      tags'
+        'logo    logo'
+        'title   title'
+        'line    line'
+        'readout readout'
+        'foot    foot';
+      column-gap: var(--s-2);
+      row-gap: var(--s-3);
+    }
+    .ix--case .ix__no { color: var(--rust); }
+    .ix--case .ix__no::after { content: '·' / ''; color: var(--ink-3); }
+    .ix--case .ix__tags { align-self: baseline; }
+    .ix--case .ix__title { margin-block-start: var(--s-1); }
+    .ix--case .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
+    .ix--case .ix__min {
+      grid-area: foot; padding-block-start: var(--s-3); margin-block-start: var(--s-1);
+      border-block-start: var(--lw-object) solid var(--line-2);
+    }
+    .ix__open { grid-area: foot; justify-self: end; align-self: end; display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
+    .ix--also { border-block-start: var(--lw-object) solid var(--line-2); }
+    .ix--also .ix__a { grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr); grid-template-areas: 'no title'; padding-block: var(--s-3); }
+    .ix--also .ix__no, .ix--also .ix__run { align-self: first baseline; }
+    .ix__mark { display: none; }
+  }
+
+  /* ── compact (404): sheet no. + her title, 44px targets ── */
+  .ix--compact { border-block-start: var(--lw-object) solid var(--line-2); }
+  .ix--compact .ix__a {
+    grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr); grid-template-areas: 'no title';
+    align-items: baseline; min-block-size: calc(var(--s-6) + var(--s-3)); padding-block: var(--s-2);
+  }
+  .ix--compact .ix__title { font-size: var(--fs-body-md); line-height: var(--lh-body-sm); }
 </style>

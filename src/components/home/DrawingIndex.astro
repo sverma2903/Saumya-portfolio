@@ -1,9 +1,19 @@
 ---
 /**
- * DrawingIndex · OWNER: WP3 (P0 functional stub). The cover sheet's sheet index (SM2): detail bubble 2 / A-000,
- * "Drawing index", the computed summary `6 SHEETS · 2023–2026 · ≈ 65 MIN IN FULL`, rows grouped as Selected Projects
- * (her phrase) / Further projects / Also in the set, and the Viewport beside the list (≥1024).
- * Props: { variant?: 'full' | 'compact' } — 'compact' (404): rows with sheet no. + title only, no Viewport.
+ * DrawingIndex · OWNER: WP3 (SPEC SM2, §5.1). The cover sheet's sheet index — the 6-second layer.
+ *
+ * Header: a drafting DETAIL TITLE. The rule runs through the bubble's diameter (2 over A-000); the title "Drawing
+ * index" stands on the rule; the computed summary `6 SHEETS · 2023–2026 · ≈ 65 MIN IN FULL` sits on it at the far right.
+ * Under the rule, in the bubble's lower half, the list's first strip (SELECTED PROJECTS … READ) and the Viewport's strip
+ * (VIEWPORT · A-101 ⤢) share one baseline. This keeps the header + first row inside the 140px the cover leaves at
+ * 1440 × 900 (SM1: cover = 100svh − bar − 140px) without crowding.
+ *
+ * Groups: Selected Projects (her phrase) · Further projects · Also in the set (chrome). Rows: IndexRow (a row ≥ 1024,
+ * a card below). Beside the list, the sticky Viewport (≥ 1024). viewport.ts wires activation (hover 60 ms dwell,
+ * focus, the 45% scroll band, J/K), the swap and the loading policy.
+ *
+ * Props: { variant?: 'full' | 'compact'; headingLevel?: 2 | 3 } — 'compact' (the 404): rows with sheet no. + her title,
+ * no bubble, no summary, no Viewport, no cards.
  */
 import Glyphs from '../symbols/Glyphs.astro';
 import { cases, labels } from '../../content/site';
@@ -28,36 +38,125 @@ const groups: { key: SheetGroup; title: string; hers: boolean }[] = [
   { key: 'further', title: ix.further, hers: false },
   { key: 'also', title: ix.also, hers: false },
 ];
-const caseCount = sheets.filter((s) => s.kind === 'case').length;
-const first = sheets[0];
-const firstCs = cases.find((c) => c.slug === first.slug)!;
+const caseSheets = sheets.filter((s) => s.kind === 'case');
+/** the year span, computed from her own date tags ("Mar 2026", "Sep 2025 - May 2026", "AUG 2023" …) */
+const years = caseSheets.flatMap((s) => s.tags.flatMap((t) => [...t.text.matchAll(/\b(?:19|20)\d{2}\b/g)].map((m) => +m[0])));
+const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...years), to: Math.max(...years), m: setMinutes(cases) });
 ---
-<section id="index" class:list={['dindex', 'shell', { 'dindex--compact': compact }]} aria-labelledby="index-h">
-  <div class="dindex__head">
-    {!compact && <Bubble n="2" sheet="A-000" />}
-    <H id="index-h" class="t-h">{ix.drawingIndex}</H>
-    {!compact && <p class="dindex__summary t-label ink-2"><Glyphs text={fill(ix.summary, { n: caseCount, m: setMinutes(cases) })} /></p>}
-  </div>
-  <div class="dindex__grid">
-    <div class="dindex__list">
-      {groups.map((g) => (
-        <div class="dindex__group">
-          {g.hers ? <G class="t-label ink-2" data-v>{g.title}</G> : <G class="t-label ink-2">{g.title}</G>}
-          <ol role="list">
-            {sheets.filter((s) => s.group === g.key).map((s) => <IndexRow sheet={s} minutes={minutesOf(s.slug)} compact={compact} />)}
+<section id="index" class:list={['dix', 'shell', { 'dix--compact': compact }]} aria-labelledby="index-h" data-dix={compact ? undefined : ''}>
+  <div class="dix__grid">
+    <header class="dix__head">
+      {!compact && <Bubble n="2" sheet="A-000" class="dix__bubble" />}
+      <H id="index-h" class={compact ? 'dix__ctitle t-label-lg' : 'dix__title'}>{ix.drawingIndex}</H>
+      {!compact && <p class="dix__summary t-label"><Glyphs text={summary} /></p>}
+    </header>
+
+    <div class="dix__list" data-dix-list>
+      {groups.map((g, gi) => (
+        <div class:list={['dix__group', `dix__group--${g.key}`]}>
+          <div class="dix__gh">
+            {g.hers ? <G class="dix__gt t-label" data-v>{g.title}</G> : <G class="dix__gt t-label">{g.title}</G>}
+            {!compact && gi === 0 && <span class="dix__col t-label" aria-hidden="true">{ix.colRead}</span>}
+          </div>
+          <ol class="dix__ol" role="list">
+            {sheets.filter((s) => s.group === g.key).map((s) => <IndexRow sheet={s} minutes={minutesOf(s.slug)} compact={compact} active={!compact && s === sheets[0]} />)}
           </ol>
         </div>
       ))}
     </div>
-    {!compact && <Viewport sheet={first} cs={firstCs} />}
+
+    {!compact && <Viewport sheets={sheets} />}
   </div>
 </section>
+
 <style>
-  .dindex { padding-block: var(--s-7); }
-  .dindex__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); margin-block-end: var(--s-5); }
-  .dindex__summary { margin-inline-start: auto; }
-  .dindex__grid { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); align-items: start; }
-  .dindex--compact .dindex__grid, .dindex__grid:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
-  @media (max-width: 1023.98px) { .dindex__grid { grid-template-columns: minmax(0, 1fr); } }
-  .dindex__group ol { list-style: none; padding: 0; margin-block: var(--s-2) var(--s-5); }
+  /* ─────────────────────────────── shared ─────────────────────────────── */
+  .dix {
+    --_strip: var(--s-5);                          /* the strip under the header rule (group label · READ | VIEWPORT) */
+    --_bub: calc(var(--s-7) - var(--s-1));         /* Bubble (md) diameter, 44px: it sits on the rule, half above */
+    --_no: 4.5rem;                                 /* the rows' sheet-number column */
+    padding-block: var(--s-5) var(--s-9);
+  }
+  .dix__grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .dix__head { position: relative; display: flex; align-items: last baseline; gap: var(--s-4); }
+  .dix__title {
+    font-family: var(--font-serif); font-size: var(--fs-h); font-weight: var(--wt-h);
+    line-height: 0.92; letter-spacing: var(--tr-h); text-wrap: nowrap;
+  }
+  .dix__summary { color: var(--ink-2); white-space: nowrap; }
+  .dix__gh { display: flex; align-items: center; gap: var(--s-4); min-block-size: var(--_strip); }
+  .dix__gt { color: var(--ink-2); }
+  .dix__col { margin-inline-start: auto; color: var(--ink-3); }
+  .dix__ol { list-style: none; padding: 0; margin: 0; }
+
+  /* ─────────────── the detail title: bubble on the rule, title on the rule ─────────────── */
+  .dix:not(.dix--compact) .dix__head {
+    /* the header box ends at the rule; the bubble hangs half below it, beside the first strip. The title stands on
+       the rule in the titles' column (the bubble sits in the sheet-number column). */
+    padding-inline-start: calc(var(--_no) + var(--s-4));
+    padding-block: 0 calc(var(--s-1) / 2);
+    min-block-size: calc(var(--_bub) / 2);
+    border-block-end: var(--lw-border) solid var(--ink);
+  }
+  .dix__head :global(.dix__bubble) {
+    position: absolute; inset-inline-start: 0; inset-block-end: calc(var(--_bub) / -2 - var(--lw-border) / 2);
+    z-index: var(--z-raised);
+  }
+  .dix__summary { margin-inline-start: auto; }
+
+  /* ─────────────────────────── ≥ 1024: list | Viewport ─────────────────────────── */
+  @media (min-width: 1024px) {
+    /* the cover (SM1) leaves 140px above the fold at 1440 × 900 and already ends in ≥ 43px of its own air:
+       the index starts right away so its header, first strip, the A-101 title and outcome line are all on screen */
+    .dix { padding-block: 0 var(--s-6); }
+    .dix__grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--g);
+    }
+    .dix__head { grid-column: 1 / -1; grid-row: 1; }
+    /* room under the last row, so the sticky Viewport stays whole while the last rows cross the 45% band
+       (Viewport height for those sheets + its top − 45% of the window − the rows below: ≈ 0.2 × the window) */
+    .dix__list { grid-column: 1 / span 6; grid-row: 2; padding-block-end: 20svh; }
+    .dix :global(.vp) { grid-column: 7 / span 6; grid-row: 2; align-self: start; }
+    /* the list's strips sit to the right of the hanging bubble, on the titles' left edge (4.5rem = row sheet column) */
+    .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); }
+    .dix__group + .dix__group { margin-block-start: var(--s-7); }
+    .dix__group + .dix__group .dix__gh { border-block-start: var(--lw-border) solid var(--ink); }
+    .dix__group--also { margin-block-start: var(--s-8); }
+  }
+
+  /* ─────────────────────────── < 1024: cards ─────────────────────────── */
+  @media (max-width: 1023.98px) {
+    .dix { padding-block: var(--s-6) var(--s-8); }
+    .dix:not(.dix--compact) .dix__head { flex-wrap: wrap; row-gap: var(--s-1); padding-inline-start: calc(var(--_bub) + var(--s-4)); }
+    .dix__gh { padding-inline-start: calc(var(--_bub) + var(--s-4)); }
+    .dix__col { display: none; }
+    .dix:not(.dix--compact) .dix__group--selected .dix__gh { margin-block-end: var(--s-5); }
+    .dix:not(.dix--compact) .dix__group + .dix__group { margin-block-start: var(--s-8); }
+    .dix:not(.dix--compact) .dix__group + .dix__group .dix__gh { padding-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); margin-block-end: var(--s-5); }
+    .dix:not(.dix--compact) .dix__group--also .dix__gh { margin-block-end: 0; }
+    .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol { display: grid; row-gap: var(--s-8); }
+  }
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--g); }
+  }
+  @media (max-width: 767.98px) {
+    .dix { --_bub: calc(var(--s-6) + var(--s-1)); }
+    .dix__summary { flex-basis: 100%; order: -1; margin-block-end: var(--s-1); }
+  }
+
+  /* ─────────────────────────── compact (404): a sheet index in three columns ─────────────────────────── */
+  .dix--compact { padding-block: var(--s-6); }
+  .dix--compact .dix__head { margin-block-end: var(--s-3); }
+  .dix__ctitle { color: var(--ink-2); }
+  .dix--compact .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); border-block-start: var(--lw-border) solid var(--ink); }
+  .dix--compact .dix__group + .dix__group { margin-block-start: var(--s-6); }
+  @media (min-width: 1024px) {
+    .dix--compact .dix__list { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--g); padding: 0; }
+    .dix--compact .dix__group + .dix__group { margin-block-start: 0; }
+  }
+  @media (max-width: 1023.98px) {
+    .dix--compact .dix__gh { margin-block-end: 0; }
+    .dix--compact .dix__group + .dix__group .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); }
+  }
 </style>

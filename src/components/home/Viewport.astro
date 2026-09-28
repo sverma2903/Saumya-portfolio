@@ -1,33 +1,379 @@
 ---
 /**
- * Viewport · OWNER: WP3 (P0 functional stub). The sticky master/detail preview beside the index (≥1024; SM2):
- * header `VIEWPORT · A-101` + ⤢, the cover plate on its stage (16:10), the title block (her meta), the Readout, and
- * `Open sheet A-101 →`. aria-hidden + inert (every piece of it exists in the rows). Default A-101.
+ * Viewport · OWNER: WP3 (SPEC SM2). The sticky master/detail preview beside the Drawing index (≥ 1024 only):
+ *
+ *   header strip  VIEWPORT · A-101 ··· 2679 × 1544 PX (on plate hover) ⤢
+ *   plate         the sheet's cover on its own stage, 16:10 — the same box, stage and per-layer padding as the case
+ *                 header's cover (sheets.ts COVERS), so the "cut to sheet" morph (SM3) is seamless
+ *   title block   her meta rows (Role / Team / Skills, or Timeline / Context) + her home-card logo in the title
+ *                 block's logo cell (A-101…A-104, as on her original cards; on --plate so it reads in Dusk too)
+ *   readout       her numbers, verbatim, with "Cited from"
+ *   button        Open sheet A-10x →
+ *
+ * Every sheet is pre-rendered (one plate + one panel each); viewport.ts shows one at a time. Loading policy
+ * (SM2 "Loading"): only A-101's cover has a real src (lazy, so nothing loads before the index nears the screen);
+ * every other layer and logo carries data-src and is fetched on hover intent or activation; the CSBS GIF is mounted
+ * only while A-103 is active (and unmounted 10 s after); C-100's video plays muted in a loop only while active.
+ *
+ * Accessibility: aria-hidden="true", and the preview itself (.vp__view: strip, plates, panels) is `inert`. Everything
+ * it shows exists in the rows (the readout is repeated for screen readers inside each row) or on the case page. Since
+ * inert also ignores the pointer, the three things a mouse may do here live in a separate control layer laid over it
+ * (.vp__ctl, also aria-hidden, no tab stops): the whole preview is one link to the active sheet (so the "Open sheet"
+ * button is drawn, and lights up with the rest of the preview on hover), ⤢ (Enlarged detail) sits in the strip, and
+ * the pause control on the plate's corner.
  */
 import type { Sheet } from '../../data/sheets';
-import type { CaseStudy } from '../../lib/blocks';
-import { plateLayers } from '../../data/sheets';
+import { cases, about, play } from '../../content/site';
 import { chrome, fill } from '../../data/chrome';
-import Plate from '../media/Plate.astro';
-import Readout from './Readout.astro';
+import { facts, dimsLabel, stagingOf } from '../../lib/staging';
 import Icon from '../symbols/Icon.astro';
-interface Props { sheet: Sheet; cs: CaseStudy }
-const { sheet, cs } = Astro.props;
+import Readout from './Readout.astro';
+
+interface Props {
+  sheets: Sheet[];
+  /** the key of the sheet shown before any interaction (default: the first case, A-101) */
+  initial?: string;
+}
+const { sheets } = Astro.props;
 const v = chrome.wp3.viewport;
-const no = String(sheet.no);
+const keyOf = (s: Sheet) => s.slug ?? (s.kind === 'external' ? (s.href.includes('issuu') ? 'architecture' : 'resume') : s.kind);
+const initial = Astro.props.initial ?? keyOf(sheets[0]);
+
+/** The exact box of a contained layer inside a 16:10 (A) plate with `pad`% stage margin, in % of the plate. */
+function rect(aspect: number, A: number, pad: number) {
+  const inner = 100 - 2 * pad;
+  if (aspect >= A) {
+    const h = (inner * A) / aspect;
+    return { l: pad, t: (100 - h) / 2, w: inner, h };
+  }
+  const w = (inner * aspect) / A;
+  return { l: (100 - w) / 2, t: pad, w, h: inner };
+}
+const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
+
+/** Her home-card logos (sheet.card.logo) — optical sizes so the four read at the same visual weight. */
+const LOGO_H: Record<string, number> = {
+  'CQBzyCCtXm6Sxa1H7rjdmW35A4.webp': 40, // Cloudflare: cloud + wordmark (3.03 : 1)
+  'LLwKJhf5XlV3SWhOs3xldIRQFA.png': 48,  // PFF LLC: opaque white box with its own margin (2.18 : 1)
+  'o8ini5inZ7izIUkXDxD6Ryd890E.png': 30, // CSBS: four tiles (3.98 : 1)
+  'z9qKmfXnKpQ01CHNuHDM1KgY6aE.png': 15, // Carnegie Mellon wordmark (9.58 : 1)
+};
+
+const items = sheets.map((s) => {
+  const key = keyOf(s);
+  const cs = s.slug ? cases.find((c) => c.slug === s.slug) : undefined;
+  const A = s.plate?.aspect ?? 1.6;
+  const layers = (s.plate?.layers ?? []).map((l, i, all) => {
+    const f = facts(l.file);
+    const st = stagingOf(l.file);
+    return {
+      f,
+      top: i === all.length - 1,
+      box: rect(f.aspect, A, l.pad ?? 0),
+      phoneVideo: st.frame === 'phone-video',
+      gif: f.gif,
+      poster: st.gif?.poster ?? 0,
+      video: f.kind === 'video',
+    };
+  });
+  const top = layers[layers.length - 1];
+  const logo = s.card?.logo ? facts(s.card.logo) : undefined;
+  return {
+    s, key, cs, layers,
+    active: key === initial,
+    no: String(s.no),
+    vt: s.slug ? `plate-${s.slug}` : undefined,
+    dims: top ? dimsLabel(top.f.file, false) : undefined,   // '2679 × 1544 · PNG' — the site's figure-tag format
+    ph: top ? dimsLabel(top.f.file) : undefined,
+    gif: layers.some((l) => l.gif),
+    video: layers.some((l) => l.video),
+    logo,
+    quote: s.kind === 'about' ? about.headline : s.kind === 'play' ? play.headline : undefined,
+    quoteSub: s.kind === 'play' ? play.sub : undefined,
+    citedParts: s.readout?.cited ?? (s.kind === 'about' || s.kind === 'play' ? [String(s.no), s.title.text] : undefined),
+    openLabel: s.external ? v.openExternal : fill(v.open, { no: String(s.no) }),
+  };
+});
+const first = items.find((i) => i.active) ?? items[0];
 ---
-<aside class="viewport" aria-hidden="true" inert>
-  <p class="viewport__head t-label ink-2">{v.viewport} · <span class="t-code">{no}</span></p>
-  {sheet.plate && <Plate layers={plateLayers(sheet.plate)} stage={sheet.plate.stage} aspect={sheet.plate.aspect} vt={sheet.slug ? `plate-${sheet.slug}` : undefined} alt="" frame="bare" priority="lazy" />}
-  <dl class="viewport__tb">
-    {cs.meta.map(([k, val]) => <div><dt class="t-label ink-2" data-v>{k}</dt><dd data-v>{val}</dd></div>)}
-  </dl>
-  {sheet.readout && <Readout readout={sheet.readout} />}
-  <a class="btn" href={sheet.href} tabindex="-1">{fill(v.open, { no })}<Icon name="arrow-right" /></a>
+<aside class="vp" aria-hidden="true" data-vp data-active={first.key}>
+ <div class="vp__view" inert>
+  <div class="vp__head">
+    <p class="vp__id t-label"><span>{v.viewport}</span><span class="vp__dot"> · </span><span class="vp__no t-code" data-vp-no>{first.no === '↗' ? v.external : first.no}</span></p>
+    <p class="vp__dims t-code-sm" data-vp-dims>{first.dims}</p>
+  </div>
+
+  <div class="vp__stage" data-vp-stage>
+    {items.map((it) =>
+      it.s.plate ? (
+        <span
+          class:list={['vp__plate', { 'is-active': it.active }]}
+          data-href={it.s.href}
+          data-vp-plate={it.key}
+          data-dims={it.dims}
+          data-ph={it.ph}
+          data-gif={it.gif ? '' : undefined}
+          data-video={it.video ? '' : undefined}
+          data-vt={it.vt}
+          data-no={it.no}
+          hidden={!it.active}
+        >
+          <span class="vp__box" data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
+            {it.layers.map((l) => {
+              const style = `left: ${r4(l.box.l)}%; top: ${r4(l.box.t)}%; inline-size: ${r4(l.box.w)}%; block-size: ${r4(l.box.h)}%`;
+              const eager = it.active && !l.gif && !l.video;
+              return l.video ? (
+                <video
+                  class:list={['vp__layer', { 'vp__layer--pv': l.phoneVideo }]}
+                  style={style}
+                  data-src={l.f.src}
+                  width={l.f.w}
+                  height={l.f.h}
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  disablepictureinpicture
+                  data-vp-media
+                ></video>
+              ) : eager ? (
+                <img class="vp__layer" style={style} src={l.f.src} width={l.f.w} height={l.f.h} alt="" loading="lazy" decoding="async" data-vp-media />
+              ) : (
+                <img class="vp__layer" style={style} data-src={l.f.src} width={l.f.w} height={l.f.h} alt="" decoding="async" data-vp-media data-gif-layer={l.gif ? '' : undefined} data-frame={l.gif ? l.poster : undefined} />
+              );
+            })}
+          </span>
+        </span>
+      ) : (
+        <span class="vp__plate vp__plate--x" data-vp-plate={it.key} data-href={it.s.href} data-ext data-no={v.external} hidden={!it.active}>
+          <span class="vp__box vp__box--x">
+            <svg class="vp__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
+            <span class="vp__xl t-code-sm">{v.external} · {it.s.domain}<Icon name="arrow-up-right" size={12} /></span>
+          </span>
+        </span>
+      ),
+    )}
+    <span class="vp__ph" data-vp-ph hidden>
+      <svg class="vp__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
+      <span class="vp__xl t-code-sm" data-vp-ph-l></span>
+    </span>
+    <svg class="vp__cut" data-vp-cut aria-hidden="true" focusable="false"><line x1="50%" y1="0" x2="50%" y2="100%" /></svg>
+  </div>
+
+  <div class="vp__panels">
+    {items.map((it) => (
+      <div class:list={['vp__panel', { 'is-active': it.active }]} data-vp-panel={it.key}>
+        {it.cs && (
+          <div class:list={['vp__tb', { 'vp__tb--logo': !!it.logo }]}>
+            <dl class="vp__dl">
+              {it.cs.meta.map(([k, val], i) => (
+                <div class:list={['vp__row', { 'vp__row--skills': i === 2 }]}><dt class="t-label" data-v>{k}</dt><dd data-v>{val}</dd></div>
+              ))}
+            </dl>
+            {it.logo && (
+              <div class="vp__logo">
+                {it.active
+                  ? <img src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" loading="lazy" decoding="async" style={`--_lh: ${LOGO_H[it.logo.file] ?? 32}px`} />
+                  : <img data-src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" decoding="async" data-vp-media style={`--_lh: ${LOGO_H[it.logo.file] ?? 32}px`} />}
+              </div>
+            )}
+          </div>
+        )}
+        {it.s.readout && <Readout readout={it.s.readout} variant="viewport" />}
+        {it.quote && (
+          <div class="vp__quote">
+            <p class="vp__q" data-v set:html={it.quote} />
+            {it.quoteSub && <p class="vp__qs" data-v set:html={it.quoteSub} />}
+          </div>
+        )}
+        <div class="vp__foot">
+          {it.citedParts && (
+            <p class="vp__cited t-label"><span class="vp__ck">{v.citedFrom}</span>{it.citedParts.map((c) => <><span class="vp__cs" aria-hidden="true"> · </span><span>{c}</span></>)}</p>
+          )}
+          <span class="btn vp__open">{it.openLabel}<Icon name={it.s.external ? 'arrow-up-right' : 'arrow-right'} /></span>
+        </div>
+      </div>
+    ))}
+  </div>
+ </div>
+ <div class="vp__ctl">
+  <a class="vp__hit" href={first.s.href} tabindex="-1" data-vp-hit {...(first.s.external ? { target: '_blank', rel: 'noopener' } : {})}></a>
+  <button class="vp__enl" type="button" tabindex="-1" data-vp-enlarge title={v.enlarge} data-js-only hidden={!first.s.plate}><Icon name="enlarge" size={16} /></button>
+  <span class="vp__cplate"><button class="vp__pause t-label" type="button" tabindex="-1" data-vp-pause data-js-only hidden data-pause={v.pause} data-play={v.play}><Icon name="pause" size={12} class="vp__pi vp__pi--pause" /><Icon name="play" size={12} class="vp__pi vp__pi--play" /><span data-vp-pause-l>{v.pause}</span></button></span>
+ </div>
 </aside>
+
 <style>
-  .viewport { position: sticky; inset-block-start: calc(var(--bar) + 32px); display: grid; gap: var(--s-4); align-content: start; }
-  .viewport__tb div { display: grid; grid-template-columns: 5rem 1fr; gap: var(--s-3); padding-block: var(--s-1); border-block-start: var(--lw-object) solid var(--line-2); }
-  .viewport__tb dd { margin: 0; }
-  @media (max-width: 1023.98px) { .viewport { display: none; } }
+  /* The Viewport exists only where the list sits beside it (≥ 1024). Below that the rows are cards.
+     Position: it sticks where it stands when the index is scrolled into place (#index: the header's rule just under
+     the title bar), so landing on the index and browsing it show the same, whole Viewport (short windows let it rise
+     8px more, see the end of this sheet).
+     Height budget: it must fit under that line. Its width — and with it the 16:10 plate — is the smaller of its
+     column and what the window's height allows: (100svh − bar − top − header − the rest) × 1.6, where "the rest" is
+     everything that is not the plate (strip, gaps, title block, readout, foot; measured on the tallest panel). */
+  .vp { display: none; }
+  @media (min-width: 1024px) {
+    .vp {
+      --_top: var(--s-4);   /* = the page's scroll-padding under the bar (base.css) */
+      --_head: var(--s-6);  /* the index header (title on its rule); viewport.ts measures it */
+      --_rest: 23.25rem;    /* measured on the tallest panel (A-103) at 1440–1920; viewport.ts refines it */
+      --_gap: var(--s-3);
+      display: grid;
+      position: sticky; inset-block-start: calc(var(--bar) + var(--_top) + var(--_head));
+      z-index: var(--z-sticky);
+      /* never below 30rem (or the column, if narrower): past that the foot may run under the window's edge instead */
+      inline-size: clamp(min(100%, 30rem), calc((100svh - var(--bar) - var(--_top) - var(--_head) - var(--_rest) - var(--s-3)) * 1.6), 100%);
+      justify-self: end;
+      container: vp / inline-size;
+    }
+  }
+
+  /* the inert preview and its control layer share one cell; the preview sets the height */
+  .vp > * { grid-area: 1 / 1; min-inline-size: 0; }
+  .vp__view { display: grid; row-gap: var(--_gap); align-content: start; }
+  .vp__ctl {
+    position: relative; z-index: var(--z-raised);
+    display: grid; grid-template-rows: var(--_strip, var(--s-5)) auto 1fr; row-gap: var(--_gap);
+    pointer-events: none;
+  }
+  .vp__hit { grid-area: 1 / 1 / -1 / -1; pointer-events: auto; }
+  .vp__cplate { grid-area: 2 / 1; display: grid; aspect-ratio: 1.6; }
+
+  /* header strip — shares its baseline with the list's first strip */
+  .vp__head {
+    display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--_strip, var(--s-5)); color: var(--ink-2);
+    padding-inline-end: calc(var(--s-6) - var(--s-2) + var(--s-3)); /* room for ⤢ (control layer) */
+  }
+  .vp__id { display: flex; align-items: baseline; white-space: nowrap; }
+  .vp__dot { white-space: pre; color: var(--ink-3); }
+  .vp__no { color: var(--rust); }
+  .vp__dims {
+    margin-inline-start: auto; color: var(--ink-3); white-space: nowrap;
+    opacity: 0; transition: opacity var(--dur-3) var(--ease-ui);
+  }
+  .vp:has(.vp__hit:hover) .vp__dims { opacity: 1; }
+  .vp__enl {
+    grid-area: 1 / 1; justify-self: end; align-self: center; pointer-events: auto;
+    display: inline-grid; place-items: center; inline-size: var(--s-6); block-size: var(--s-6);
+    margin-block: calc(-1 * var(--s-1)); margin-inline-end: calc(-1 * var(--s-2));
+    color: var(--ink-2); border-radius: var(--r-1);
+    transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
+  }
+  .vp__enl:hover { color: var(--rust); background: var(--paper-2); }
+
+  /* the stage: every plate sits in the same 16:10 cell */
+  .vp__stage { position: relative; display: grid; aspect-ratio: 1.6; isolation: isolate; }
+  .vp__stage > * { grid-area: 1 / 1; }
+  .vp__plate { display: block; position: relative; }
+  .vp__box { position: absolute; inset: 0; display: block; overflow: hidden; }
+  .vp__layer { position: absolute; display: block; max-inline-size: none; }
+  /* Conversense: the baked device's white corners are clipped by the frame radius (SPEC §6.3 'phone-video') */
+  .vp__layer--pv { border-radius: 5% / 2.3%; }
+  .vp__plate.is-incoming { z-index: calc(var(--z-raised) + 1); }
+
+  /* drafting X: external sheets, and the loading placeholder (dims · format · size) */
+  .vp__box--x, .vp__ph { display: grid; place-items: center; background: var(--plate); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
+  .vp__ph { position: relative; z-index: var(--z-raised); }
+  .vp__x { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
+  .vp__x path { fill: none; stroke: var(--line-2); stroke-width: var(--lw-object); vector-effect: non-scaling-stroke; }
+  .vp__xl {
+    position: relative; display: inline-flex; align-items: center; gap: var(--s-1);
+    padding: var(--s-1) var(--s-2); background: var(--plate); color: var(--ink-3); text-transform: uppercase;
+  }
+
+  /* the section cut that rides the wipe's leading edge (2px rust, long–short dash) */
+  .vp__cut {
+    position: absolute; z-index: var(--z-sticky); inset-block-start: calc(-1 * var(--s-3)); inset-inline-start: calc(var(--lw-cut) / -2);
+    inline-size: var(--lw-cut); block-size: calc(100% + 2 * var(--s-3)); pointer-events: none; opacity: 0; overflow: visible;
+  }
+  .vp__cut line { stroke: var(--rust); stroke-width: var(--lw-cut); stroke-dasharray: var(--dash-center); }
+
+  /* pause for the moving plates (C-100 video, A-103 GIF); the Motion switch in the end sheet is the keyboard path */
+  .vp__pause {
+    justify-self: end; align-self: end; margin: var(--s-3); pointer-events: auto;
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    min-block-size: var(--s-6); padding: 0 var(--s-3);
+    color: var(--ink); background: var(--sheet); border: var(--lw-object) solid var(--line-3);
+  }
+  .vp__pause :global(.vp__pi--play), .vp__pause.is-paused :global(.vp__pi--pause) { display: none; }
+  .vp__pause.is-paused :global(.vp__pi--play) { display: inline-block; }
+
+  /* panels share one cell and cross-fade (--dur-1); only the active one is in flow, so the Viewport is as tall as
+     what it shows (the outgoing panel overlays it while it fades) */
+  .vp__panels { display: grid; position: relative; }
+  .vp__panel {
+    grid-area: 1 / 1; display: flex; flex-direction: column; gap: var(--s-3);
+    position: absolute; inset: 0 0 auto;
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-1) var(--ease-ui), visibility 0s linear var(--dur-1);
+  }
+  .vp__panel.is-active { position: relative; opacity: 1; visibility: visible; transition: opacity var(--dur-1) var(--ease-ui), visibility 0s; }
+
+  /* title block — the same object as the case page's (outer ink border, inner --line-2 rules, 96px keys) */
+  .vp__tb { display: grid; grid-template-columns: minmax(0, 1fr); border: var(--lw-border) solid var(--ink); background: var(--sheet); }
+  .vp__tb--logo { grid-template-columns: minmax(0, 1fr) auto; }
+  /* the key column's rule is drawn on the list, so each row can align key and value on one baseline */
+  .vp__tb { --_k: 6rem; }
+  .vp__dl {
+    display: grid; align-content: start;
+    background: linear-gradient(var(--line-2), var(--line-2)) var(--_k) 0 / var(--lw-object) 100% no-repeat;
+  }
+  .vp__row { display: grid; grid-template-columns: var(--_k) minmax(0, 1fr); align-items: baseline; }
+  .vp__row + .vp__row { border-block-start: var(--lw-object) solid var(--line-2); }
+  .vp__row dt, .vp__row dd { padding: calc(var(--s-1) * 1.5) var(--s-3); }
+  .vp__row dt { color: var(--ink-2); }
+  .vp__row dd { margin: 0; font-size: var(--fs-body-sm); line-height: 1.35; color: var(--ink); text-wrap: pretty; }
+  .vp__logo {
+    display: grid; place-items: center; inline-size: 9.5rem; padding: var(--s-3);
+    background: var(--plate); border-inline-start: var(--lw-object) solid var(--line-2);
+  }
+  .vp__logo img { block-size: var(--_lh); inline-size: auto; max-inline-size: 100%; }
+
+  .vp__quote { display: grid; row-gap: var(--s-3); }
+  .vp__q { font-size: var(--fs-lede); font-weight: var(--wt-lede); line-height: var(--lh-lede); letter-spacing: var(--tr-lede); text-wrap: balance; }
+  .vp__qs { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); max-inline-size: 48ch; }
+
+  /* foot: where the numbers come from, and the way in */
+  .vp__foot {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+    padding-block-start: var(--s-2); border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .vp__cited { flex: 1 1 auto; color: var(--ink-2); min-inline-size: 0; }
+  .vp__open { flex: none; }
+  .vp__ck { color: var(--ink-3); }
+  .vp__cs { white-space: pre; color: var(--ink-3); }
+  .vp__open { margin-inline-start: auto; }
+  .vp__open {
+    background-image: linear-gradient(90deg, transparent 50%, var(--sheet) 50%), var(--hatch-blush);
+    background-size: 200% 100%, auto;
+    background-position: 100% 0, 0 0;
+    background-repeat: no-repeat, repeat;
+    transition: background-position var(--dur-3) var(--ease-pen), color var(--dur-1) var(--ease-ui);
+  }
+  /* the preview is one link: hovering it lights the drawn button as .btn:hover would */
+  .vp:has(.vp__hit:hover) .vp__open { color: var(--rust-deep); background-position: 0 0, 0 0; }
+
+  /* a narrow Viewport (1024-wide windows, short-window shrink): the logo cell steps aside for her words */
+  @container vp (max-width: 540px) {
+    .vp__logo { display: none; }
+    .vp__tb--logo { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  @media (forced-colors: active) {
+    .vp__box--x, .vp__ph { border: 1px solid CanvasText; }
+  }
+  /* short windows (1280 × 720; a 1440 × 900 laptop's ≈ 790px browser): SM2's Skills row hidden and sub-line clamped;
+     tighter gaps, a narrower logo cell, and the Viewport sticks 8px higher (it rises that much after landing) */
+  @media (min-width: 1024px) and (max-height: 820px) {
+    .vp { --_top: var(--s-2); --_rest: 19.5rem; --_gap: var(--s-2); }
+    .vp__panel { gap: var(--s-2); }
+    .vp__row--skills { display: none; }
+    .vp__logo { inline-size: 8rem; padding: var(--s-2); }
+    .vp :global(.rd__sub) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  }
 </style>
+
+<script>
+  import { initViewport } from '../../scripts/home/viewport';
+  initViewport();
+</script>
