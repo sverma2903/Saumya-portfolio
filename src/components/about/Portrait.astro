@@ -1,18 +1,100 @@
 ---
 /**
- * Portrait · OWNER: WP6 (P0 functional stub). Her 904×904 portrait PNG (tilted rust card baked in): no extra rotation,
- * no clipping, no second card. 460px desktop, ≤360px mobile, the compass construction behind it (Ø 904 PX on hover).
- * LCP → preloaded by the page (lcpImage) + fetchpriority=high.
+ * Portrait · WP6 (SPEC §5.3). Her 904×904 portrait PNG with its tilted rust card baked in — shown as-is: no extra
+ * rotation, no clipping, no filter, no second card. 460px on desktop, ≤ 360px on phones. LCP: preloaded by the page
+ * (lcpImage) and fetchpriority=high on the <img>.
+ *
+ * Behind it, a compass construction in clay: the circle a compass swings to draw the ○ of her △○□ (r = 0.62 · size,
+ * 1px dashed) and two centre lines (long–short dash) crossing at the portrait's centre, overshooting the circle a
+ * little as construction lines do. Her card's transparent corners let the construction pass behind it. On hover (fine
+ * pointers) a dimension string under the circle reads the file's native size, `Ø 904 PX` — the same drafting as the
+ * cover plates' dimension strings.
+ * It is not an Enlarged-detail figure: a portrait is an avatar (§6.2 zoom rule), and 904px is its size here already.
+ * Everything we draw is aria-hidden; the <img> carries the alt text.
+ *
+ * Sizing: ≥ 1024 the whole construction (1.34 × the portrait) fits its column, so it never crosses her headline;
+ * below 1024 the portrait takes the width (max 360px) and the construction may run off the sheet's edge.
  */
 import { about } from '../../content/site';
 import { alt } from '../../data/alt';
-import { fileOf } from '../../lib/staging';
+import { chrome, fill } from '../../data/chrome';
+import { facts, fileOf } from '../../lib/staging';
 import Plate from '../media/Plate.astro';
+const f = facts(about.portrait);
+const dia = fill(chrome.wp6.about.diameter, { w: f.w });
+// Drawn in a 1340-unit box whose middle 1000 units are the portrait (1 unit = size / 1000). U turns a screen length at
+// the desktop size (460px) into units, so strokes and dashes read as drawn at 1:1 there.
+const U = 1000 / 460;
+const C = 670; // centre
+const r = 620; // 0.62 · size
+const dash = `${(4 * U).toFixed(1)} ${(5 * U).toFixed(1)}`;
+const center = [14, 3, 2, 3].map((n) => (n * U).toFixed(1)).join(' ');
+const sw = U.toFixed(2);
+const tick = 6 * U;
+const yDim = C + r + 28 * U; // the dimension line, 28px under the circle
+const ext = 44 * U; // extension lines start this far below the circle's widest points
 ---
 <figure class="portrait">
-  <Plate layers={[about.portrait]} alt={alt(fileOf(about.portrait))} frame="bare" priority="high" />
+  <svg class="portrait__cons" viewBox="0 0 1340 1340" aria-hidden="true" focusable="false">
+    <circle cx={C} cy={C} r={r} fill="none" stroke="currentColor" stroke-width={sw} stroke-dasharray={dash} />
+    <path d={`M0 ${C}H1340M${C} 0V1340`} fill="none" stroke="currentColor" stroke-width={sw} stroke-dasharray={center} />
+    <g class="portrait__dim" fill="none" stroke="currentColor" stroke-width={sw}>
+      <path d={`M${C - r} ${C + ext}V${yDim + 8 * U}M${C + r} ${C + ext}V${yDim + 8 * U}`} />
+      <path d={`M${C - r} ${yDim}H${C + r}`} />
+      <path d={`M${C - r - tick} ${yDim + tick}L${C - r + tick} ${yDim - tick}M${C + r - tick} ${yDim + tick}L${C + r + tick} ${yDim - tick}`} />
+    </g>
+  </svg>
+  <span class="portrait__label t-code-sm" aria-hidden="true" style={`--_y: ${((yDim - C) / 10 + 50).toFixed(2)}%`}>{dia}</span>
+  <Plate layers={[about.portrait]} alt={alt(fileOf(about.portrait))} frame="bare" priority="high" class="portrait__plate" />
 </figure>
 <style>
-  .portrait { max-inline-size: 460px; justify-self: center; inline-size: 100%; }
-  @media (max-width: 767.98px) { .portrait { max-inline-size: 360px; } }
+  .portrait {
+    --_s: min(460px, 100% / 1.34);
+    position: relative;
+    isolation: isolate;
+    inline-size: var(--_s);
+    justify-self: center;
+    /* room for the construction: the centre lines reach 0.17 · size beyond the portrait */
+    margin-block: calc(0.17 * var(--_s));
+  }
+  .portrait__cons {
+    position: absolute;
+    inset: -17%;
+    inline-size: 134%;
+    block-size: 134%;
+    max-inline-size: none;
+    z-index: -1;
+    color: var(--clay);
+    overflow: visible;
+    pointer-events: none;
+  }
+  .portrait__dim, .portrait__label {
+    opacity: 0;
+    transition: opacity var(--dur-3) var(--ease-draft);
+  }
+  .portrait__label {
+    position: absolute;
+    inset-block-start: var(--_y);
+    inset-inline-start: 50%;
+    translate: -50% -50%;
+    padding: 0 var(--s-2);
+    background: var(--paper);
+    color: var(--ink-2);
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .portrait:hover .portrait__dim, .portrait:hover .portrait__label { opacity: 1; }
+  }
+  @media (max-width: 1023.98px) {
+    /* under the button: the construction's top centre line stops short of it instead of touching it */
+    .portrait { --_s: min(360px, 100%); margin-block-start: calc(0.17 * var(--_s) + var(--s-5)); }
+  }
+  @media (forced-colors: active) {
+    .portrait__cons { color: CanvasText; }
+  }
+  @media print {
+    .portrait__dim, .portrait__label { display: none; }
+  }
 </style>

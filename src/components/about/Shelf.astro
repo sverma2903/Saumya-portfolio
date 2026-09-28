@@ -1,25 +1,126 @@
 ---
 /**
- * Shelf · OWNER: WP6 (P0 functional stub). Historical Fiction: her title (h3, bubble 1 / B-100), her text, and the three
- * book covers flat and unaltered on a shelf (CSS spine + page edge; lift on hover; click → Enlarged detail).
+ * Shelf · WP6 (SPEC §5.3). Historical Fiction: her title (detail 1 / B-100), her text, and her three book covers
+ * standing on a shelf that runs the width of the sheet.
+ *   · covers flat and unaltered: no transform, filter or overlay at rest; each at 192px tall (128px on phones),
+ *     sized from its native aspect. The spec's 160px read as thumbnails beside a 22px text; at 192px every cover is
+ *     still shown below its native size, even on a 2× screen (`uWV8s8`, 410 × 512: 154 × 192 CSS px = 308 × 384).
+ *   · a CSS spine beside each cover (::before, 12px, shaded from the book's own colour: #a79483 · #6f9dac · #a07c5a,
+ *     read from the covers in the media audit) and a page edge (::after) — both outside her pixels
+ *   · the shelf board is drawn as a section: an ink line with a hatched cut below it
+ *   · hover / focus lifts a book 4px with --shadow-lift; a click opens it in the Enlarged detail (FIG. 1.1–1.3)
  */
 import { about } from '../../content/site';
 import { alt } from '../../data/alt';
+import { chrome, fill } from '../../data/chrome';
 import { facts, fileOf } from '../../lib/staging';
+import { slugify } from '../../lib/text';
 import Plate from '../media/Plate.astro';
-import Bubble from '../symbols/Bubble.astro';
+import LoveTitle from './LoveTitle.astro';
 const f = about.loves.fiction;
+const id = slugify(f.title); // 'historical-fiction'
+/** each cover's dominant colour (media audit §Appendix, rows 10–12): the spine is shaded from it */
+const SPINE: Record<string, string> = {
+  'cHvLFjmkIVcEHSvBWg8yAPWPtmU.jpg': '#a79483',
+  'ELriPrXDt52v8CseD2JrDCpM.jpg': '#6f9dac',
+  'uWV8s87snrPxhjrBBSr2Y3boI.jpeg': '#a07c5a',
+};
+const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, no: fill(chrome.wp6.about.fig, { d: 1, n: i + 1 }).toUpperCase() }));
 ---
-<article class="love">
-  <h3 class="love__t t-h" data-v><Bubble n="1" sheet="B-100" /> <span set:html={f.title} /></h3>
-  <p class="t-body ink-2" data-v set:html={f.text} />
-  <ul class="shelf" role="list">{f.books.map((b) => <li class="shelf__book" style={`--a: ${facts(b).aspect}`}><Plate layers={[b]} alt={alt(fileOf(b))} frame="bare" /></li>)}</ul>
+<article class="love" id={id} aria-labelledby={`${id}-h`}>
+  <LoveTitle n={1} id={id} title={f.title} />
+  <p class="love__p" data-v set:html={f.text} />
+  <div class="shelf">
+    <ul class="shelf__row" role="list">
+      {books.map(({ b, file, a, no }) => (
+        <li class="book" style={`--a: ${a}; --_spine: ${SPINE[file] ?? 'var(--clay)'}`}>
+          <Plate layers={[b]} alt={alt(file)} frame="bare" fig={{ no }} class="book__cover" />
+        </li>
+      ))}
+    </ul>
+    <div class="shelf__board" aria-hidden="true"></div>
+  </div>
 </article>
 <style>
-  .love { display: grid; gap: var(--s-4); }
-  .love__t { display: flex; align-items: center; gap: var(--s-3); }
-  .shelf { list-style: none; padding: 0; display: flex; gap: var(--s-4); align-items: flex-end; }
-  .shelf { --_h: 160px; }
-  .shelf__book { inline-size: calc(var(--_h) * var(--a)); max-inline-size: 410px; flex: none; }
-  @media (max-width: 767.98px) { .shelf { --_h: 120px; } }
+  .love {
+    grid-column: rail-start / notes-end;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-content: start;
+  }
+  .love__p { grid-column: text; max-inline-size: var(--measure); margin-block-start: var(--s-5); color: var(--ink-2); }
+
+  /* ---------- the shelf ---------- */
+  .shelf {
+    --_h: var(--s-11);                   /* cover height: 192px */
+    --_pages: var(--plate);              /* the page block: paper, ruled by its leaves */
+    --_leaf: var(--line-1);
+    --_spine-w: var(--s-3);              /* the spine: 12px (§5.3) */
+    --_edge: var(--s-1);                 /* the page block's depth */
+    grid-column: text-start / notes-end;
+    margin-block-start: var(--s-7);
+    padding-inline-start: var(--_spine-w);
+  }
+  .shelf__row {
+    display: flex;
+    align-items: flex-end;
+    gap: calc(var(--_spine-w) + var(--_edge) + var(--s-6));
+    list-style: none;
+    padding: 0;
+  }
+  .book {
+    position: relative;
+    flex: none;
+    inline-size: calc(var(--_h) * var(--a));
+    block-size: var(--_h);
+    box-shadow: var(--shadow-plate);
+    transition: translate var(--dur-3) var(--ease-pen), box-shadow var(--dur-3) var(--ease-pen);
+  }
+  /* the spine: a rounded board seen edge-on, shaded from the book's own colour */
+  .book::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 100%;
+    inline-size: var(--_spine-w);
+    background: linear-gradient(90deg,
+      color-mix(in oklab, var(--_spine) 62%, var(--detail-bg)) 0%,
+      var(--_spine) 38%,
+      color-mix(in oklab, var(--_spine) 78%, var(--plate)) 62%,
+      color-mix(in oklab, var(--_spine) 70%, var(--detail-bg)) 100%);
+    border-radius: var(--r-1) 0 0 var(--r-1);
+  }
+  /* the page block behind the front board: paper, ruled by its leaves */
+  .book::after {
+    content: '';
+    position: absolute;
+    inset-block: var(--s-1) var(--s-1);
+    inset-inline-start: 100%;
+    inline-size: var(--_edge);
+    background:
+      repeating-linear-gradient(0deg, var(--_leaf) 0 var(--lw-object), transparent var(--lw-object) calc(var(--s-1) - var(--lw-object))),
+      var(--_pages);
+    box-shadow: inset var(--lw-object) 0 0 var(--line-1);
+  }
+  .book :global(.book__cover) { inline-size: 100%; block-size: 100%; }
+  .book :global(.plate__open) { cursor: zoom-in; }
+  .book:hover, .book:focus-within { translate: 0 calc(-1 * var(--s-1)); box-shadow: var(--shadow-lift); }
+
+  /* the shelf board, cut: an ink line under the books' feet, a hatched section below; it runs to the sheet's edge */
+  .shelf__board {
+    block-size: var(--s-3);
+    margin-inline-start: calc(-1 * var(--_spine-w));
+    border-block-start: var(--lw-border) solid var(--ink);
+    background: var(--hatch-45);
+  }
+
+  @media (max-width: 767.98px) {
+    .shelf { --_h: var(--s-10); --_spine-w: var(--s-2); margin-block-start: var(--s-6); }
+    .shelf__row { gap: calc(var(--_spine-w) + var(--_edge) + var(--s-4)); }
+  }
+  /* on the dark wall the page block is paper in shade, not a lit strip */
+  :global(html[data-theme='dusk']) .shelf { --_pages: color-mix(in oklab, var(--plate) 62%, var(--paper)); --_leaf: color-mix(in srgb, var(--detail-bg) 22%, transparent); }
+  @media (forced-colors: active) {
+    .book::before, .book::after { border: 1px solid CanvasText; background: Canvas; }
+  }
 </style>

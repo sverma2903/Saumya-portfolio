@@ -1,29 +1,263 @@
 ---
 /**
- * Crossword · OWNER: WP6 (P0 functional stub). LEGEND · DATA / DESIGN / NERDS: her original 5×6 tile grid (DESIGN down
- * column 1, DATA across row 1, AI down column 4, NERDS across row 6), material tiles in her colours as hatches,
- * "Re-lay tiles", roving focus. P0: the static grid of her letters.
+ * Crossword · WP6 (SPEC §5.4). LEGEND · DATA / DESIGN / NERDS — her tile grid from her original home page, moved here
+ * as the sheet's legend: her letters on outline / solid tiles, every other tile a drafting material in her colours,
+ * and beside it the two keys the grid reads by (tiles.ts): WORDS (what her letters spell, → across / ↓ down, as a
+ * crossword's) and MATERIALS (what the other tiles are drawn in).
+ *   ≥ 1280px   grid │ words │ materials          768–1279px   grid │ words over materials          < 768px   stacked
+ *
+ * Interaction (scripts/play/crossword.ts):
+ *   · Re-lay tiles   shuffles the materials of the non-letter tiles — "re-laying the roof" of her kavelu tiles:
+ *                    FLIP, 240ms with an 18ms stagger (from the duration tokens); instant under reduced motion and
+ *                    when pressed from the keyboard (motion law 1)
+ *   · each tile is a grid cell with a roving tabindex: arrows, Home/End (row), Ctrl+Home/End (grid)
+ *   · Enter / Space / click on a material tile cycles its material (the tiles are <button>s); letter tiles are
+ *     focusable cells named by their words ("D — letter tile, DESIGN and DATA") and do nothing when pressed
+ *   · the T turns to ⊥ on hover / focus (a detail from her original)
+ *   · the keys and the grid point at each other: hovering / focusing a tile lights its key rows (its words, or its
+ *     material), and hovering a key row lights its tiles
+ *   · no drag; tiles are 64px (52px on phones): ≥ 48 / 44px targets
+ * Without JS the grid is one labelled image (role=img) and the Re-lay button is hidden (data-js-only).
  */
-import { chrome } from '../../data/chrome';
+import { chrome, fill } from '../../data/chrome';
+import Icon from '../symbols/Icon.astro';
+import { GRID, HER, MATERIALS, materialById, wordsAt, wordsOf } from './tiles';
 const p = chrome.wp6.play;
-const G = [
-  'DATA ', // row 1: D A T A ·
-  'E  I ', // row 2
-  'S    ',
-  'I    ',
-  'G    ',
-  'NERDS',
-];
+const matName = (id: keyof typeof p.materials) => p.materials[id];
+const cells = GRID.map((row, r) =>
+  row.map((t, c) => {
+    if (t.kind === 'letter') {
+      const words = wordsAt(r, c).join(p.wordJoin);
+      return { ...t, label: fill(p.tileLetter, { l: t.l, words }) };
+    }
+    const m = materialById(t.mat);
+    return { ...t, m, label: fill(p.tileMaterial, { material: matName(t.mat) }) };
+  }),
+);
+const mats = MATERIALS.map((m) => ({ ...m, name: matName(m.id) }));
+const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${c}`).join(' ') }));
 ---
-<section class="legend shell" aria-labelledby="legend-h">
-  <h2 id="legend-h" class="t-label-lg ink-2">{p.legend}</h2>
-  <div class="xw" role="img" aria-label={p.gridLabel}>
-    {G.flatMap((row) => row.split('')).map((ch) => <span class:list={['xw__tile', { 'xw__tile--letter': ch !== ' ' }]} aria-hidden="true">{ch.trim()}</span>)}
+<section class="legend shell" aria-labelledby="legend-h" data-xw-root data-l-mat={p.tileMaterial} data-l-relaid={p.relaid}>
+  <div class="legend__panel">
+    <div class="legend__head">
+      <h2 id="legend-h" class="legend__h t-label-lg">{p.legend}</h2>
+      <button type="button" class="btn legend__relay" data-xw-relay data-js-only>
+        <svg class="legend__relay-i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 9.5h13l-4-4M20.5 14.5h-13l4 4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" vector-effect="non-scaling-stroke" /></svg>
+        <span>{p.relay}</span>
+      </button>
+    </div>
+    <div class="legend__body">
+      <div class="xw" role="img" aria-label={p.gridLabel} data-xw aria-describedby="legend-hint" style={`--_ink: ${HER.rust}; --_solid: ${HER.oxblood}`}>
+        {cells.map((row, r) => (
+          <div class="xw__row" data-xw-row>
+            {row.map((t, c) =>
+              t.kind === 'letter' ? (
+                <span class:list={['xw__cell', 'xw__cell--letter', `xw__cell--${t.look}`, { 'xw__cell--t': t.l === 'T' }]} data-xw-cell data-at={`${r}.${c}`} data-label={t.label}>
+                  <span class="xw__g" style={t.weight ? `--_w: ${t.weight}` : undefined} data-v>{t.l}</span>
+                </span>
+              ) : (
+                <span class="xw__cell xw__cell--mat" data-xw-cell data-mat={t.mat} data-label={t.label}>
+                  <span class="xw__m" data-mat={t.mat} data-p={t.m.p} style={`--_c: ${t.m.c}`}></span>
+                </span>
+              ),
+            )}
+          </div>
+        ))}
+      </div>
+      <div class="legend__keys">
+        <div class="legend__key">
+          <p class="legend__kh t-label">{p.wordsTitle}</p>
+          <ul class="legend__list" role="list">
+            {words.map((w) => (
+              <li class="legend__row" data-key-word={w.at}>
+                <span class="legend__sw legend__dir" aria-hidden="true"><Icon name={w.dir === 'across' ? 'arrow-right' : 'arrow-down'} size={14} /></span>
+                <span class="legend__word">{w.w}</span>
+                <span class="legend__how">{p[w.dir]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="legend__key">
+          <p class="legend__kh t-label">{p.materialsTitle}</p>
+          <ul class="legend__list" role="list">
+            {mats.map((m) => (
+              <li class="legend__row" data-key-mat={m.id}>
+                <span class="legend__sw" aria-hidden="true"><span class="xw__m" data-mat={m.id} data-p={m.p} style={`--_c: ${m.c}`}></span></span>
+                <span class="legend__name" data-name>{m.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
+  <p id="legend-hint" class="sr-only" hidden>{p.gridHint}</p>
+  <p class="sr-only" role="status" data-xw-status></p>
 </section>
+<script>
+  import '../../scripts/play/crossword';
+</script>
 <style>
-  .legend { padding-block: var(--s-7); }
-  .xw { display: grid; grid-template-columns: repeat(5, 52px); gap: 4px; margin-block-start: var(--s-4); }
-  .xw__tile { display: grid; place-items: center; aspect-ratio: 1; background: var(--hatch-45); outline: var(--lw-object) solid var(--line-2); font-weight: 500; font-size: 1.25rem; }
-  .xw__tile--letter { background: var(--plate); outline: var(--lw-border) solid var(--rust); }
+  .legend {
+    --_t: var(--s-8);             /* a tile: 64px (52px on phones) — a ≥ 44px target */
+    --_gap: calc(var(--s-1) * 1.5);
+    padding-block: var(--s-6) var(--s-10);
+  }
+  /* the legend is a panel on the sheet, as a drawing's legend is: an ink frame, a label strip, the grid and its key */
+  .legend__panel {
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    border: var(--lw-border) solid var(--ink);
+    background: var(--sheet);
+  }
+  .legend__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s-3) var(--s-7);
+    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+    border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .legend__h { color: var(--ink-2); }
+  .legend__relay { transition: color var(--dur-1) var(--ease-ui); }
+  .legend__relay-i { flex: none; }
+  .legend__body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--s-6) var(--s-8);
+    padding: var(--s-6) var(--s-5) var(--s-6);
+  }
+  /* the two keys: side by side (≥ 1280, and on phones when they fit), one over the other beside the grid between */
+  .legend__keys { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-6) var(--s-7); }
+
+  /* ---------- the grid ---------- */
+  .xw { display: grid; gap: var(--_gap); inline-size: max-content; }
+  .xw__row { display: grid; grid-template-columns: repeat(5, var(--_t)); gap: var(--_gap); }
+  .xw__cell {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: var(--_t);
+    block-size: var(--_t);
+    border-radius: var(--r-1);
+    font-family: var(--font-serif);
+    font-size: calc(var(--_t) * 0.46);
+    line-height: 1;
+  }
+  /* letter tiles: printed samples in her colours, the same in Vellum and Dusk (like plates) */
+  .xw__cell--outline { color: var(--_ink); background: var(--plate); box-shadow: inset 0 0 0 var(--lw-border) currentColor; }
+  .xw__cell--solid { color: var(--plate); background: var(--_solid); }
+  /* a material tile's bed: a faint outline, seen only while its swatch is away (re-laying) */
+  .xw__cell--mat { box-shadow: inset 0 0 0 var(--lw-object) var(--line-1); }
+  /* optically centred: in a line-height-1 box Newsreader's capitals sit .13em above the middle (measured), so each
+     letter comes down by that much */
+  .xw__g { font-weight: var(--_w, 500); translate: 0 0.13em; }
+  /* the T turns over into ⊥ (a detail from her original) */
+  .xw__cell--t { perspective: calc(var(--_t) * 3); }
+  /* turn about the middle of the capital: .37em from the top of its box (the .5em middle less those .13em) */
+  .xw__cell--t .xw__g { display: inline-block; transform-origin: 50% 0.37em; transition: rotate var(--dur-3) var(--ease-pen); }
+  .xw__cell--t:is(:hover, :focus-visible) .xw__g { rotate: x 180deg; }
+  /* while the keyboard walks the grid nothing animates (motion law 1) */
+  .xw:focus-within .xw__g { transition-duration: 0s; }
+
+  /* material tiles: a --plate sample with the material drawn in her colour */
+  .xw__m {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-1);
+    background-color: var(--plate);
+    box-shadow: inset 0 0 0 var(--lw-object) color-mix(in srgb, var(--_c) 70%, transparent);
+  }
+  .xw__m[data-p='solid'] { background-color: var(--_c); box-shadow: none; }
+  .xw__m[data-p='hatch'] { background-image: repeating-linear-gradient(-45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='hatch2'] { background-image: repeating-linear-gradient(45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='cross'] {
+    background-image:
+      repeating-linear-gradient(-45deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) var(--s-2)),
+      repeating-linear-gradient(45deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) var(--s-2));
+  }
+  .xw__m[data-p='rows'] { background-image: repeating-linear-gradient(180deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='dots'] {
+    background-image: radial-gradient(circle, var(--_c) 0 var(--lw-border), transparent calc(var(--lw-border) * 1.4));
+    background-size: calc(var(--s-1) * 1.5) calc(var(--s-1) * 1.5);
+  }
+  .xw__m[data-p='void'] { box-shadow: inset 0 0 0 var(--lw-object) var(--_c); }
+
+  /* with JS, material tiles are buttons; while re-laid, each swatch flies from its old cell to its new one */
+  .xw :global(.xw__btn) { position: absolute; inset: 0; border-radius: var(--r-1); cursor: pointer; }
+  .xw :global(.xw__btn:hover) > .xw__m { outline: var(--lw-object) solid var(--line-3); outline-offset: calc(var(--s-1) / 2); }
+  .xw .xw__m:global(.is-flying) { z-index: var(--z-raised); box-shadow: var(--shadow-lift); }
+  .xw__cell.is-lit > .xw__m, .xw :global(.xw__btn.is-lit) > .xw__m { outline: var(--lw-cut) solid var(--rust); outline-offset: calc(var(--s-1) / 2); }
+
+  /* the letter tiles a word key row points at */
+  .xw__cell--letter.is-lit { outline: var(--lw-cut) solid var(--rust); outline-offset: calc(var(--s-1) / 2); }
+
+  /* ---------- the keys ---------- */
+  .legend__key { min-inline-size: var(--s-11); }
+  .legend__kh { color: var(--ink-2); padding-block-end: var(--s-3); border-block-end: var(--lw-object) solid var(--line-2); }
+  .legend__list { list-style: none; padding: 0; margin-block-start: var(--s-2); display: grid; }
+  .legend__row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding-block: var(--s-1);
+    font-family: var(--font-sans);
+    font-size: var(--fs-ui);
+    font-variation-settings: var(--wdth-ui);
+    color: var(--ink-2);
+    transition: color var(--dur-1) var(--ease-ui);
+  }
+  .legend__sw { position: relative; flex: none; inline-size: var(--s-5); block-size: var(--s-5); }
+  /* a word's swatch: a small blank tile carrying its direction */
+  .legend__dir {
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-1);
+    box-shadow: inset 0 0 0 var(--lw-object) var(--line-2);
+    color: var(--rust);
+  }
+  .legend__word { font-family: var(--font-serif); font-size: var(--fs-body-sm); font-weight: 500; letter-spacing: var(--tr-code); color: var(--ink); translate: 0 0.13em; }
+  .legend__how {
+    margin-inline-start: auto;
+    padding-inline-start: var(--s-4);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    letter-spacing: var(--tr-code-sm);
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .legend__row.is-lit { color: var(--ink); }
+  .legend__row.is-lit :is(.legend__name, .legend__word) { text-decoration: underline; text-decoration-color: var(--rust); text-underline-offset: var(--s-1); text-decoration-thickness: var(--lw-border); }
+  /* with JS a key row points at its tiles on hover, so it answers the pointer too */
+  @media (hover: hover) {
+    :global(html.js) .legend__row:hover { color: var(--ink); }
+    :global(html.js) .legend__row:hover :is(.legend__name, .legend__word) { text-decoration: underline; text-decoration-color: var(--rust); text-underline-offset: var(--s-1); text-decoration-thickness: var(--lw-border); }
+  }
+
+  @media (min-width: 768px) and (max-width: 1279.98px) {
+    .legend__keys { flex-direction: column; flex-wrap: nowrap; }
+  }
+  @media (min-width: 1280px) {
+    /* at least the Orbit print's eight columns wide, so the legend stands on the pin board's column lines */
+    .legend__panel { min-inline-size: calc((100% - 11 * var(--g)) / 12 * 8 + 7 * var(--g)); }
+    .legend__body, .legend__keys { flex-wrap: nowrap; }
+    .legend__keys { flex: 1; column-gap: var(--s-6); }
+    .legend__key { flex: 1; }
+  }
+
+  @media (max-width: 767.98px) {
+    .legend { --_t: calc(var(--s-7) + var(--s-1)); --_gap: var(--s-1); padding-block: var(--s-5) var(--s-9); }
+    .legend__panel { inline-size: auto; }
+    .legend__head { padding-inline-start: var(--s-4); }
+    .legend__body { padding: var(--s-5) var(--s-4); }
+    .legend__keys { column-gap: var(--s-5); }
+    .legend__key { min-inline-size: 0; flex: 1 1 auto; }
+  }
+  @media (forced-colors: active) {
+    .xw__cell, .xw__m { forced-color-adjust: none; }
+    .xw__cell { outline: 1px solid CanvasText; }
+    .legend__dir { outline: 1px solid CanvasText; outline-offset: -1px; }
+  }
 </style>

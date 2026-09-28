@@ -1,31 +1,130 @@
 ---
 /**
- * Salon · OWNER: WP6 (P0 functional stub). Sketching: her title, her text and seven sketches in rows justified BY
- * HEIGHT (never cropped): scans on paper mounts, photos as prints; all open in Enlarged detail. Optional narrative
- * caption (gated, chrome.wp6.about.sketchCaption).
+ * Salon · WP6 (SPEC §5.3). Sketching: her title (detail 4 / B-100), her line, and her seven sketches hung as a salon.
+ *
+ *   · never cropped: every piece renders at its native aspect (the image box is width = h · aspect)
+ *   · ONE drawing scale: all seven images share one height h, so no piece is shown bigger than another; rows are
+ *     centred. h is solved in CSS from the salon's width (container units) for the hang in use:
+ *       ≥ 768px  two rows, 4 + 3 (the order and grouping of her original page)
+ *       < 768px  rows of two (the last one alone), ≈ 180–200px tall at 390
+ *     h = min over rows of (width − mounts − gaps) / Σ aspect, and never more than her low-res portrait `uEhkOC`
+ *     allows (media-staging cap: 240px wide), so nothing is shown softer than it was drawn.
+ *   · scans `RNUtuB` `DkdSjN` `uEhkOC` on paper mounts (--plate, 16px, hairline); photos `JDDLKV` `TewBJL` `UwqDbC`
+ *     `L6lUNQ` as prints (8px --plate border, --shadow-plate)
+ *   · each opens in the Enlarged detail at full resolution (FIG. 4.1–4.7)
+ *   · the narrative caption "The linework on the cover sheet is drawn in this hand." renders only once approved (§8.9)
  */
 import { about } from '../../content/site';
 import { alt } from '../../data/alt';
-import { narrative, chrome } from '../../data/chrome';
-import { facts, fileOf } from '../../lib/staging';
+import { narrative, chrome, fill } from '../../data/chrome';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
+import { slugify } from '../../lib/text';
 import Plate from '../media/Plate.astro';
-import Bubble from '../symbols/Bubble.astro';
+import LoveTitle from './LoveTitle.astro';
 const s = about.loves.sketching;
+const id = slugify(s.title); // 'sketching'
 const cap = narrative(chrome.wp6.about.sketchCaption);
+
+/** flat scans get a paper mount; photographs of the sketchbook hang as prints (media audit §4.7) */
+const MOUNTED = new Set(['RNUtuBnvNm3fdod5f4EpHfqBE.png', 'DkdSjNwt9pSYJCwdEdmmN1Gic8.png', 'uEhkOCukMrK1gyMJTTyB3rNCTYA.png']);
+const pieces = s.sketches.map((m, i) => {
+  const file = fileOf(m);
+  return { m, file, a: facts(m).aspect, mount: MOUNTED.has(file), cap: stagingOf(m).cap, no: fill(chrome.wp6.about.fig, { d: 4, n: i + 1 }).toUpperCase() };
+});
+type Piece = (typeof pieces)[number];
+
+/** the two hangs: pairs (phones), and rows of pairs (≥ 768): 4 + 3 */
+const pairs: Piece[][] = [];
+for (let i = 0; i < pieces.length; i += 2) pairs.push(pieces.slice(i, i + 2));
+const rows: Piece[][][] = [pairs.slice(0, 2), pairs.slice(2)];
+
+const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
+/** the image height that fits a row of `ps` across the salon: (100cqi − 2·pads − gaps) / Σ aspect */
+const fit = (ps: Piece[]) => {
+  const mounts = ps.filter((p) => p.mount).length;
+  const prints = ps.length - mounts;
+  const sumA = r5(ps.reduce((t, p) => t + p.a, 0));
+  return `calc((100cqi - ${2 * mounts} * var(--s-4) - ${2 * prints} * var(--s-2) - ${ps.length - 1} * var(--_g)) / ${sumA})`;
+};
+/** the height no capped piece may exceed (its cap is a width) */
+const caps = pieces.filter((p) => p.cap).map((p) => `calc(${p.cap}px / ${r5(p.a)})`);
+const hWide = `min(${[...rows.map((r) => fit(r.flat())), ...caps].join(', ')})`;
+const hNarrow = `min(${[...pairs.filter((p) => p.length > 1).map(fit), ...caps].join(', ')})`;
 ---
-<article class="love">
-  <h3 class="love__t t-h" data-v><Bubble n="4" sheet="B-100" /> <span>{s.title}</span></h3>
-  <p class="t-body ink-2" data-v set:html={s.text} />
-  <ul class="salon" role="list">
-    {s.sketches.map((sk) => <li style={`--a: ${facts(sk).aspect}`}><Plate layers={[sk]} alt={alt(fileOf(sk))} frame="bare" /></li>)}
-  </ul>
-  {cap && <p class="t-caption ink-2">{cap}</p>}
+<article class="love" id={id} aria-labelledby={`${id}-h`}>
+  <LoveTitle n={4} id={id} title={s.title} />
+  <p class="love__p" data-v set:html={s.text} />
+  <div class="salon">
+    <div class="salon__hang" style={`--h-wide: ${hWide}; --h-narrow: ${hNarrow}`}>
+      {rows.map((row) => (
+        <div class="salon__row">
+          {row.map((pair) => (
+            <div class="salon__pair">
+              {pair.map((p) => (
+                <figure class:list={['sk', p.mount ? 'sk--mount' : 'sk--print']} style={`--a: ${r5(p.a)}`}>
+                  <Plate layers={[p.m]} alt={alt(p.file)} frame="bare" fig={{ no: p.no }} class="sk__plate" />
+                </figure>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+    {cap && <p class="salon__cap t-caption">{cap}</p>}
+  </div>
 </article>
 <style>
-  .love { display: grid; gap: var(--s-4); }
-  .love__t { display: flex; align-items: center; gap: var(--s-3); }
-  .salon { --row-h: 300px; list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 20px; }
-  .salon > li { aspect-ratio: var(--a); flex: calc(var(--a) * 1000) 1 calc(var(--a) * var(--row-h)); margin: 0; }
-  .salon::after { content: ''; flex: 100000 1 0; }
-  @media (max-width: 767.98px) { .salon { --row-h: 180px; gap: 12px; } }
+  .love {
+    grid-column: rail-start / notes-end;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-content: start;
+  }
+  .love__p { grid-column: text; max-inline-size: var(--measure); margin-block-start: var(--s-5); color: var(--ink-2); }
+
+  .salon {
+    grid-column: rail-start / notes-end;
+    container-type: inline-size;
+    margin-block-start: var(--s-8);
+  }
+  .salon__hang {
+    --_g: var(--s-5);
+    --h: var(--h-wide);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--_g);
+  }
+  .salon__row { display: flex; justify-content: center; align-items: center; gap: var(--_g); }
+  .salon__pair { display: contents; }
+
+  .sk {
+    --_p: var(--s-2);
+    flex: none;
+    inline-size: calc(var(--h) * var(--a) + 2 * var(--_p));
+    padding: var(--_p);
+    background: var(--plate);
+    /* nothing drawn for a piece leaves its paper (a loading label wider than a small sketch would otherwise add
+       sideways scroll at 390); the focus ring (3px offset + 2px) still fits inside the 8px/16px margin */
+    overflow: clip;
+  }
+  .sk--print { --_sh: var(--shadow-plate); }
+  .sk--mount { --_p: var(--s-4); --_sh: 0 0 0 var(--lw-object) var(--line-2); }
+  .sk { box-shadow: var(--_sh); transition: translate var(--dur-3) var(--ease-pen), box-shadow var(--dur-3) var(--ease-pen); }
+  /* picked up to be looked at: the mount lifts a little (it is our frame that moves, never her drawing) */
+  .sk:is(:hover, :focus-within) { translate: 0 calc(-1 * var(--s-1) / 2); box-shadow: var(--_sh), var(--shadow-lift); }
+  .sk :global(.sk__plate) { inline-size: 100%; }
+  .sk :global(.plate__open) { cursor: zoom-in; }
+
+  .salon__cap { margin-block-start: var(--s-5); text-align: center; color: var(--ink-2); }
+
+  @media (max-width: 767.98px) {
+    .salon { margin-block-start: var(--s-6); }
+    .salon__hang { --_g: var(--s-3); --h: var(--h-narrow); }
+    .salon__row { display: contents; }
+    .salon__pair { display: flex; justify-content: center; align-items: center; gap: var(--_g); }
+  }
+  @media (forced-colors: active) {
+    .sk { outline: 1px solid CanvasText; }
+  }
 </style>

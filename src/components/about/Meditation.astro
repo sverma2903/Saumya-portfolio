@@ -1,22 +1,51 @@
 ---
 /**
- * Meditation · OWNER: WP6 (P0 functional stub). The stillest block on the site: her title, her one line, her 512px image
- * shown at 200px on a quiet field. data-still: no hover effects, no motion.
+ * Meditation · WP6 (SPEC §5.3). The stillest block on the site: her title (detail 3 / B-100), then a quiet field
+ * (≥ 60vh) holding only her 512px image at 200px (its staging cap) and her one line beneath it, centred on the sheet.
+ * `data-still`: no hover effect, no motion, no enlarge affordance — nothing here moves or asks for anything.
  */
 import { about } from '../../content/site';
 import { alt } from '../../data/alt';
-import { fileOf } from '../../lib/staging';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
+import { slugify } from '../../lib/text';
 import Plate from '../media/Plate.astro';
-import Bubble from '../symbols/Bubble.astro';
+import LoveTitle from './LoveTitle.astro';
 const md = about.loves.meditation;
+const id = slugify(md.title); // 'meditation'
+const w = stagingOf(md.img).cap ?? facts(md.img).w; // 200 (media-staging cap for this 512px file)
 ---
-<article class="love love--still" data-still>
-  <h3 class="love__t t-h" data-v><Bubble n="3" sheet="B-100" /> <span>{md.title}</span></h3>
-  <p class="t-body ink-2" data-v set:html={md.text} />
-  <div class="still"><Plate layers={[md.img]} alt={alt(fileOf(md.img))} frame="bare" /></div>
+<article class="love love--still" id={id} aria-labelledby={`${id}-h`} data-still>
+  <LoveTitle n={3} id={id} title={md.title} />
+  <div class="still">
+    <div class="still__img" style={`--_w: ${w}px`}><Plate layers={[md.img]} alt={alt(fileOf(md.img))} frame="bare" /></div>
+    <p class="still__p" data-v set:html={md.text} />
+  </div>
 </article>
 <style>
-  .love { display: grid; gap: var(--s-4); }
-  .love__t { display: flex; align-items: center; gap: var(--s-3); }
-  .still { inline-size: 200px; }
+  .love {
+    grid-column: rail-start / notes-end;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-content: start;
+  }
+  .still {
+    grid-column: rail-start / notes-end;
+    min-block-size: 60svh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--s-6);
+    padding-block: var(--s-8);
+  }
+  .still__img { inline-size: var(--_w); max-inline-size: 100%; }
+  .still__p {
+    font-size: var(--fs-body-md);
+    line-height: var(--lh-body-md);
+    color: var(--ink-2);
+    text-align: center;
+    text-wrap: balance;
+  }
+  @media (max-width: 767.98px) {
+    .still { min-block-size: 50svh; gap: var(--s-5); }
+  }
 </style>

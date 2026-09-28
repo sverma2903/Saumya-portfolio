@@ -1,33 +1,256 @@
 ---
 /**
- * PinItem · OWNER: WP6 (P0 functional stub). One pinned plate on the Play board: her media on her stage (`tone`), a mini
- * title block — her title, her tag, and the link (Devpost ↗ / Open sheet A-105 → / A-106 →, chrome labels).
+ * PinItem · WP6 (SPEC §5.4). One of her Play items, pinned to the sheet as a print:
+ *   · the print: an 8px --plate border and --shadow-plate around her stage (`tone`) with her media on it, rotated a
+ *     fraction of a degree at rest (≥ 1024px); hover or focus inside it straightens and lifts it (--dur-3)
+ *   · two drafting-tape strips (--blush, 80%) on the top corners — on the print's border only, never on her pixels
+ *   · the media, per board.ts: a phone video sized by height (Conversense `phone-video`, Teachable `bezel-dark`),
+ *     ExpressLanes at 1.2× in its 1:1 stage, Orbit's backdrop + laptop layered, Educademy as it is
+ *   · a mini title block: her title (Newsreader 420), her tag (label), the link (label, rust): Devpost ↗ /
+ *     Open sheet A-105 → / Open sheet A-106 → (chrome) — and no award styling on any tag
+ *   · every plate is an Enlarged-detail figure, FIG. 1–5 (the detail panel cites her title through `capId`)
+ * The two videos carry controls for the P0 Plate only (scripts/play/pinboard.ts): the Teachable's
+ * "Play · 0:48 · sound" and Pause / Mute / Restart; the Conversense Pause. When the media system (WP4b) renders the
+ * plate it brings its own, and these stay hidden (see pinboard.ts).
  */
-import { chrome } from '../../data/chrome';
+import type { Media } from '../../lib/blocks';
 import { alt } from '../../data/alt';
-import { fileOf } from '../../lib/staging';
+import { chrome, fill } from '../../data/chrome';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
 import { externalAttrs, isExternal } from '../../lib/rich';
 import Plate from '../media/Plate.astro';
 import Icon from '../symbols/Icon.astro';
-import type { Media } from '../../lib/blocks';
+import { BEZEL, deviceAspect, PINS } from './board';
 interface Props {
   item: { title: string; tag: string; href?: string; media: Media[]; tone: string };
-  priority?: 'high' | 'auto' | 'lazy';
+  /** 1-based position on the board (her order) */
+  n: number;
 }
-const { item, priority = 'lazy' } = Astro.props;
+const { item, n } = Astro.props;
 const p = chrome.wp6.play;
-const linkLabel = item.href ? (isExternal(item.href) ? p.devpost : item.href === '/orbit' ? p.openA105 : item.href === '/educademy' ? p.openA106 : undefined) : undefined;
+const m4 = chrome.wp4b.media;
+const first = item.media[0];
 const top = item.media[item.media.length - 1];
+const conf = PINS[fileOf(first)];
+if (!conf) throw new Error(`PinItem: no board staging for ${fileOf(first)}`);
+const ft = facts(top);
+const video = ft.kind === 'video';
+const sound = video && !!stagingOf(top).video?.audio;
+const id = `pin-${n}`;
+const fig = { no: fill(p.fig, { n }).toUpperCase(), capId: `${id}-t` };
+const a = alt(fileOf(top));
+const frame = stagingOf(top).frame;
+const da = video ? deviceAspect(ft.w, ft.h, frame === 'bezel-dark' ? BEZEL.ring : 0) : undefined;
+const link = item.href
+  ? { href: item.href, label: isExternal(item.href) ? p.devpost : item.href === '/orbit' ? p.openA105 : item.href === '/educademy' ? p.openA106 : undefined, ext: isExternal(item.href) }
+  : undefined;
+const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { ...top, pad: conf.pad }] : item.media;
 ---
-<li class="pin">
-  <Plate layers={item.media} stage={item.tone} aspect={item.media.length > 1 ? item.media[0].w / item.media[0].h : undefined} alt={alt(fileOf(top))} frame="bare" priority={priority} />
-  <h2 class="pin__t t-index" data-v>{item.title}</h2>
-  <p class="pin__tag t-label ink-2" data-v>{item.tag}</p>
-  {item.href && linkLabel && (
-    <a class="pin__link t-label rust" href={item.href} {...externalAttrs(item.href)}>{linkLabel}<Icon name={isExternal(item.href) ? 'arrow-up-right' : 'arrow-right'} size={14} /></a>
-  )}
+<li class:list={['pin', `pin--${conf.key}`]} id={id} style={`--_rot: ${conf.rot}deg; --_ar: ${conf.box}${conf.scale ? `; --_scale: ${conf.scale}` : ''}`}>
+  <div class="pin__print">
+    <span class="pin__tape pin__tape--l" aria-hidden="true"></span>
+    <span class="pin__tape pin__tape--r" aria-hidden="true"></span>
+    <div class="pin__stage" style={`background: ${item.tone}${conf.device ? `; --_dh: ${conf.device * 100}%` : ''}`}>
+      {conf.kind === 'device' && (
+        <div class="pin__device" style={`--_da: ${da}`}>
+          <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />
+        </div>
+      )}
+      {conf.kind === 'scaled' && (
+        <Plate layers={item.media} stage={item.tone} aspect={conf.box} alt={a} fig={fig} priority="high" class="pin__plate pin__plate--scaled" />
+      )}
+      {conf.kind === 'layered' && (
+        <Plate layers={layers} stage={item.tone} aspect={conf.box} alt={a} fig={fig} class="pin__plate" />
+      )}
+      {conf.kind === 'natural' && <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />}
+      {sound && (
+        <button type="button" class="pin__sound" data-pin-sound data-js-only hidden>
+          <Icon name="play" size={14} /><span>{p.teachablePlay}</span>
+        </button>
+      )}
+      {video && (
+        <div class="pin__ctl" role="group" aria-label={p.playerLabel} data-pin-ctl data-js-only hidden>
+          <button type="button" class="pin__btn" data-pin-toggle aria-label={p.pause} data-l-pause={p.pause} data-l-play={p.resume}>
+            <Icon name="pause" size={16} class="pin__i--pause" /><Icon name="play" size={16} class="pin__i--play" />
+          </button>
+          {sound && (
+            <button type="button" class="pin__btn" data-pin-mute aria-pressed="false" aria-label={p.mute}>
+              <Icon name="sound-on" size={16} class="pin__i--on" /><Icon name="sound-off" size={16} class="pin__i--off" />
+            </button>
+          )}
+          {sound && (
+            <button type="button" class="pin__btn" data-pin-restart aria-label={p.restart}><Icon name="restart" size={16} /></button>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+  <div class="pin__tb">
+    <h2 class="pin__t" id={fig.capId} data-v>{item.title}</h2>
+    <p class="pin__tag t-label" data-v>{item.tag}</p>
+    {link?.label && (
+      <a class="pin__link t-label" href={link.href} {...(link.ext ? externalAttrs(link.href) : {})}>
+        <span>{link.label}</span><Icon name={link.ext ? 'arrow-up-right' : 'arrow-right'} size={14} />
+      </a>
+    )}
+  </div>
 </li>
 <style>
-  .pin { display: grid; gap: var(--s-2); align-content: start; }
-  .pin__link { display: inline-flex; align-items: center; gap: var(--s-1); }
+  .pin {
+    --_tape: color-mix(in srgb, var(--blush) 80%, transparent);
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 2;
+    min-inline-size: 0;
+  }
+
+  /* ---------- the print ---------- */
+  .pin__print {
+    position: relative;
+    align-self: end;
+    padding: var(--s-2);
+    background: var(--plate);
+    box-shadow: var(--shadow-plate);
+    transition: rotate var(--dur-3) var(--ease-pen), translate var(--dur-3) var(--ease-pen), box-shadow var(--dur-3) var(--ease-pen);
+  }
+  @media (min-width: 1024px) {
+    .pin__print { rotate: var(--_rot); }
+    .pin:is(:hover, :focus-within) .pin__print { rotate: 0deg; translate: 0 calc(-1 * var(--s-1)); box-shadow: var(--shadow-lift); }
+  }
+  /* drafting tape across the two top corners: it lies on the 8px border, never on the stage or her pixels */
+  .pin__tape {
+    position: absolute;
+    z-index: var(--z-raised);
+    inset-block-start: 0;
+    inline-size: var(--s-6);
+    block-size: var(--s-3);
+    background: var(--_tape);
+    translate: 0 -50%;
+    pointer-events: none;
+  }
+  .pin__tape--l { inset-inline-start: 0; translate: -50% -50%; rotate: -4deg; }
+  .pin__tape--r { inset-inline-end: 0; translate: 50% -50%; rotate: 4deg; }
+
+  .pin__stage {
+    position: relative;
+    aspect-ratio: var(--_ar);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .pin__stage > :global(.pin__plate) { inline-size: 100%; block-size: 100%; }
+  .pin__stage :global(.plate__open) { cursor: zoom-in; }
+
+  /* phone videos: the device sized BY HEIGHT (a share of the stage), centred on it */
+  .pin__device {
+    position: absolute;
+    inset-block: calc((100% - var(--_dh)) / 2);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    aspect-ratio: var(--_da);
+  }
+  .pin__device > :global(.pin__plate) { inline-size: 100%; }
+  /* P0 Plate only (its <video> is a direct child of .plate): the frames the media system draws for these two files —
+     inert once WP4b's Plate renders them (its media sits inside .plate__mat › .plate__view) */
+  .pin__device > :global(.plate--phone-video) > :global(video) { border-radius: 5% / 2.3%; }
+  .pin__device > :global(.plate--bezel-dark:has(> video)) {
+    padding: 3.6%;
+    border-radius: 12% / 5.65%;
+    background: var(--bezel-dark, var(--detail-bg));
+    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
+  }
+  .pin__device > :global(.plate--bezel-dark:has(> video)) > :global(video) { background: var(--detail-bg); }
+
+  /* ExpressLanes: 1.2× inside its 1:1 stage (the stage clips only her uniform #f2f2f2 margin, §6.4 #2) */
+  .pin__stage > :global(.pin__plate--scaled) { scale: var(--_scale); }
+
+  /* ---------- the Teachable player (P0 Plate fallback, see pinboard.ts) ---------- */
+  .pin__sound {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    z-index: calc(var(--z-raised) + 1);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-block-size: 44px;
+    padding: var(--s-2) var(--s-4);
+    font-family: var(--font-sans);
+    font-size: var(--fs-label-lg);
+    font-weight: var(--wt-label-lg);
+    font-variation-settings: var(--wdth-label);
+    letter-spacing: var(--tr-label-lg);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ink);
+    background: var(--sheet);
+    border: var(--lw-border) solid var(--ink);
+  }
+  .pin__sound:hover { color: var(--rust-deep); }
+  .pin__ctl {
+    /* in the stage's margin beside the device, level with its foot: the controls never lie on her pixels */
+    position: absolute;
+    inset-inline-end: var(--s-3);
+    inset-block-end: calc((100% - var(--_dh, 84%)) / 2);
+    z-index: calc(var(--z-raised) + 1);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+  }
+  .pin__ctl[hidden], .pin__sound[hidden] { display: none; }
+  .pin__btn {
+    display: grid;
+    place-items: center;
+    inline-size: calc(var(--s-6) + var(--s-1));
+    block-size: calc(var(--s-6) + var(--s-1));
+    color: var(--ink);
+    background: var(--sheet);
+    border: var(--lw-object) solid var(--line-3);
+  }
+  .pin__btn:hover { color: var(--rust-deep); }
+  .pin__btn :global(svg) { grid-area: 1 / 1; }
+  .pin__btn[data-state='paused'] :global(.pin__i--pause), .pin__btn:not([data-state='paused']) :global(.pin__i--play) { visibility: hidden; }
+  /* Mute is a toggle: pressed = muted (the sound-off drawing), not pressed = sound on */
+  .pin__btn[aria-pressed='true'] :global(.pin__i--on), .pin__btn[aria-pressed='false'] :global(.pin__i--off) { visibility: hidden; }
+  @media (pointer: coarse) { .pin__btn { inline-size: 44px; block-size: 44px; } }
+
+  /* ---------- the mini title block ---------- */
+  .pin__tb {
+    align-self: start;
+    margin-block-start: var(--s-5);
+    padding-block-start: var(--s-3);
+    border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .pin__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-lede-sm);
+    font-weight: var(--wt-index);
+    line-height: var(--lh-index);
+    letter-spacing: var(--tr-index);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .pin__tag { margin-block-start: var(--s-2); color: var(--ink-2); }
+  .pin__link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    min-block-size: var(--s-5);
+    margin-block-start: var(--s-2);
+    color: var(--rust);
+    text-decoration: none;
+  }
+  .pin__link span { text-decoration: underline; text-decoration-color: currentColor; text-decoration-thickness: var(--lw-object); }
+  .pin__link:hover { color: var(--rust-deep); }
+  @media (pointer: coarse) { .pin__link { min-block-size: 44px; } }
+
+  :global(html[data-theme='dusk']) .pin { --_tape: color-mix(in oklab, var(--rust-2) 22%, var(--plate)); }
+  @media (forced-colors: active) {
+    .pin__print { outline: 1px solid CanvasText; }
+    .pin__tape { display: none; }
+  }
+  @media print {
+    .pin__print { rotate: none; }
+    .pin__tape { display: none; }
+  }
 </style>

@@ -1,0 +1,66 @@
+---
+/**
+ * Section · WP6 (new, About only). One band of sheet B-100 below the header: a hairline sheet division, her section
+ * label as the h2 ("My Story ↓" / "Things I love ↓", her labels, uppercase by CSS only), then the slotted rows.
+ *
+ * The band is the case reading grid (SPEC §2.5, the same tracks WP5's CaseBody uses), so her words on About sit on the
+ * same text axis as every case study:
+ *   ≥ 1280     [full] side [rail] var(--rail) [gap] ≥ --gap [text] ≤ --measure [gap] ≥ --gap [notes] var(--notes) side [full]
+ *   1024–1279  rail 168 · 32 · text 1fr (no notes column)
+ *   < 1024     one column
+ * Rows are subgrids of this band (`grid-template-columns: subgrid`) and place themselves on rail / text / notes.
+ * The rail carries our references (the clause numbers, the detail bubbles); the text column carries her words.
+ */
+interface Props {
+  /** the band's id (a slug of her label: 'my-story', 'things-i-love') — the h2 is `${id}-h` */
+  id: string;
+  /** her label, verbatim */
+  label: string;
+  class?: string;
+}
+const { id, label, class: cls } = Astro.props;
+---
+<section class:list={['absec', cls]} id={id} aria-labelledby={`${id}-h`}>
+  <h2 class="absec__h t-label-lg" id={`${id}-h`} data-v>{label}</h2>
+  <slot />
+</section>
+<style>
+  .absec {
+    --rail: clamp(184px, 14vw, 224px);
+    --notes: clamp(208px, 17vw, 280px);
+    --gap: clamp(32px, 3vw, 56px);
+    --_side: max(var(--m), calc((100% - var(--maxw)) / 2 + var(--m)));
+    display: grid;
+    grid-template-columns:
+      [full-start] var(--_side)
+      [rail-start] var(--rail) [rail-end] minmax(var(--gap), 1fr)
+      [text-start] minmax(0, var(--measure)) [text-end] minmax(var(--gap), 1fr)
+      [notes-start] var(--notes) [notes-end]
+      var(--_side) [full-end];
+    align-content: start;
+    padding-block-end: var(--s-10);
+  }
+  /* the sheet division is the label's top rule: a hairline across the drawing area (rail → notes), never the paper */
+  .absec__h {
+    grid-column: rail-start / notes-end;
+    padding-block-start: var(--s-5);
+    border-block-start: var(--lw-object) solid var(--line-2);
+    color: var(--ink-2);
+    margin-block-end: var(--s-8);
+  }
+  @media (max-width: 1279.98px) {
+    .absec {
+      --gap: var(--s-6);
+      grid-template-columns:
+        [full-start] var(--m) [rail-start] 168px [rail-end] var(--gap)
+        [text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end];
+    }
+  }
+  @media (max-width: 1023.98px) {
+    .absec {
+      grid-template-columns: [full-start] var(--m) [rail-start rail-end text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end];
+      padding-block-end: var(--s-9);
+    }
+    .absec__h { padding-block-start: var(--s-4); margin-block-end: var(--s-6); }
+  }
+</style>

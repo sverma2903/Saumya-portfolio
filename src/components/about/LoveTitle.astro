@@ -1,0 +1,113 @@
+---
+/**
+ * LoveTitle · WP6 (new, About only). The detail title of one of her four loves, drawn as a detail title line:
+ *
+ *   ≥ 1024   (1)──────────────── Historical Fiction ──────────────────────────────────
+ *            the bubble `n / B-100` stands in the rail (with the clause numbers above it); her title sits on the text
+ *            axis; one --lw-border line runs from the bubble to her title and on from its end to the edge of the
+ *            drawing area. Both segments are drawn from zero-width anchors on her baseline, so they are level.
+ *   < 1024   (1) Historical Fiction ─────────  (bubble 36px inline, as on the case pages)
+ *
+ * Her title is the <h3 data-v> (her HTML: "Blog &amp; Writing"); the permalink bubble is a sibling link, so the
+ * heading's name is her words only and the link's name starts with its visible text (WCAG 2.5.3), as WP4a's `h`.
+ */
+import { chrome, fill } from '../../data/chrome';
+import { stripHtml } from '../../lib/text';
+import Bubble from '../symbols/Bubble.astro';
+interface Props {
+  n: number;
+  /** the love's id (the article); the heading is `${id}-h` */
+  id: string;
+  /** her title HTML */
+  title: string;
+}
+const { n, id, title } = Astro.props;
+const a = chrome.wp6.about;
+const label = fill(a.permalink, { n, sheet: a.sheet, title: stripHtml(title) });
+---
+<div class="lt">
+  <span class="lt__lead" aria-hidden="true"><i class="lt__anchor"></i></span>
+  <a class="lt__b" href={`#${id}`} aria-label={label}><Bubble n={n} sheet={a.sheet} /></a>
+  <h3 class="lt__t" id={`${id}-h`} data-v><Fragment set:html={title} /><i class="lt__rule" aria-hidden="true" data-chrome></i></h3>
+</div>
+<style>
+  .lt {
+    --_d: 44px;                                   /* the Bubble's diameter (36px below 768) */
+    /* the line runs through the middle of her title's line box: Newsreader's (ascent .735 − descent .265) / 2 above
+       the baseline — which is also where the bubble's diameter sits, since the bubble is centred on that line box */
+    --_mid: 0.235em;
+    --_lh: calc(var(--fs-h) * var(--lh-h));
+    grid-column: rail-start / notes-end;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+  }
+  .lt__t, .lt__lead {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h);
+    font-weight: var(--wt-h);
+    line-height: var(--lh-h);
+    letter-spacing: var(--tr-h);
+  }
+  .lt__t {
+    grid-column: text-start / notes-end;
+    grid-row: 1;
+    color: var(--ink);
+    overflow-x: clip;                             /* the rule runs to the edge of the drawing area and stops there */
+    overflow-clip-margin: 0;
+  }
+  /* the leader: from the bubble to her title (ends one --s-4 short of the text axis) */
+  .lt__lead {
+    grid-column: rail-start / text-start;
+    grid-row: 1;
+    text-align: end;
+    padding-inline-end: var(--s-4);
+    overflow-x: clip;
+    overflow-clip-margin: 0;
+    user-select: none;
+  }
+  .lt__lead::before { content: '\200b'; }          /* a strut: gives the lead her title's baseline */
+  .lt__anchor, .lt__rule {
+    display: inline-block;
+    position: relative;
+    inline-size: 0;
+    block-size: 0;
+    vertical-align: baseline;
+  }
+  .lt__anchor::after, .lt__rule::after {
+    content: '';
+    position: absolute;
+    inset-block-end: var(--_mid);
+    inline-size: 200vw;
+    border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .lt__anchor::after { inset-inline-end: 0; }
+  .lt__rule::after { inset-inline-start: var(--s-4); }
+
+  /* the bubble stands on the line, at the start of the rail; its --sheet disc masks the leader beneath it */
+  .lt__b {
+    grid-column: rail-start / rail-end;
+    grid-row: 1;
+    align-self: start;
+    justify-self: start;
+    margin-block-start: calc((var(--_lh) - var(--_d)) / 2);
+    position: relative;
+    display: inline-flex;
+    border-radius: var(--r-dot);
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .lt__b :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
+  .lt__b:hover :global(.bubble), .lt__b:focus-visible :global(.bubble) { color: var(--rust); }
+  :global(:target) > .lt .lt__b :global(.bubble) { color: var(--rust); background: var(--blush); }
+
+  @media (max-width: 1023.98px) {
+    .lt { display: flex; align-items: flex-start; gap: var(--s-4); }
+    .lt__lead { display: none; }
+    .lt__t { flex: 1 1 auto; min-inline-size: 0; }
+  }
+  @media (max-width: 767.98px) {
+    .lt { --_d: 36px; gap: var(--s-3); }
+    .lt__rule::after { inset-inline-start: var(--s-3); }
+  }
+</style>
