@@ -28,6 +28,7 @@ import { chrome, fill } from '../../data/chrome';
 import { facts, dimsLabel, stagingOf } from '../../lib/staging';
 import Icon from '../symbols/Icon.astro';
 import Readout from './Readout.astro';
+import { logoK } from './logo-optics';
 
 interface Props {
   sheets: Sheet[];
@@ -51,13 +52,6 @@ function rect(aspect: number, A: number, pad: number) {
 }
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-/** Her home-card logos (sheet.card.logo) — optical sizes so the four read at the same visual weight. */
-const LOGO_H: Record<string, number> = {
-  'CQBzyCCtXm6Sxa1H7rjdmW35A4.webp': 40, // Cloudflare: cloud + wordmark (3.03 : 1)
-  'LLwKJhf5XlV3SWhOs3xldIRQFA.png': 48,  // PFF LLC: opaque white box with its own margin (2.18 : 1)
-  'o8ini5inZ7izIUkXDxD6Ryd890E.png': 30, // CSBS: four tiles (3.98 : 1)
-  'z9qKmfXnKpQ01CHNuHDM1KgY6aE.png': 15, // Carnegie Mellon wordmark (9.58 : 1)
-};
 
 const items = sheets.map((s) => {
   const key = keyOf(s);
@@ -92,6 +86,8 @@ const items = sheets.map((s) => {
     quoteSub: s.kind === 'play' ? play.sub : undefined,
     citedParts: s.readout?.cited ?? (s.kind === 'about' || s.kind === 'play' ? [String(s.no), s.title.text] : undefined),
     openLabel: s.external ? v.openExternal : fill(v.open, { no: String(s.no) }),
+    /** a --paper-2 stage (B-100) is invisible on the textured paper: that plate draws its edge like the others' */
+    edge: !!s.plate?.stage?.includes('--paper-2'),
   };
 });
 const first = items.find((i) => i.active) ?? items[0];
@@ -118,7 +114,7 @@ const first = items.find((i) => i.active) ?? items[0];
           data-no={it.no}
           hidden={!it.active}
         >
-          <span class="vp__box" data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
+          <span class:list={['vp__box', { 'vp__box--edge': it.edge }]} data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
             {it.layers.map((l) => {
               const style = `left: ${r4(l.box.l)}%; top: ${r4(l.box.t)}%; inline-size: ${r4(l.box.w)}%; block-size: ${r4(l.box.h)}%`;
               const eager = it.active && !l.gif && !l.video;
@@ -157,7 +153,6 @@ const first = items.find((i) => i.active) ?? items[0];
       <svg class="vp__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
       <span class="vp__xl t-code-sm" data-vp-ph-l></span>
     </span>
-    <svg class="vp__cut" data-vp-cut aria-hidden="true" focusable="false"><line x1="50%" y1="0" x2="50%" y2="100%" /></svg>
   </div>
 
   <div class="vp__panels">
@@ -173,8 +168,8 @@ const first = items.find((i) => i.active) ?? items[0];
             {it.logo && (
               <div class="vp__logo">
                 {it.active
-                  ? <img src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" loading="lazy" decoding="async" style={`--_lh: ${LOGO_H[it.logo.file] ?? 32}px`} />
-                  : <img data-src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" decoding="async" data-vp-media style={`--_lh: ${LOGO_H[it.logo.file] ?? 32}px`} />}
+                  ? <img src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" loading="lazy" decoding="async" style={`--_k: ${logoK(it.logo.file)}`} />
+                  : <img data-src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" decoding="async" data-vp-media style={`--_k: ${logoK(it.logo.file)}`} />}
               </div>
             )}
           </div>
@@ -188,13 +183,14 @@ const first = items.find((i) => i.active) ?? items[0];
         )}
         <div class="vp__foot">
           {it.citedParts && (
-            <p class="vp__cited t-label"><span class="vp__ck">{v.citedFrom}</span>{it.citedParts.map((c) => <><span class="vp__cs" aria-hidden="true"> · </span><span>{c}</span></>)}</p>
+            <p class="vp__cited t-label"><span class="vp__ck">{v.citedFrom}</span>{it.citedParts.map((c) => <> <span class="vp__ci">{c}</span></>)}</p>
           )}
           <span class="btn vp__open">{it.openLabel}<Icon name={it.s.external ? 'arrow-up-right' : 'arrow-right'} /></span>
         </div>
       </div>
     ))}
   </div>
+  <svg class="vp__cut" data-vp-cut aria-hidden="true" focusable="false"><line x1="50%" y1="0" x2="50%" y2="100%" /></svg>
  </div>
  <div class="vp__ctl">
   <a class="vp__hit" href={first.s.href} tabindex="-1" data-vp-hit {...(first.s.external ? { target: '_blank', rel: 'noopener' } : {})}></a>
@@ -216,21 +212,22 @@ const first = items.find((i) => i.active) ?? items[0];
     .vp {
       --_top: var(--s-4);   /* = the page's scroll-padding under the bar (base.css) */
       --_head: var(--s-6);  /* the index header (title on its rule); viewport.ts measures it */
-      --_rest: 23.25rem;    /* measured on the tallest panel (A-103) at 1440–1920; viewport.ts refines it */
+      --_rest: calc(var(--s-11) * 2);  /* no-JS estimate of the tallest panel's rest at 1440; viewport.ts measures it */
       --_gap: var(--s-3);
       display: grid;
       position: sticky; inset-block-start: calc(var(--bar) + var(--_top) + var(--_head));
       z-index: var(--z-sticky);
-      /* never below 30rem (or the column, if narrower): past that the foot may run under the window's edge instead */
-      inline-size: clamp(min(100%, 30rem), calc((100svh - var(--bar) - var(--_top) - var(--_head) - var(--_rest) - var(--s-3)) * 1.6), 100%);
-      justify-self: end;
+      /* never below 480px (or the column, if narrower): past that the foot may run under the window's edge instead.
+         It stands on column 7's line; whatever the height takes off falls at the page margin. */
+      inline-size: clamp(min(100%, calc(var(--s-11) * 2.5)), calc((100svh - var(--bar) - var(--_top) - var(--_head) - var(--_rest) - var(--s-3)) * 1.6), 100%);
+      justify-self: start;
       container: vp / inline-size;
     }
   }
 
   /* the inert preview and its control layer share one cell; the preview sets the height */
   .vp > * { grid-area: 1 / 1; min-inline-size: 0; }
-  .vp__view { display: grid; row-gap: var(--_gap); align-content: start; }
+  .vp__view { position: relative; display: grid; row-gap: var(--_gap); align-content: start; }
   .vp__ctl {
     position: relative; z-index: var(--z-raised);
     display: grid; grid-template-rows: var(--_strip, var(--s-5)) auto 1fr; row-gap: var(--_gap);
@@ -242,7 +239,7 @@ const first = items.find((i) => i.active) ?? items[0];
   /* header strip — shares its baseline with the list's first strip */
   .vp__head {
     display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--_strip, var(--s-5)); color: var(--ink-2);
-    padding-inline-end: calc(var(--s-6) - var(--s-2) + var(--s-3)); /* room for ⤢ (control layer) */
+    padding-inline-end: calc(var(--s-5) - var(--s-1) + var(--s-3)); /* room for ⤢ (control layer) */
   }
   .vp__id { display: flex; align-items: baseline; white-space: nowrap; }
   .vp__dot { white-space: pre; color: var(--ink-3); }
@@ -254,8 +251,8 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp:has(.vp__hit:hover) .vp__dims { opacity: 1; }
   .vp__enl {
     grid-area: 1 / 1; justify-self: end; align-self: center; pointer-events: auto;
-    display: inline-grid; place-items: center; inline-size: var(--s-6); block-size: var(--s-6);
-    margin-block: calc(-1 * var(--s-1)); margin-inline-end: calc(-1 * var(--s-2));
+    display: inline-grid; place-items: center; inline-size: var(--s-5); block-size: var(--s-5);
+    margin-block: calc(-1 * var(--s-1)); margin-inline-end: calc(-1 * var(--s-1));
     color: var(--ink-2); border-radius: var(--r-1);
     transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
   }
@@ -270,6 +267,8 @@ const first = items.find((i) => i.active) ?? items[0];
   /* Conversense: the baked device's white corners are clipped by the frame radius (SPEC §6.3 'phone-video') */
   .vp__layer--pv { border-radius: 5% / 2.3%; }
   .vp__plate.is-incoming { z-index: calc(var(--z-raised) + 1); }
+  /* B-100's --paper-2 stage does not show on the textured paper: its plate draws its edge, as the others' stages do */
+  .vp__box--edge { box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
 
   /* drafting X: external sheets, and the loading placeholder (dims · format · size) */
   .vp__box--x, .vp__ph { display: grid; place-items: center; background: var(--plate); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
@@ -281,10 +280,12 @@ const first = items.find((i) => i.active) ?? items[0];
     padding: var(--s-1) var(--s-2); background: var(--plate); color: var(--ink-3); text-transform: uppercase;
   }
 
-  /* the section cut that rides the wipe's leading edge (2px rust, long–short dash) */
+  /* the section cut that rides the wipe's leading edge (2px rust, long–short dash): the plate and the panel wipe
+     together, so it runs from just above the plate down through the panel to the foot */
   .vp__cut {
-    position: absolute; z-index: var(--z-sticky); inset-block-start: calc(-1 * var(--s-3)); inset-inline-start: calc(var(--lw-cut) / -2);
-    inline-size: var(--lw-cut); block-size: calc(100% + 2 * var(--s-3)); pointer-events: none; opacity: 0; overflow: visible;
+    --_from: calc(var(--_strip, var(--s-5)) + var(--_gap) - var(--s-3));
+    position: absolute; z-index: var(--z-sticky); inset-block-start: var(--_from); inset-inline-start: calc(var(--lw-cut) / -2);
+    inline-size: var(--lw-cut); block-size: calc(100% - var(--_from)); pointer-events: none; opacity: 0; overflow: visible;
   }
   .vp__cut line { stroke: var(--rust); stroke-width: var(--lw-cut); stroke-dasharray: var(--dash-center); }
 
@@ -298,22 +299,19 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__pause :global(.vp__pi--play), .vp__pause.is-paused :global(.vp__pi--pause) { display: none; }
   .vp__pause.is-paused :global(.vp__pi--play) { display: inline-block; }
 
-  /* panels share one cell and cross-fade (--dur-1); only the active one is in flow, so the Viewport is as tall as
-     what it shows (the outgoing panel overlays it while it fades) */
-  .vp__panels { display: grid; position: relative; }
-  .vp__panel {
-    grid-area: 1 / 1; display: flex; flex-direction: column; gap: var(--s-3);
-    position: absolute; inset: 0 0 auto;
-    opacity: 0; visibility: hidden;
-    transition: opacity var(--dur-1) var(--ease-ui), visibility 0s linear var(--dur-1);
-  }
-  .vp__panel.is-active { position: relative; opacity: 1; visibility: visible; transition: opacity var(--dur-1) var(--ease-ui), visibility 0s; }
+  /* panels share one cell, all in flow: the cell is as tall as the tallest panel, so the Viewport never changes
+     height between sheets, and each panel's foot (CITED FROM + Open sheet) sits on one fixed line at the bottom.
+     A swap wipes the panel with the plate (viewport.ts): outgoing and incoming are clipped at the same moving edge,
+     so the two never overlay. */
+  .vp__panels { display: grid; }
+  .vp__panel { grid-area: 1 / 1; display: flex; flex-direction: column; gap: var(--s-3); visibility: hidden; }
+  .vp__panel.is-active { visibility: visible; }
 
   /* title block — the same object as the case page's (outer ink border, inner --line-2 rules, 96px keys) */
   .vp__tb { display: grid; grid-template-columns: minmax(0, 1fr); border: var(--lw-border) solid var(--ink); background: var(--sheet); }
   .vp__tb--logo { grid-template-columns: minmax(0, 1fr) auto; }
   /* the key column's rule is drawn on the list, so each row can align key and value on one baseline */
-  .vp__tb { --_k: 6rem; }
+  .vp__tb { --_k: var(--s-9); }
   .vp__dl {
     display: grid; align-content: start;
     background: linear-gradient(var(--line-2), var(--line-2)) var(--_k) 0 / var(--lw-object) 100% no-repeat;
@@ -322,26 +320,36 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__row + .vp__row { border-block-start: var(--lw-object) solid var(--line-2); }
   .vp__row dt, .vp__row dd { padding: calc(var(--s-1) * 1.5) var(--s-3); }
   .vp__row dt { color: var(--ink-2); }
-  .vp__row dd { margin: 0; font-size: var(--fs-body-sm); line-height: 1.35; color: var(--ink); text-wrap: pretty; }
+  .vp__row dd { margin: 0; font-size: var(--fs-body-sm); line-height: var(--lh-lede-sm); color: var(--ink); text-wrap: pretty; }
+  /* the logo cell: her logo optically sized in a --s-7 cell (logo-optics.ts) */
   .vp__logo {
-    display: grid; place-items: center; inline-size: 9.5rem; padding: var(--s-3);
+    --_cell: var(--s-7);
+    display: grid; place-items: center; inline-size: calc(var(--s-10) + var(--s-5)); padding: var(--s-3);
     background: var(--plate); border-inline-start: var(--lw-object) solid var(--line-2);
   }
-  .vp__logo img { block-size: var(--_lh); inline-size: auto; max-inline-size: 100%; }
+  .vp__logo img { block-size: calc(var(--_cell) * var(--_k)); inline-size: auto; max-inline-size: 100%; object-fit: contain; }
 
   .vp__quote { display: grid; row-gap: var(--s-3); }
   .vp__q { font-size: var(--fs-lede); font-weight: var(--wt-lede); line-height: var(--lh-lede); letter-spacing: var(--tr-lede); text-wrap: balance; }
-  .vp__qs { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); max-inline-size: 48ch; }
+  .vp__qs { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); max-inline-size: calc(var(--measure) * 0.6); }
 
   /* foot: where the numbers come from, and the way in */
   .vp__foot {
-    display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); margin-block-start: auto;
     padding-block-start: var(--s-2); border-block-start: var(--lw-object) solid var(--line-2);
   }
-  .vp__cited { flex: 1 1 auto; color: var(--ink-2); min-inline-size: 0; }
+  /* CITED FROM · A-103 · REFLECTION · IMPACT STATS: each item carries its dot in a --s-4 cell in front; the line is
+     pulled one cell left and clipped there, so a wrapped item never starts its line on a stray "·" */
+  .vp__cited {
+    flex: 1 1 auto; min-inline-size: 0; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    margin-inline-start: calc(-1 * var(--s-4));
+    clip-path: inset(calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) var(--s-4));
+  }
   .vp__open { flex: none; }
-  .vp__ck { color: var(--ink-3); }
-  .vp__cs { white-space: pre; color: var(--ink-3); }
+  .vp__ck { color: var(--ink-3); padding-inline-start: var(--s-4); }
+  .vp__ci { white-space: nowrap; }
+  .vp__ci::before { content: '·' / ''; display: inline-block; inline-size: var(--s-4); text-align: center; letter-spacing: 0; color: var(--ink-3); }
   .vp__open { margin-inline-start: auto; }
   .vp__open {
     background-image: linear-gradient(90deg, transparent 50%, var(--sheet) 50%), var(--hatch-blush);
@@ -353,7 +361,8 @@ const first = items.find((i) => i.active) ?? items[0];
   /* the preview is one link: hovering it lights the drawn button as .btn:hover would */
   .vp:has(.vp__hit:hover) .vp__open { color: var(--rust-deep); background-position: 0 0, 0 0; }
 
-  /* a narrow Viewport (1024-wide windows, short-window shrink): the logo cell steps aside for her words */
+  /* a narrow Viewport (1024-wide windows, short-window shrink): the logo cell steps aside for her words
+     (a container query cannot read custom properties; 540px is where the title block's values start to wrap) */
   @container vp (max-width: 540px) {
     .vp__logo { display: none; }
     .vp__tb--logo { grid-template-columns: minmax(0, 1fr); }
@@ -365,10 +374,10 @@ const first = items.find((i) => i.active) ?? items[0];
   /* short windows (1280 × 720; a 1440 × 900 laptop's ≈ 790px browser): SM2's Skills row hidden and sub-line clamped;
      tighter gaps, a narrower logo cell, and the Viewport sticks 8px higher (it rises that much after landing) */
   @media (min-width: 1024px) and (max-height: 820px) {
-    .vp { --_top: var(--s-2); --_rest: 19.5rem; --_gap: var(--s-2); }
+    .vp { --_top: var(--s-2); --_rest: calc(var(--s-10) * 2.5); --_gap: var(--s-2); }
     .vp__panel { gap: var(--s-2); }
     .vp__row--skills { display: none; }
-    .vp__logo { inline-size: 8rem; padding: var(--s-2); }
+    .vp__logo { inline-size: var(--s-10); padding: var(--s-2); }
     .vp :global(.rd__sub) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   }
 </style>

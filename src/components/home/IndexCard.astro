@@ -5,23 +5,18 @@
  *   · the 16:10 cover plate on its stage (lazy), which carries view-transition-name plate-<slug> only below 1024
  *     (set through --_vt, never inline: the Viewport plate owns the name at ≥ 1024, and the two are never rendered
  *     at the same width, so exactly one element per name exists on screen);
- *   · her home-card logo on a --plate chip, where her original cards had it (between the image and the title).
- * At ≥ 1024 both are display:none, so their lazy images never load there.
+ *   · her home-card logo in a fixed-height chip, where her original cards had it (between the image and the title),
+ *     optically sized (logo-optics.ts) so the four chips are one size and read at one weight.
+ * At ≥ 1024 both are display:none, so their lazy images never load there (with JS on; see the notes for no-JS).
  */
 import type { Sheet } from '../../data/sheets';
 import { plateLayers } from '../../data/sheets';
 import { facts } from '../../lib/staging';
 import Plate from '../media/Plate.astro';
+import { logoK } from './logo-optics';
 interface Props { sheet: Sheet; part: 'plate' | 'logo' }
 const { sheet, part } = Astro.props;
 const logo = sheet.card?.logo ? facts(sheet.card.logo) : undefined;
-/** optical heights for the logo chip (same proportions as the Viewport's logo cell) */
-const LOGO_H: Record<string, number> = {
-  'CQBzyCCtXm6Sxa1H7rjdmW35A4.webp': 22,
-  'LLwKJhf5XlV3SWhOs3xldIRQFA.png': 26,
-  'o8ini5inZ7izIUkXDxD6Ryd890E.png': 16,
-  'z9qKmfXnKpQ01CHNuHDM1KgY6aE.png': 10,
-};
 ---
 {part === 'plate' && sheet.plate && (
   <span class="icard__plate" style={sheet.slug ? `--_vt: plate-${sheet.slug}` : undefined}>
@@ -29,17 +24,18 @@ const LOGO_H: Record<string, number> = {
   </span>
 )}
 {part === 'logo' && logo && (
-  <span class="icard__logo"><img src={logo.src} width={logo.w} height={logo.h} alt="" loading="lazy" decoding="async" style={`--_lh: ${LOGO_H[logo.file] ?? 22}px`} /></span>
+  <span class="icard__logo"><img src={logo.src} width={logo.w} height={logo.h} alt="" loading="lazy" decoding="async" style={`--_k: ${logoK(logo.file)}`} /></span>
 )}
 <style>
   .icard__plate, .icard__logo { display: none; }
   @media (max-width: 1023.98px) {
     .icard__plate { display: block; grid-area: plate; view-transition-name: var(--_vt, none); }
+    /* one chip size for every logo: the cell is --s-5 tall inside a --s-1 padding (a --s-6 chip) */
     .icard__logo {
-      grid-area: logo; justify-self: start; display: inline-grid; place-items: center;
-      padding: var(--s-1) var(--s-2); background: var(--plate);
+      grid-area: logo; justify-self: start; align-self: start; display: inline-grid; place-items: center;
+      block-size: var(--s-6); padding: var(--s-1) var(--s-2); background: var(--plate);
       box-shadow: inset 0 0 0 var(--lw-object) var(--line-1);
     }
-    .icard__logo img { block-size: var(--_lh); inline-size: auto; }
+    .icard__logo img { block-size: calc(var(--s-5) * var(--_k)); inline-size: auto; object-fit: contain; }
   }
 </style>

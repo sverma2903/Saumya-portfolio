@@ -31,17 +31,6 @@ const isCase = sheet.kind === 'case';
 /** B-100 / C-100: her headline HTML (keeps her <em>), not the stripped line */
 const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play' ? play.headline : undefined;
 const ext = sheet.external ? externalAttrs(sheet.href) : {};
-/**
- * The card's one-line readout (< 1024): her first figure that her outcome line does not already state
- * ("Two of the gaps…" and "1st Place + …" are sentences of A-101's and A-104's card text; A-103's "50% reduction in
- * navigation time" opens its card text, so its second figure is shown). A deterministic rule on her own figures.
- */
-const outcome = sheet.line?.text ?? '';
-const lead = (v: string, l: string) => `${v} ${l.trim().split(/\s+/).slice(0, 3).join(' ')}`.trim();
-const show = sheet.readout?.lines.findIndex((l) => {
-  const joined = (l.joined ? l.value.text + l.label.text : `${l.value.text} ${l.label.text}`).trim();
-  return !outcome.includes(joined) && !outcome.includes(lead(l.value.text, l.label.text));
-}) ?? -1;
 /** her title with each hyphenated word kept whole ("E-learning", "COVID-era"): wrapping spans only, text unchanged */
 const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span class="ix__nb">$1</span>');
 const SEP = '\u00a0· ';
@@ -51,7 +40,7 @@ const DASH = '\u00a0— ';
   <a class="ix__a" href={sheet.href} {...ext} data-sheet={key}>
     <span class="ix__no t-code">
       {sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} class="ix__ext" /> : <span>{sheet.no}</span>}
-      {!compact && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
+      {!compact && sheet.no !== '↗' && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
       <span class="sr-only">, </span>
     </span>
     {!compact && isCase && <IndexCard sheet={sheet} part="plate" />}
@@ -66,9 +55,9 @@ const DASH = '\u00a0— ';
       </span>
     )}
     {!compact && sheet.tags.length > 0 && (
-      <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <>{i > 0 && <><span class="ix__sep" aria-hidden="true">{SEP}</span><span class="sr-only">, </span></>}<span class="ix__tag" data-v>{t.text}</span></>)}</span>
+      <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <span class="ix__tg">{i > 0 && <span class="sr-only">, </span>}<span class="ix__tag" data-v>{t.text}</span></span>)}</span>
     )}
-    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={show} /></span>}
+    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" /></span>}
     {!compact && minutes != null && <span class="ix__min t-label"><span class="sr-only">, </span><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
     {!compact && isCase && <span class="ix__open t-label" aria-hidden="true">{chrome.wp3.index.open}<Icon name="arrow-right" size={14} /></span>}
   </a>
@@ -84,7 +73,8 @@ const DASH = '\u00a0— ';
   .ix__a:hover { color: var(--ink); }
   .ix__a:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
   .ix__no { grid-area: no; display: inline-flex; align-items: baseline; gap: var(--s-2); color: var(--ink-2); white-space: nowrap; }
-  .ix__no :global(.ix__ext) { align-self: center; }
+  /* ↗ (external rows): its box stands on the baseline, so the arrow sits at the title's cap height */
+  .ix__no :global(.ix__ext) { align-self: baseline; }
   .ix__mark {
     block-size: var(--s-2); inline-size: auto; fill: var(--rust);
     opacity: 0; transform: translateX(calc(-1 * var(--s-1)));
@@ -102,9 +92,17 @@ const DASH = '\u00a0— ';
   .ix__title :global(.ix__nb) { white-space: nowrap; }
   /* her <em> inside an italic line reads upright, as emphasis within italics should */
   .ix__line :global(em) { font-style: normal; }
-  .ix__tags { grid-area: tags; color: var(--ink-2); }
-  .ix__tag { white-space: nowrap; }
-  .ix__sep { color: var(--ink-3); }
+  /* her tags, separated by a centred dot in a fixed --s-4 cell. Every tag carries its dot in front; the list is
+     pulled one cell to the left and clipped there, so the dot of whichever tag starts a line (the first, or one that
+     wrapped) is never seen: no line starts or ends on a stray "·". */
+  .ix__tags {
+    grid-area: tags; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    margin-inline-start: calc(-1 * var(--s-4));
+    clip-path: inset(calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) var(--s-4));
+  }
+  .ix__tg { white-space: nowrap; }
+  .ix__tg::before { content: '·' / ''; display: inline-block; inline-size: var(--s-4); text-align: center; letter-spacing: 0; color: var(--ink-3); }
   .ix__rd { grid-area: readout; }
   .ix__min { grid-area: min; color: var(--ink-2); white-space: nowrap; }
   .ix__open { grid-area: open; display: none; }
@@ -120,64 +118,78 @@ const DASH = '\u00a0— ';
   @media (min-width: 1024px) {
     .ix { border-block-start: var(--lw-object) solid var(--line-2); }
     .ix__a {
-      grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr) auto;
+      /* the hover well and the focus ring are the row's own box, edge to edge with its rules; the text is inset by
+         --_pi and the sheet-number column gives the inset back, so the titles keep their column */
+      --_pi: var(--s-2);
+      grid-template-columns: calc(var(--_no) - var(--_pi)) minmax(0, 1fr) auto;
       grid-template-areas:
         'no title min'
         'no line  line'
         'no tags  tags';
-      padding-block: calc(var(--s-2) + var(--s-1) / 2) var(--s-4);
-      /* the hover well and the focus ring stand a little proud of the text, which keeps its column */
-      padding-inline: var(--s-2); margin-inline: calc(-1 * var(--s-2));
+      padding-block: var(--_pt, calc(var(--s-2) + var(--s-1) / 2)) var(--s-4);
+      padding-inline: var(--_pi);
       transition: background-color var(--dur-1) var(--ease-ui);
     }
     .ix__no, .ix__title, .ix__min { align-self: first baseline; }
     .ix__min { padding-inline-start: var(--s-3); }
     .ix__rd { display: contents; }
-    .ix__line { margin-block-start: calc(var(--s-1) / 2); max-inline-size: 38em; }
+    /* her outcome at --fs-body-md (22px at 1440; SPEC: --fs-deck) set on --lh-lede: at 1440 × 900 both lines of the
+       A-101 outcome must stand above the fold the cover leaves (SM2 acceptance) */
+    .ix__line { max-inline-size: var(--measure); line-height: var(--lh-lede); }
     .ix__tags { margin-block-start: var(--s-3); }
     .ix--also .ix__a { grid-template-areas: 'no title title'; padding-block: var(--s-3); }
     .ix--also .ix__run { align-self: first baseline; }
     .ix__a:hover { background-color: var(--sheet); }
-    /* the Viewport's sheet: rust sheet number + ▸ (never colour alone) */
+    /* a row that slid under a resting pointer (scroll, #index, J / K) is not hovered until the pointer moves */
+    :global(.dix__list[data-rest]) .ix__a:hover { background-color: transparent; }
+    /* the Viewport's sheet: rust sheet number + ▸ (never colour alone); an external row's ↗ turns rust instead */
     .ix.is-active .ix__no { color: var(--rust); }
     .ix.is-active .ix__mark { opacity: 1; transform: none; }
   }
 
-  /* ── < 1024: rows become cards ── */
+  /* ── < 1024: rows become cards (SM2: tag line, plate, title, outcome, one-line readout, ≈ N min · Open →) ── */
   @media (max-width: 1023.98px) {
     .ix--case .ix__a {
       grid-template-columns: auto minmax(0, 1fr);
       grid-template-areas:
-        'plate   plate'
         'no      tags'
+        'plate   plate'
         'logo    logo'
         'title   title'
         'line    line'
         'readout readout'
         'foot    foot';
-      column-gap: var(--s-2);
+      column-gap: 0;
       row-gap: var(--s-3);
     }
-    .ix--case .ix__no { color: var(--rust); }
-    .ix--case .ix__no::after { content: '·' / ''; color: var(--ink-3); }
+    /* the sheet number leads the tag line, with the tags' own dot cell after it */
+    .ix--case .ix__no { color: var(--rust); gap: 0; align-self: baseline; }
+    .ix--case .ix__no::after { content: '·' / ''; display: inline-block; inline-size: var(--s-4); text-align: center; color: var(--ink-3); }
     .ix--case .ix__tags { align-self: baseline; }
     .ix--case .ix__title { margin-block-start: var(--s-1); }
     .ix--case .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
+    .ix--case .ix__rd { align-self: start; }
     .ix--case .ix__min {
-      grid-area: foot; padding-block-start: var(--s-3); margin-block-start: var(--s-1);
+      grid-area: foot; align-self: end; padding-block-start: var(--s-3); margin-block-start: var(--s-1);
       border-block-start: var(--lw-object) solid var(--line-2);
     }
     .ix__open { grid-area: foot; justify-self: end; align-self: end; display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
     .ix--also { border-block-start: var(--lw-object) solid var(--line-2); }
-    .ix--also .ix__a { grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr); grid-template-areas: 'no title'; padding-block: var(--s-3); }
+    .ix--also .ix__a { grid-template-columns: var(--_no) minmax(0, 1fr); grid-template-areas: 'no title'; padding-block: var(--s-3); }
     .ix--also .ix__no, .ix--also .ix__run { align-self: first baseline; }
     .ix__mark { display: none; }
+  }
+  /* 2-up (768–1023): each card is a subgrid over its pair's shared row tracks, so the tag lines, plates, logos,
+     titles, outcomes, readouts and feet of the two cards line up (the list sets the tracks, see DrawingIndex) */
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .ix--case { display: grid; grid-row: span 7; grid-template-rows: subgrid; }
+    .ix--case .ix__a { grid-row: 1 / -1; grid-template-rows: subgrid; }
   }
 
   /* ── compact (404): sheet no. + her title, 44px targets ── */
   .ix--compact { border-block-start: var(--lw-object) solid var(--line-2); }
   .ix--compact .ix__a {
-    grid-template-columns: var(--_no, 4.5rem) minmax(0, 1fr); grid-template-areas: 'no title';
+    grid-template-columns: calc(var(--_no) - var(--_pi, 0px)) minmax(0, 1fr); grid-template-areas: 'no title';
     align-items: baseline; min-block-size: calc(var(--s-6) + var(--s-3)); padding-block: var(--s-2);
   }
   .ix--compact .ix__title { font-size: var(--fs-body-md); line-height: var(--lh-body-sm); }

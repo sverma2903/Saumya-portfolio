@@ -10,7 +10,7 @@
  *
  * Groups: Selected Projects (her phrase) · Further projects · Also in the set (chrome). Rows: IndexRow (a row ≥ 1024,
  * a card below). Beside the list, the sticky Viewport (≥ 1024). viewport.ts wires activation (hover 60 ms dwell,
- * focus, the 45% scroll band, J/K), the swap and the loading policy.
+ * focus, the reading line (A-101 at landing, then the 45% band), J/K), the swap and the loading policy.
  *
  * Props: { variant?: 'full' | 'compact'; headingLevel?: 2 | 3 } — 'compact' (the 404): rows with sheet no. + her title,
  * no bubble, no summary, no Viewport, no cards.
@@ -74,14 +74,15 @@ const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...
   .dix {
     --_strip: var(--s-5);                          /* the strip under the header rule (group label · READ | VIEWPORT) */
     --_bub: calc(var(--s-7) - var(--s-1));         /* Bubble (md) diameter, 44px: it sits on the rule, half above */
-    --_no: 4.5rem;                                 /* the rows' sheet-number column */
+    --_no: calc(var(--s-8) + var(--s-2));          /* the rows' sheet-number column (72px): the bubble's column */
     padding-block: var(--s-5) var(--s-9);
   }
   .dix__grid { display: grid; grid-template-columns: minmax(0, 1fr); }
   .dix__head { position: relative; display: flex; align-items: last baseline; gap: var(--s-4); }
+  /* the title's line box is its cap-and-descender height (--lh-readout, the display setting), so it stands on the rule */
   .dix__title {
     font-family: var(--font-serif); font-size: var(--fs-h); font-weight: var(--wt-h);
-    line-height: 0.92; letter-spacing: var(--tr-h); text-wrap: nowrap;
+    line-height: var(--lh-readout); letter-spacing: var(--tr-h); text-wrap: nowrap;
   }
   .dix__summary { color: var(--ink-2); white-space: nowrap; }
   .dix__gh { display: flex; align-items: center; gap: var(--s-4); min-block-size: var(--_strip); }
@@ -94,7 +95,7 @@ const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...
     /* the header box ends at the rule; the bubble hangs half below it, beside the first strip. The title stands on
        the rule in the titles' column (the bubble sits in the sheet-number column). */
     padding-inline-start: calc(var(--_no) + var(--s-4));
-    padding-block: 0 calc(var(--s-1) / 2);
+    padding-block: 0;
     min-block-size: calc(var(--_bub) / 2);
     border-block-end: var(--lw-border) solid var(--ink);
   }
@@ -106,39 +107,49 @@ const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...
 
   /* ─────────────────────────── ≥ 1024: list | Viewport ─────────────────────────── */
   @media (min-width: 1024px) {
-    /* the cover (SM1) leaves 140px above the fold at 1440 × 900 and already ends in ≥ 43px of its own air:
-       the index starts right away so its header, first strip, the A-101 title and outcome line are all on screen */
-    .dix { padding-block: 0 var(--s-6); }
+    /* the cover (SM1) leaves 140px above the fold at 1440 × 900 and already ends in ≥ 43px of its own air: the index
+       starts right away, and its first strip is one --s-4 line, so the header, the first strip, the A-101 title and
+       both lines of its outcome are on screen */
+    .dix { --_strip: var(--s-4); padding-block: 0 var(--s-6); }
     .dix__grid {
       grid-template-columns: repeat(12, minmax(0, 1fr));
       column-gap: var(--g);
     }
     .dix__head { grid-column: 1 / -1; grid-row: 1; }
-    /* room under the last row, so the sticky Viewport stays whole while the last rows cross the 45% band
-       (Viewport height for those sheets + its top − 45% of the window − the rows below: ≈ 0.2 × the window) */
-    .dix__list { grid-column: 1 / span 6; grid-row: 2; padding-block-end: 20svh; }
+    /* room under the last row, so the sticky Viewport stays whole while the last rows cross the 45% band:
+       its top + its height − 45% of the window − half the last row (viewport.ts measures it as --_runway) */
+    .dix__list { grid-column: 1 / span 6; grid-row: 2; padding-block-end: max(20svh, var(--_runway, 0px)); }
     .dix :global(.vp) { grid-column: 7 / span 6; grid-row: 2; align-self: start; }
-    /* the list's strips sit to the right of the hanging bubble, on the titles' left edge (4.5rem = row sheet column) */
-    .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); }
+    /* the list's strips sit to the right of the hanging bubble, on the titles' left edge; READ ends on the minutes */
+    .dix__gh { padding-inline: calc(var(--_no) + var(--s-4)) var(--s-2); }
     .dix__group + .dix__group { margin-block-start: var(--s-7); }
-    .dix__group + .dix__group .dix__gh { border-block-start: var(--lw-border) solid var(--ink); }
+    .dix__group + .dix__group .dix__gh { border-block-start: var(--lw-border) solid var(--ink); min-block-size: var(--s-5); }
     .dix__group--also { margin-block-start: var(--s-8); }
+    /* the hanging bubble heads the sheet-number column, so the first row's rule starts at the titles' column
+       (it underlines the strip, never meets the bubble), and the row rises into the room the strip leaves */
+    .dix:not(.dix--compact) .dix__group--selected .dix__ol > :global(.ix:first-child) { border-block-start-color: transparent; --_pt: var(--s-1); }
+    .dix:not(.dix--compact) .dix__group--selected .dix__ol > :global(.ix:first-child)::before {
+      content: ''; position: absolute; inset-block-start: calc(-1 * var(--lw-object)); inset-inline: calc(var(--_no) + var(--s-4)) 0;
+      border-block-start: var(--lw-object) solid var(--line-2);
+    }
   }
 
   /* ─────────────────────────── < 1024: cards ─────────────────────────── */
   @media (max-width: 1023.98px) {
     .dix { padding-block: var(--s-6) var(--s-8); }
     .dix:not(.dix--compact) .dix__head { flex-wrap: wrap; row-gap: var(--s-1); padding-inline-start: calc(var(--_bub) + var(--s-4)); }
-    .dix__gh { padding-inline-start: calc(var(--_bub) + var(--s-4)); }
     .dix__col { display: none; }
-    .dix:not(.dix--compact) .dix__group--selected .dix__gh { margin-block-end: var(--s-5); }
+    /* every group label stands in one column (the title's, past the bubble), centred in its strip */
+    .dix:not(.dix--compact) .dix__gh { padding-inline-start: calc(var(--_bub) + var(--s-4)); padding-block: var(--s-3); }
     .dix:not(.dix--compact) .dix__group + .dix__group { margin-block-start: var(--s-8); }
-    .dix:not(.dix--compact) .dix__group + .dix__group .dix__gh { padding-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); margin-block-end: var(--s-5); }
-    .dix:not(.dix--compact) .dix__group--also .dix__gh { margin-block-end: 0; }
+    .dix:not(.dix--compact) .dix__group + .dix__group .dix__gh { border-block-start: var(--lw-border) solid var(--ink); }
     .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol { display: grid; row-gap: var(--s-8); }
   }
+  /* 2-up: the list lays down seven shared row tracks per pair of cards (tag line, plate, logo, title, outcome,
+     readout, foot; see IndexRow's subgrid). Inside a card the tracks are --s-3 apart; pairs are --s-8 apart. */
   @media (min-width: 768px) and (max-width: 1023.98px) {
-    .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--g); }
+    .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--g); row-gap: var(--s-3); }
+    .dix:not(.dix--compact) .dix__group:not(.dix__group--also) .dix__ol > :global(.ix:not(:nth-last-child(-n + 2))) { margin-block-end: calc(var(--s-8) - var(--s-3)); }
   }
   @media (max-width: 767.98px) {
     .dix { --_bub: calc(var(--s-6) + var(--s-1)); }
@@ -152,11 +163,8 @@ const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...
   .dix--compact .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); border-block-start: var(--lw-border) solid var(--ink); }
   .dix--compact .dix__group + .dix__group { margin-block-start: var(--s-6); }
   @media (min-width: 1024px) {
+    .dix.dix--compact { --_strip: var(--s-5); }
     .dix--compact .dix__list { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--g); padding: 0; }
     .dix--compact .dix__group + .dix__group { margin-block-start: 0; }
-  }
-  @media (max-width: 1023.98px) {
-    .dix--compact .dix__gh { margin-block-end: 0; }
-    .dix--compact .dix__group + .dix__group .dix__gh { padding-inline-start: calc(var(--_no) + var(--s-4)); }
   }
 </style>

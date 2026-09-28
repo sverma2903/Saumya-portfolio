@@ -53,6 +53,8 @@ describe('home · Drawing index (SM2)', () => {
           if (l.joined) expect(figs[i].hasAttribute('data-v'), `${key} joined figure is one data-v element`).toBe(true);
         });
       }
+      // the card's one-line readout (< 1024) is her first figure on every card (SM2 mobile wireframe)
+      expect(row.querySelectorAll('.rdr__line')[0].classList.contains('rdr__line--more'), `${key} card readout`).toBe(false);
       if (s.readout!.bars) expect(text(panel.querySelector('.rd__cap')!.innerHTML)).toBe(s.readout!.bars.caption.text);
       if (s.readout!.sub) expect(text(panel.querySelector('.rd__sub')!.innerHTML)).toBe(s.readout!.sub.text);
     }

@@ -3,20 +3,27 @@
  *
  * Activation (≥ 1024, where the Viewport is displayed):
  *   pointer   pointerenter on a row = hover intent (its stills start loading); it activates after a 60 ms dwell.
- *             Leaving the list keeps the last row active.
+ *             Leaving the list keeps the last row active. Only a pointer that really moves is hover intent: after any
+ *             scroll (wheel, a jump to #index, J / K) or keyboard focus, rows sliding under a resting pointer do
+ *             nothing (no activation, no hover well) until the pointer moves again; meanwhile the band leads.
  *   keyboard  focus within a row activates it at once. J / K (shortcuts on, index on screen) move focus to the
  *             next / previous row with an instant scroll (keyboard actions never animate), bringing the index into
  *             place first (its header under the title bar) if it is still low on screen. A row focused from the
- *             keyboard keeps the Viewport while it is on screen (the band stands down) and until the pointer really
- *             moves (rows sliding under a resting pointer are not hover intent).
- *   scroll    with no pointer over the list, the row crossing the band at 45% of the viewport activates
- *             (IntersectionObserver, rootMargin -45% 0px -54% 0px).
+ *             keyboard keeps the Viewport while it is on screen (the band stands down).
+ *   scroll    with no live pointer over the list, the row crossing the reading line activates. The line is SM2's
+ *             45% band once the list is being read, but it starts on A-101: while the index is at (or below) its
+ *             landing place — the header under the title bar, where #index and "Selected Projects ↓" put it — A-101
+ *             is the sheet; scrolling on, the line runs from A-101's middle down to 45% of the window (it gains
+ *             on the rows at twice the scroll), so A-102 follows a short scroll later and the last rows are read
+ *             at 45%, as with the IntersectionObserver band (rootMargin -45% 0px -54% 0px) it replaces.
  *   press     pointerdown on a row swaps instantly, so the cross-document view transition morphs from its plate (a
  *             press on the preview itself lands a running wipe the same way).
  *   default   A-101.
  * Swap: load + decode the new plate (drafting-X placeholder after 120 ms), then a clip-path wipe with the rust
- * dash-dot cut riding its leading edge (--dur-3, --ease-pen); the panels cross-fade (--dur-1); view-transition-name
- * plate-<slug> moves to the new plate; `sv:plate {slug}` fires. Reduced motion / Motion off / fast scroll → instant.
+ * dash-dot cut riding its leading edge (--dur-3, --ease-pen). The panel wipes with the plate (outgoing and incoming
+ * clipped at the same edge, never overlaid), and the strip's sheet number changes when the wipe lands;
+ * view-transition-name plate-<slug> moves to the new plate; `sv:plate {slug}` fires. Reduced motion / Motion off /
+ * fast scroll / keyboard → instant.
  * Loading: data-src layers load on intent or activation. The CSBS GIF mounts only while A-103 is active (unmounted
  * 10 s after); C-100's video plays muted in a loop only while active and only with motion on. Paused or under
  * reduced motion, the GIF shows its staging poster frame (ImageDecoder) or the drafting X.
@@ -32,6 +39,7 @@ const DWELL = 60;
 const PH_AFTER = 120;
 const PARK_AFTER = 10_000;
 const FAST = 3; // viewports per second (§2.7 law 5: fast-scroll bypass)
+const BAND = 0.45; // SM2's reading band, as a share of the window's height
 
 const $$ = <T extends Element>(sel: string, root: ParentNode) => Array.from(root.querySelectorAll<T>(sel));
 const wait = (t: number) => new Promise<void>((r) => setTimeout(r, t));
@@ -74,9 +82,17 @@ export function initViewport(): void {
   let pointerIn = false;
   let dwell = 0;
   let fastUntil = 0;
-  let kbdLock = false; // hover stands down after keyboard focus until the pointer really moves
+  // the pointer is "at rest": nothing has really moved it since the page loaded, scrolled, or a row took keyboard
+  // focus. Rows that slide under a resting pointer are not hover intent (no dwell, no hover well: [data-rest]).
+  let rest = false;
   let px = -1;
   let py = -1;
+  const setRest = (on: boolean) => {
+    if (rest === on) return;
+    rest = on;
+    list.toggleAttribute('data-rest', on);
+  };
+  setRest(true);
   const parked = new Map<string, number>();
   const moving = () => getPref('motion') === 'full' && !userPaused;
 
@@ -197,6 +213,17 @@ export function initViewport(): void {
     anims = [];
     cut.getAnimations().forEach((a) => a.cancel());
   };
+  /** The panel and the strip (sheet number, file dims, ⤢) of what the plate shows. */
+  const showPanel = (key: string) => {
+    for (const [k, p] of panels) {
+      p.classList.toggle('is-active', k === key);
+      p.style.clipPath = '';
+    }
+    const plate = plates.get(key)!;
+    noEl.textContent = plate.dataset.no ?? '';
+    dimsEl.textContent = plate.dataset.dims ?? '';
+    enlarge.hidden = !plate.dataset.dims;
+  };
   const commit = (key: string) => {
     settle();
     wiping = '';
@@ -207,6 +234,7 @@ export function initViewport(): void {
     }
     shown = key;
     ph.hidden = true;
+    showPanel(key);
     setVt(key);
     sync();
   };
@@ -215,20 +243,14 @@ export function initViewport(): void {
     if (!plates.has(key) || !panels.has(key)) return;
     if (key === active && (mode === 'anim' || shown === key)) return;
     const me = ++run;
-    const prev = active;
     active = key;
     vp.dataset.active = key;
     for (const r of rows) r.classList.toggle('is-active', keyOf(r) === key);
     const plate = plates.get(key)!;
-    noEl.textContent = plate.dataset.no ?? '';
-    dimsEl.textContent = plate.dataset.dims ?? '';
-    enlarge.hidden = !plate.dataset.dims;
     // the preview is one link (control layer over the inert preview): it follows the sheet
     if (plate.dataset.href) hit.href = plate.dataset.href;
     if (plate.dataset.ext != null) { hit.target = '_blank'; hit.rel = 'noopener'; } else { hit.removeAttribute('target'); hit.removeAttribute('rel'); }
-    panels.get(prev)?.classList.remove('is-active');
-    panels.get(key)!.classList.add('is-active');
-    if (!desktop.matches) { shown = key; return; }
+    if (!desktop.matches) { shown = key; showPanel(key); return; }
     emit('sv:plate', { slug: key });
     for (const el of media(key)) if (still(el)) mount(el);
 
@@ -264,19 +286,26 @@ export function initViewport(): void {
     const duration = toMs(cssVar('--dur-3'));
     const easing = cssVar('--ease-pen') || 'ease-out';
     const w = stage.clientWidth;
-    const wipe = plate.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], { duration, easing, fill: 'forwards' });
+    const timing: KeyframeAnimationOptions = { duration, easing, fill: 'forwards' };
+    const reveal: Keyframe[] = [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }];
+    const wipe = plate.animate(reveal, timing);
     const line = cut.animate(
       [{ transform: 'translateX(0)', opacity: 1 }, { transform: `translateX(${w}px)`, opacity: 1, offset: 0.9 }, { transform: `translateX(${w}px)`, opacity: 0 }],
       { duration, easing },
     );
-    anims = [wipe, line];
+    // the panel is cut with the plate: the incoming one shows left of the edge, the outgoing one right of it
+    const inPanel = panels.get(key)!;
+    const outPanel = panels.get(shown);
+    inPanel.classList.add('is-active');
+    anims = [wipe, line, inPanel.animate(reveal, timing)];
+    if (outPanel && outPanel !== inPanel) anims.push(outPanel.animate([{ clipPath: 'inset(0 0 0 0%)' }, { clipPath: 'inset(0 0 0 100%)' }], timing));
     wiping = key;
     try { await wipe.finished; } catch { return; }
     if (me === run) commit(key);
   };
 
   // ───────────────────────────── wiring ─────────────────────────────
-  const moved = (e: PointerEvent) => Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 2;
+  const moved = (e: PointerEvent) => px < 0 || Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 2;
   // a row reached from the keyboard: on desktop, first bring the index into place if it is still low on screen (its
   // header under the title bar, where #index lands, so the Viewport shows whole), then make sure the row shows
   const instant = { behavior: 'instant' as ScrollBehavior };
@@ -286,11 +315,11 @@ export function initViewport(): void {
     tabbing = true;
     setTimeout(() => { tabbing = false; });
   }, true);
+  let pad = 0; // the page's scroll-padding under the title bar: where #index puts the section's top
+  const readPad = () => { pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0; };
+  readPad();
   const place = (a: HTMLElement) => {
-    if (desktop.matches) {
-      const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-      if (section.getBoundingClientRect().top > pad + 1) section.scrollIntoView({ block: 'start', ...instant });
-    }
+    if (desktop.matches && section.getBoundingClientRect().top > pad + 1) section.scrollIntoView({ block: 'start', ...instant });
     a.scrollIntoView({ block: 'nearest', ...instant });
   };
   const intent = (row: HTMLElement) => {
@@ -304,14 +333,16 @@ export function initViewport(): void {
     const a = linkOf(row);
     row.addEventListener('pointerenter', (e) => {
       if (e.pointerType === 'touch' || !desktop.matches) return;
-      if (kbdLock) { if (!moved(e)) return; kbdLock = false; }
+      // a row that slid under a resting pointer (scroll, jump, J / K): not intent; the next real move decides
+      if (rest && !moved(e)) return;
+      setRest(false);
       intent(row);
     });
     row.addEventListener('pointerleave', () => clearTimeout(dwell));
     a.addEventListener('pointerdown', () => activate(key, 'instant'));
     a.addEventListener('focus', () => {
       if (a.matches(':focus-visible')) {
-        kbdLock = true;
+        setRest(true);
         clearTimeout(dwell);
         if (tabbing) place(a); // Tab (not a window regaining focus, which re-fires focus on the same row)
       }
@@ -321,7 +352,7 @@ export function initViewport(): void {
   list.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') pointerIn = true; });
   list.addEventListener('pointerleave', () => { pointerIn = false; clearTimeout(dwell); });
 
-  // the 45% band: activates the row crossing it while no pointer is over the list and no row focused from the
+  // the reading line (see the header): it leads while no live pointer is over the list and no row focused from the
   // keyboard is on screen (the scroll a J / K / Tab causes must not hand the Viewport to another row)
   const keyboardHolds = () => {
     const f = document.activeElement as HTMLElement | null;
@@ -329,13 +360,26 @@ export function initViewport(): void {
     const r = f.getBoundingClientRect();
     return r.bottom > 0 && r.top < innerHeight;
   };
-  for (const row of rows) {
-    observe(row, (en) => {
-      if (en.isIntersecting && !pointerIn && desktop.matches && !keyboardHolds()) activate(keyOf(row), 'anim');
-    }, { rootMargin: '-45% 0px -54% 0px' });
-  }
+  let indexOnScreen = false;
+  const band = () => {
+    if (!indexOnScreen || !desktop.matches || (pointerIn && !rest) || keyboardHolds()) return;
+    const past = pad - section.getBoundingClientRect().top; // how far the index has scrolled beyond its landing place
+    let pick: HTMLElement | undefined = rows[0];
+    if (past > 1) {
+      const r0 = rows[0].getBoundingClientRect();
+      const line = Math.min(innerHeight * BAND, (r0.top + r0.bottom) / 2 + 2 * past);
+      pick = rows.find((r) => {
+        const b = r.getBoundingClientRect();
+        return b.top <= line && b.bottom > line;
+      });
+    }
+    if (pick) activate(keyOf(pick), 'anim');
+  };
+  let bandRaf = 0;
+  const bandSoon = () => { cancelAnimationFrame(bandRaf); bandRaf = requestAnimationFrame(band); };
+  observe(section, (en) => { indexOnScreen = en.isIntersecting; if (indexOnScreen) bandSoon(); });
 
-  // fast-scroll bypass
+  // scrolling: rows now slide under a resting pointer; the fast-scroll bypass; the reading line
   let lastY = scrollY;
   let lastT = performance.now();
   addEventListener('scroll', () => {
@@ -343,12 +387,16 @@ export function initViewport(): void {
     if ((Math.abs(scrollY - lastY) / innerHeight) * (1000 / Math.max(1, t - lastT)) > FAST) fastUntil = t + 200;
     lastY = scrollY;
     lastT = t;
+    setRest(true);
+    clearTimeout(dwell);
+    bandSoon();
   }, { passive: true });
 
   addEventListener('pointermove', (e) => {
-    if (kbdLock && e.pointerType !== 'touch' && moved(e)) {
+    if (e.pointerType === 'touch') return;
+    if (rest && moved(e)) {
       // the pointer is moving again: the row under it (if any) is hover intent once more
-      kbdLock = false;
+      setRest(false);
       const row = (e.target as Element | null)?.closest?.<HTMLElement>('[data-ix]');
       if (row && list.contains(row) && desktop.matches) intent(row);
     }
@@ -357,8 +405,6 @@ export function initViewport(): void {
   }, { passive: true });
 
   // J / K
-  let indexOnScreen = false;
-  observe(section, (en) => { indexOnScreen = en.isIntersecting; });
   const step = (dir: 1 | -1) => (e: KeyboardEvent) => {
     if (!indexOnScreen) return;
     e.preventDefault();
@@ -385,7 +431,6 @@ export function initViewport(): void {
   // (that header) and --_rest (everything that is not the plate); measure both — the rest on the TALLEST panel, so
   // switching sheets never resizes the plate. A narrower Viewport wraps its text more (a larger rest), so settle from
   // the widest the column allows downwards: the first width whose rest no longer grows is the largest that fits.
-  const panelBox = one('.vp__panels');
   const head = section.querySelector<HTMLElement>('.dix__head');
   const fit = () => {
     if (!desktop.matches) return;
@@ -393,15 +438,19 @@ export function initViewport(): void {
     let prev = 0;
     vp.style.setProperty('--_rest', '0px');
     for (let i = 0; i < 5; i++) {
-      const tallest = Math.max(...[...panels.values()].map((p) => p.offsetHeight));
-      const rest = Math.ceil(vp.offsetHeight - stage.offsetHeight - panelBox.offsetHeight + tallest);
-      if (rest <= prev) break;
-      vp.style.setProperty('--_rest', `${rest}px`);
-      prev = rest;
+      // every panel is in flow in one cell, so the panels' box is already the tallest panel's height
+      const r = Math.ceil(vp.offsetHeight - stage.offsetHeight);
+      if (r <= prev) break;
+      vp.style.setProperty('--_rest', `${r}px`);
+      prev = r;
     }
+    // the runway under the list: the Viewport stays stuck (whole) until the last row has crossed the 45% line
+    const last = rows[rows.length - 1];
+    const need = parseFloat(getComputedStyle(vp).top) + vp.offsetHeight - innerHeight * BAND - last.offsetHeight / 2;
+    list.style.setProperty('--_runway', `${Math.ceil(need)}px`);
   };
   let fitRaf = 0;
-  addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fit); });
+  addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(() => { readPad(); fit(); band(); }); });
   document.fonts.ready.then(fit);
 
   onPref('motion', sync);
