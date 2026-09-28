@@ -62,6 +62,11 @@ describe('figures', () => {
     for (const ns of byChapter.values()) expect(ns).toEqual(ns.map((_, i) => i + 1));
     const w4 = figs.find((f) => f.items[0]?.src.includes('lR8M0Y29'))!;
     expect(w4.no).toBe('FIG. 5.4');
+    // SM6a's Compare cross-reference: SPEC prints `← FIG. 4.9 · IDEATE`, but that number is illustrative (no counting
+    // rule gives 4.9: Ideate holds 7 figures / 8 images up to the wireframe). WP4b must build both labels from
+    // figuresOf/figureMap — never from the spec text. This pins the real numbers.
+    const wire = figs.find((f) => f.items[0]?.src.includes('iaZFTmw1'))!;
+    expect([wire.no, wire.sectionLabel]).toEqual(['FIG. 4.7', 'Ideate']);
   });
   test('every case has figures and ids resolve to blocks', () => {
     for (const cs of cases) {

@@ -34,4 +34,6 @@ const no = String(next.no);
   .matchline__card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); text-decoration: none; align-items: center; }
   @media (max-width: 767.98px) { .matchline__card { grid-template-columns: minmax(0, 1fr); } }
   .matchline__text { display: grid; gap: var(--s-3); justify-items: start; }
+  /* a real target (WCAG 2.5.8), not a full-width 16px strip */
+  .matchline__up { justify-self: start; display: inline-flex; align-items: center; min-block-size: 44px; }
 </style>

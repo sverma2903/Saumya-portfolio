@@ -4,6 +4,7 @@
  * <ol class="keynotes">. Each <li data-v>. Plan view skim: only items with her bold, as <strong data-v> pieces,
  * then "+ N items omitted" (chrome, ink-3).
  */
+import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
@@ -22,7 +23,7 @@ const dropped = ctx.plan.dropped ?? 0;
     </Tag>
     {skim && (
       <Tag class={`${cls} skim t-body ink-2`}>
-        {skim.map((pieces) => <li>{pieces.map((s, j) => <>{j > 0 && <span class="skim__join" data-chrome aria-hidden="true"> ⋯ </span>}<strong data-v set:html={s} /></>)}</li>)}
+        {skim.map((pieces) => <li>{pieces.map((s, j) => <>{j > 0 && <span class="skim__join" data-chrome data-join aria-hidden="true"> <Icon name="ellipsis" /> </span>}<strong data-v set:html={s} /></>)}</li>)}
       </Tag>
     )}
     {skim && dropped > 0 && <p class="skim list__dropped t-label ink-3" data-chrome>{fill(chrome.wp5.plan.itemsOmitted, { n: dropped })}</p>}

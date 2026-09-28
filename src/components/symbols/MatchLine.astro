@@ -9,6 +9,8 @@ const { class: cls } = Astro.props;
   <line x1="0" y1="50%" x2="100%" y2="50%" />
 </svg>
 <style>
-  .sym-matchline { display: block; inline-size: 100%; block-size: 6px; overflow: visible; }
+  /* flex: 1 1 0 + min-inline-size: 0 — in a flex row (SectionMark, MatchLineNext) an <svg> would otherwise keep its
+     300px intrinsic width as its minimum and push the row past a phone viewport. */
+  .sym-matchline { display: block; inline-size: 100%; min-inline-size: 0; flex: 1 1 0; block-size: 6px; overflow: visible; }
   .sym-matchline line { stroke: currentColor; stroke-width: var(--lw-cut); stroke-dasharray: var(--dash-center); }
 </style>

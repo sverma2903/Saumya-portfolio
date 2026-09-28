@@ -4,6 +4,7 @@
  * `02 / A-101` at both ends (drafts across once at ≥30% visibility), her label as <h2> (--fs-chapter, tabindex=-1 for
  * J/K focus) and the meta `LEVEL 02 · +00:36 · ≈ 2 MIN`.
  */
+import Glyphs from '../symbols/Glyphs.astro';
 import { chrome, fill } from '../../data/chrome';
 import { pad2 } from '../../lib/text';
 import Bubble from '../symbols/Bubble.astro';
@@ -18,7 +19,7 @@ const nn = pad2(index + 1);
   </div>
   <div class="section-mark__head">
     <h2 id={`${id}-h`} class="t-chapter" tabindex="-1" data-v>{label}</h2>
-    <p class="section-mark__meta t-label ink-2">{fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes })}</p>
+    <p class="section-mark__meta t-label ink-2"><Glyphs text={fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes })} /></p>
   </div>
 </div>
 <style>

@@ -4,6 +4,7 @@
  * datum ▼ and the reading trace (scripts/case/levels.ts). No-JS baseline (this stub): a static <nav aria-label="Levels">
  * list of floors with elevations, the View toggle and the match line.
  */
+import Glyphs from '../symbols/Glyphs.astro';
 import type { CaseReading } from '../../lib/reading';
 import { chrome, fill } from '../../data/chrome';
 import ViewToggle from './ViewToggle.astro';
@@ -12,7 +13,7 @@ const { reading, sheetNo, next } = Astro.props;
 const l = chrome.wp5.levels;
 ---
 <nav class="levels" aria-label={l.title}>
-  <p class="t-label ink-2">{l.title} · {sheetNo} · {fill(chrome.wp3.index.minutes, { n: reading.minutes })}</p>
+  <p class="t-label ink-2">{l.title} · {sheetNo} · <Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></p>
   <ol class="levels__floors" role="list">
     {reading.sections.map((s) => (
       <li><a href={`#${s.id}`}><span class="t-label" data-v>{s.label}</span><span class="levels__elev t-caption ink-2">{s.elev}</span></a></li>

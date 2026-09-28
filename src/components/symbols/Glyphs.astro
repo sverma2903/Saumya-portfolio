@@ -1,0 +1,20 @@
+---
+/**
+ * Glyphs · P0 symbol. Sets a CHROME string whose symbols are missing from every shipped font subset (§2.1):
+ * each ≈ / ⋯ is drawn with <Icon> and kept as visually hidden text, so textContent and screen readers are
+ * unchanged ("≈ 13 min") while nothing renders from an OS fallback font. Never use it on her words.
+ * Usage: <Glyphs text={fill(chrome.wp3.index.minutes, { n })} />
+ */
+import Icon from './Icon.astro';
+interface Props { text: string }
+const { text } = Astro.props;
+const NAME = { '≈': 'approx', '⋯': 'ellipsis' } as const;
+const parts = text.split(/([≈⋯])/).filter(Boolean);
+---
+{parts.map((p) => (p in NAME
+  ? <span class="glyph"><Icon name={NAME[p as keyof typeof NAME]} /><span class="sr-only">{p}</span></span>
+  : p))}
+<style>
+  .glyph { display: inline-block; }
+  .glyph :global(.icon) { inline-size: 0.95em; block-size: 0.95em; vertical-align: -0.12em; }
+</style>

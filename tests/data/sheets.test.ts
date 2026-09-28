@@ -18,9 +18,13 @@ describe('sheets.ts', () => {
     expect(caseSheets.map((s) => s.slug)).toEqual(cases.map((c) => c.slug));
   });
   test('per-case accents are text-safe on paper (≥ 4.5:1) and stages are exact', () => {
-    for (const [slug, a] of Object.entries(ACCENTS)) expect(ratio(a.acc, '#EEEBE3'), slug).toBeGreaterThanOrEqual(4.5);
+    for (const [slug, a] of Object.entries(ACCENTS)) {
+      expect(ratio(a.acc, '#EEEBE3'), slug).toBeGreaterThanOrEqual(4.5);
+      // Dusk: paper, paper-2, sheet and before grounds
+      for (const bg of ['#1D1614', '#231B18', '#261D1A', '#2E2522']) expect(ratio(a.accDusk, bg), `${slug} dusk on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    }
     expect(ACCENTS.educademy.stage).toBe('#bbb3fa');
-    expect(accentStyle('cloudflare')).toBe('--acc: #A3420B; --acc-mark: #E4691E; --acc-soft: #FCE3CF; --stage: linear-gradient(180deg, #fdc07c 0%, #ffa07d 100%)');
+    expect(accentStyle('cloudflare')).toBe('--acc-l: #A3420B; --acc-mark-l: #E4691E; --acc-soft-l: #FCE3CF; --acc-d: #F17129; --stage: linear-gradient(180deg, #fdc07c 0%, #ffa07d 100%)');
   });
   test('cover plates are 16:10 and use real files', () => {
     for (const [slug, p] of Object.entries(COVERS)) {

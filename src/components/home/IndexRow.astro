@@ -3,6 +3,7 @@
  * IndexRow · OWNER: WP3 (P0 functional stub). One Drawing-index row (SM2): the whole row is one link —
  * sheet no. (mono), her title, her outcome line (italic), her tags, ≈ N min (chrome) and the readout repeated sr-only.
  */
+import Glyphs from '../symbols/Glyphs.astro';
 import type { Sheet } from '../../data/sheets';
 import { chrome, fill } from '../../data/chrome';
 import { externalAttrs } from '../../lib/rich';
@@ -23,7 +24,7 @@ const { sheet, minutes, compact = false } = Astro.props;
       )}
       {!compact && sheet.readout && <Readout readout={sheet.readout} srOnly />}
     </span>
-    {minutes != null && <span class="irow__min t-label ink-2">{fill(chrome.wp3.index.minutes, { n: minutes })}</span>}
+    {minutes != null && <span class="irow__min t-label ink-2"><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
   </a>
 </li>
 <style>

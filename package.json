@@ -9,9 +9,10 @@
     "build": "astro build",
     "preview": "wrangler dev",
     "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run tests/unit tests/data",
     "test:dist": "vitest run tests/dist",
-    "check": "npm run test && npm run build && npm run test:dist",
+    "check": "npm run typecheck && npm run test && npm run build && npm run test:dist",
     "shoot": "node tools/shoot.mjs",
     "og": "node tools/og.mjs"
   },

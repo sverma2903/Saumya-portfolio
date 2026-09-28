@@ -102,6 +102,8 @@ a {
 }
 a:hover { color: var(--rust); text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+/* the skip-link target (tabindex=-1) takes programmatic focus only; no ring around the whole page */
+main:focus { outline: none; }
 ::selection { background: var(--blush); color: var(--ink); }
 
 /* ---------- primitives ---------- */

@@ -65,8 +65,10 @@
   --focus:   var(--rust);
   --detail-bg: #16110E;  /* Enlarged detail surround (warm black) */
   --scrim:   rgb(22 17 14 / .64);
-  /* per-case accent (overridden on case pages via inline style on <html>; see sheets.ts) */
-  --acc: var(--rust); --acc-mark: var(--rust); --acc-soft: var(--blush); --stage: var(--paper-2);
+  /* per-case accent. Case pages set theme-neutral inputs inline on <html> (--acc-l, --acc-mark-l, --acc-soft-l, --acc-d,
+     --stage; see sheets.ts accentStyle). An inline --acc would beat the Dusk rule below, so it is resolved here instead. */
+  --acc: var(--acc-l, var(--rust)); --acc-mark: var(--acc-mark-l, var(--rust)); --acc-soft: var(--acc-soft-l, var(--blush));
+  --stage: var(--paper-2);
   color-scheme: light;
 }
 
@@ -78,6 +80,9 @@
   --line-1: rgb(237 228 216 / .16); --line-2: rgb(237 228 216 / .32); --line-3: rgb(237 228 216 / .58);
   --rust: #E07A3F; --rust-deep: #F09A62; --rust-2: #E48A55; --clay: #B77C70;
   --blush: #3A2621; --mark: rgb(214 150 62 / .30); --focus: #E07A3F;
+  /* Dusk accents: text-safe on the dark grounds (sheets.ts accDusk); soft = accent tint on the ground */
+  --acc: var(--acc-d, var(--rust)); --acc-mark: var(--acc-d, var(--rust));
+  --acc-soft: color-mix(in srgb, var(--acc-mark) 22%, var(--paper));
   color-scheme: dark;
 }
 

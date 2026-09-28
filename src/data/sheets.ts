@@ -31,6 +31,7 @@ export interface Accent {
   acc: string;            // text-safe on paper
   accMark: string;        // non-text marks (fills, ticks)
   accSoft: string;
+  accDusk: string;        // text-safe on the Dusk grounds (≥ 5:1 on #2E2522, ≥ 5.5:1 on #1D1614); also Dusk's marks
   stage: string;          // her stage (never recoloured)
 }
 
@@ -83,18 +84,22 @@ export const STAGES = {
 } as const;
 
 export const ACCENTS: Record<CaseSlug, Accent> = {
-  cloudflare: { acc: '#A3420B', accMark: '#E4691E', accSoft: '#FCE3CF', stage: STAGES.cloudflare },
-  pff: { acc: '#2F6E62', accMark: '#2F6E62', accSoft: '#D6E6DF', stage: STAGES.pff },
-  csbs: { acc: '#2F5F93', accMark: '#3F6FA3', accSoft: '#DCE6F1', stage: STAGES.csbs },
-  'u-up': { acc: '#8A3F72', accMark: '#8A3F72', accSoft: '#EEDDE8', stage: STAGES['u-up'] },
-  orbit: { acc: '#8C3F3F', accMark: '#A36667', accSoft: '#F0DEDC', stage: STAGES.orbit },
-  educademy: { acc: '#5B45C9', accMark: '#6A55D8', accSoft: '#E6E1FA', stage: STAGES.educademy },
+  cloudflare: { acc: '#A3420B', accMark: '#E4691E', accSoft: '#FCE3CF', accDusk: '#F17129', stage: STAGES.cloudflare },
+  pff: { acc: '#2F6E62', accMark: '#2F6E62', accSoft: '#D6E6DF', accDusk: '#47A593', stage: STAGES.pff },
+  csbs: { acc: '#2F5F93', accMark: '#3F6FA3', accSoft: '#DCE6F1', accDusk: '#689ACF', stage: STAGES.csbs },
+  'u-up': { acc: '#8A3F72', accMark: '#8A3F72', accSoft: '#EEDDE8', accDusk: '#C57FAE', stage: STAGES['u-up'] },
+  orbit: { acc: '#8C3F3F', accMark: '#A36667', accSoft: '#F0DEDC', accDusk: '#C88585', stage: STAGES.orbit },
+  educademy: { acc: '#5B45C9', accMark: '#6A55D8', accSoft: '#E6E1FA', accDusk: '#9A8CDE', stage: STAGES.educademy },
 };
 
-/** Inline style for <html> on case pages: `--acc:…; --acc-mark:…; --acc-soft:…; --stage:…`. */
+/**
+ * Inline style for <html> on case pages: `--acc-l:…; --acc-mark-l:…; --acc-soft-l:…; --acc-d:…; --stage:…`.
+ * Theme-neutral inputs only: an inline style beats `:root[data-theme=dusk]`, so tokens.css resolves
+ * `--acc`/`--acc-mark`/`--acc-soft` from the -l (Vellum) or -d (Dusk) values. Components read only --acc*.
+ */
 export function accentStyle(slug: CaseSlug): string {
   const a = ACCENTS[slug];
-  return `--acc: ${a.acc}; --acc-mark: ${a.accMark}; --acc-soft: ${a.accSoft}; --stage: ${a.stage}`;
+  return `--acc-l: ${a.acc}; --acc-mark-l: ${a.accMark}; --acc-soft-l: ${a.accSoft}; --acc-d: ${a.accDusk}; --stage: ${a.stage}`;
 }
 
 export const COVERS: Record<CaseSlug, CoverPlate> = {

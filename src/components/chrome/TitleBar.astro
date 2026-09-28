@@ -20,7 +20,7 @@ const current = page.kind === 'about' ? 'about' : page.kind === 'play' ? 'play' 
   <a class="titlebar__brand" href="/"><Mark size={22} construction class="rust" /><span class="titlebar__name">{chrome.p0.brand}</span></a>
   <p class="titlebar__head t-label-lg ink-2">
     <span class="sheetno t-code rust">{page.sheet}</span>
-    <span class="titlebar__sep" aria-hidden="true"> · </span>
+    <span class="titlebar__sep" aria-hidden="true"> · </span><span class="sr-only">, </span>
     {page.sheetTitleIsHers ? <span class="titlebar__title" data-v>{page.sheetTitle}</span> : <span class="titlebar__title">{page.sheetTitle}</span>}
     <span class="titlebar__level rust" data-level></span>
   </p>
@@ -32,8 +32,8 @@ const current = page.kind === 'about' ? 'about' : page.kind === 'play' ? 'play' 
       <li><a href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" size={14} /></a></li>
     </ul>
   </nav>
-  <button type="button" class="titlebar__list t-label" data-js-only data-palette-open>
-    <kbd class="t-code"><Icon name="keycap-cmd" size={12} />K</kbd><span>{t.sheetList}</span>
+  <button type="button" class="titlebar__list t-label" data-js-only data-palette-open aria-keyshortcuts="Meta+K Control+K">
+    <kbd class="t-code" aria-hidden="true"><Icon name="keycap-cmd" size={12} />K</kbd><span>{t.sheetList}</span>
   </button>
 </header>
 <style>

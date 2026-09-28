@@ -5,6 +5,7 @@
  * (her phrase) / Further projects / Also in the set, and the Viewport beside the list (≥1024).
  * Props: { variant?: 'full' | 'compact' } — 'compact' (404): rows with sheet no. + title only, no Viewport.
  */
+import Glyphs from '../symbols/Glyphs.astro';
 import { cases, labels } from '../../content/site';
 import { sheets, type SheetGroup } from '../../data/sheets';
 import { chrome, fill } from '../../data/chrome';
@@ -35,7 +36,7 @@ const firstCs = cases.find((c) => c.slug === first.slug)!;
   <div class="dindex__head">
     {!compact && <Bubble n="2" sheet="A-000" />}
     <H id="index-h" class="t-h">{ix.drawingIndex}</H>
-    {!compact && <p class="dindex__summary t-label ink-2">{fill(ix.summary, { n: caseCount, m: setMinutes(cases) })}</p>}
+    {!compact && <p class="dindex__summary t-label ink-2"><Glyphs text={fill(ix.summary, { n: caseCount, m: setMinutes(cases) })} /></p>}
   </div>
   <div class="dindex__grid">
     <div class="dindex__list">

@@ -4,6 +4,7 @@
  * Timeline/Context), REV. △1 when the case has an "Update" callout (links to that block), and SHEET
  * `A-10x · n levels · ≈ N min` (chrome).
  */
+import Glyphs from '../symbols/Glyphs.astro';
 import type { CaseStudy } from '../../lib/blocks';
 import type { CaseReading } from '../../lib/reading';
 import { blockId } from '../../lib/ids';
@@ -30,7 +31,7 @@ const c = chrome.wp5.case;
   )}
   <div class="titleblock__row">
     <dt class="t-label ink-2">{c.sheet}</dt>
-    <dd><span class="t-code">{fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading.minutes })}</span></dd>
+    <dd><span class="t-code"><Glyphs text={fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading.minutes })} /></span></dd>
   </div>
 </dl>
 <style>

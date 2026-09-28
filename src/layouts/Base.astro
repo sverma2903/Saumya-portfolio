@@ -7,7 +7,7 @@
  *         preloaded `lcpImage` (fetchpriority=high) when the page passes one.
  *         The head script is SPEC §4.8's script, minified (≤ 700 bytes): it sets html[data-motion|theme|view|keys|gl]
  *         and html.js before first paint (localStorage 'sv:*' first, then the OS; ?view=section wins for one load).
- * <body>: HatchDefs · SkipLink · TitleBar · <main id="main"> · EndSheet · BottomBar · .vt-cutline · DetailViewer ·
+ * <body>: HatchDefs · SkipLink · TitleBar · <main id="main" tabindex="-1"> · EndSheet · BottomBar · .vt-cutline · DetailViewer ·
  *         Palette · the hidden "opens in a new tab" description (#sv-newtab, see lib/rich.ts) · core/boot.
  * <html> carries data-page={page.kind} (keys scoping, CSS) and the per-case accent custom properties (so the
  * :root-level --hatch-acc resolves with them).
@@ -109,7 +109,7 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
     <HatchDefs />
     <SkipLink />
     <TitleBar page={page} />
-    <main id="main">
+    <main id="main" tabindex="-1">
       <slot />
     </main>
     <EndSheet heading={endHeading} page={page} />
