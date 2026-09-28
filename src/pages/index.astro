@@ -1,0 +1,112 @@
+---
+import Base from '../layouts/Base.astro';
+import Media from '../components/Media.astro';
+import { home, selected, play } from '../content/site';
+
+// DATA · DESIGN · NERDS — letters and tile colours from the original crossword.
+type T = { l?: string; c?: string; k?: 'outline' | 'ghost' | 'letter' | 'light'; flip?: boolean };
+const E = '#7a1f06';
+const R = '#a63d00';
+const O = '#d2601a';
+const B = '#b6461e';
+const P = '#ffd5bf';
+const S = '#c87457';
+const board: T[] = [
+  { l: 'D', k: 'outline' }, { l: 'A', c: E, k: 'letter' }, { l: 'T', k: 'outline', flip: true }, { l: 'A', c: O, k: 'letter' }, { c: P },
+  { l: 'E', k: 'outline' }, { c: R }, { c: E }, { l: 'I', c: B, k: 'letter' }, { c: '#d96a2b' },
+  { l: 'S', c: R, k: 'letter' }, { k: 'ghost' }, { c: E }, { k: 'ghost' }, { c: B },
+  { l: 'I', c: R, k: 'letter' }, { c: '#d96a2b' }, { c: B }, { c: E }, { c: P },
+  { l: 'G', c: E, k: 'letter' }, { c: '#ffe1d3' }, { k: 'ghost' }, { c: R }, { c: S },
+  { l: 'N', k: 'outline' }, { l: 'E', c: '#c8703f', k: 'letter' }, { l: 'R', c: S, k: 'letter' }, { l: 'D', c: E, k: 'letter' }, { l: 'S', c: R, k: 'letter' },
+];
+const glyphs = ['△', '◯', '□', '✦'];
+const pad = (n: number) => String(n + 1).padStart(2, '0');
+---
+<Base current="home">
+  <section class="hero" data-nav="dark" data-field-host aria-label="Introduction">
+    <div class="gl-fallback"></div>
+    <canvas class="gl" data-field data-shade="1" aria-hidden="true"></canvas>
+    <div class="wrap hero-grid">
+      <div>
+        <h1 class="hero-title" data-split data-immediate data-delay="0.15">
+          <Fragment set:html={home.headline} /> <span class="spark" aria-hidden="true">✦</span>
+        </h1>
+        <p class="hero-sub" data-split data-immediate data-delay="0.55" set:html={home.sub} />
+      </div>
+      <div class="tiles-wrap" data-tiles data-cursor="Shuffle">
+        <div class="tiles" role="img" aria-label="Crossword tiles spelling DATA, DESIGN and NERDS">
+          {board.map((t, i) => (
+            <div class:list={['tile', t.k, { 'flip-t': t.flip, light: t.c === P || t.c === '#ffe1d3' }]} style={t.c ? `--c:${t.c}` : undefined}>
+              <div class="tile-face front"><span>{t.l ?? ''}</span></div>
+              <div class="tile-face back">{t.l ?? glyphs[i % glyphs.length]}</div>
+            </div>
+          ))}
+        </div>
+        <div class="tiles-note mono" aria-hidden="true">
+          <span>Data · Design · Nerds</span>
+          <span>Tap to shuffle</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-hud mono" aria-hidden="true">
+      <span>Product Designer<br />Portfolio ’18—’26</span>
+      <span class="hud-mid">Washington, D.C. · <span data-clock>—</span></span>
+      <span class="hud-scroll">Scroll <i></i></span>
+    </div>
+  </section>
+
+  <div class="sheet">
+    <section id="work" class="wrap" aria-labelledby="work-h">
+      <div class="sec-head">
+        <h2 id="work-h" data-split>Selected <em>Projects</em> ↓</h2>
+        <p class="meta mono" data-reveal>({String(selected.length).padStart(2, '0')})<br />2025 — 2026</p>
+      </div>
+      <div class="stack">
+        {selected.map((p, i) => (
+          <a class="pcard" href={`/${p.slug}`} data-cursor="View case">
+            <div class="pcard-info">
+              <div class="pcard-top mono">
+                <span>{pad(i)} / {String(selected.length).padStart(2, '0')}</span>
+                <span>{p.tags[1]}</span>
+              </div>
+              <img class="pcard-logo" src={p.logo.src} width={p.logo.w} height={p.logo.h} alt="" loading="lazy" />
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+              <div class="pcard-tags">
+                <span>{p.tags[0]}</span>
+              </div>
+              <span class="pcard-index" aria-hidden="true">{pad(i)}</span>
+            </div>
+            <div class={`pcard-media fit-${p.fit}`} style={`background:${p.tone}`}>
+              <Media media={p.cover} alt={`${p.title} preview`} />
+              <span class="pcard-go" aria-hidden="true">→</span>
+            </div>
+            <span class="pcard-shade" aria-hidden="true"></span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="quests" aria-labelledby="quests-h">
+      <div class="wrap quests-head">
+        <h2 id="quests-h" data-split set:html={play.headline} />
+        <a class="btn" href="/fun" data-magnetic>Play <span class="arrow">→</span></a>
+      </div>
+      <div class="rail">
+        {play.items.map((q) => {
+          const ext = !!q.href && q.href.startsWith('http');
+          return (
+            <a class="qcard" href={q.href ?? '/fun'} target={ext ? '_blank' : undefined} rel={ext ? 'noopener' : undefined} data-cursor="Play">
+              <div class={`qcard-media fit-${q.fit}`} style={`background:${q.tone}`}>
+                <Media media={q.media[0]} alt={q.title} />
+                {q.media[1] && <Media media={q.media[1]} alt="" class="layer" />}
+              </div>
+              <h3>{q.title}</h3>
+              <p class="mono">{q.tag}</p>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  </div>
+</Base>

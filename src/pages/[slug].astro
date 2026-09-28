@@ -1,0 +1,91 @@
+---
+import Base from '../layouts/Base.astro';
+import Blocks from '../components/Blocks.astro';
+import { cases, home } from '../content/site';
+import type { CaseStudy } from '../lib/blocks';
+
+export function getStaticPaths() {
+  return cases.map((cs, i) => ({
+    params: { slug: cs.slug },
+    props: { cs, next: cases[(i + 1) % cases.length] },
+  }));
+}
+
+const { cs, next } = Astro.props as { cs: CaseStudy; next: CaseStudy };
+const pad = (n: number) => String(n + 1).padStart(2, '0');
+const [bg, fg] = cs.cover;
+const [nbg, nfg] = next.cover;
+---
+<Base
+  title={cs.metaTitle}
+  description={cs.description}
+  image={(fg ?? bg).src}
+  footerHeading={home.closing}
+  autohide
+  style={`--accent: ${cs.accent}; --accent-soft: ${cs.accentSoft}`}
+>
+  <div class="progress" aria-hidden="true"></div>
+  <article class="case">
+    <header class="wrap case-hero">
+      <p class="eyebrow mono" data-reveal>{cs.eyebrow}</p>
+      <h1 class="case-title" data-split data-immediate>{cs.title}</h1>
+      <dl class="titleblock" style={`--n: ${cs.meta.length + 1}`} data-reveal>
+        {cs.meta.map(([k, v]) => (
+          <div>
+            <dt class="mono">{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+        <div>
+          <dt class="mono">Sheet</dt>
+          <dd>{cs.sections.length} chapters</dd>
+        </div>
+      </dl>
+      <div class:list={['case-cover', { contain: cs.coverContain }]} style={cs.coverBg ? `background:${cs.coverBg}` : undefined}>
+        {bg.kind === 'video' ? null : <img src={bg.src} width={bg.w} height={bg.h} alt={fg ? '' : `${cs.metaTitle} cover`} fetchpriority="high" />}
+        {fg && <img class="fg" src={fg.src} width={fg.w} height={fg.h} alt={`${cs.metaTitle} cover`} fetchpriority="high" />}
+      </div>
+    </header>
+
+    <div class="wrap case-body">
+      <nav class="rail-nav" aria-label="Chapters">
+        <ol>
+          <i class="rail-fill"></i>
+          {cs.sections.map((s, i) => (
+            <li>
+              <a href={`#${s.id}`}>
+                <span>{pad(i)}</span>
+                {s.label}
+              </a>
+            </li>
+          ))}
+        </ol>
+        <p class="rail-meta mono">{cs.eyebrow}</p>
+      </nav>
+
+      <div class="content">
+        {cs.sections.map((s, i) => (
+          <section id={s.id} aria-labelledby={`${s.id}-h`}>
+            <div class="chapter">
+              <span class="num">{pad(i)}</span>
+              <h2 id={`${s.id}-h`} data-split>{s.label}</h2>
+              <i class="rule" />
+            </div>
+            <Blocks blocks={s.blocks} alt={cs.metaTitle} />
+          </section>
+        ))}
+
+        <a class="next" href={`/${next.slug}`} data-cursor="Next" style={`--next-accent: ${next.accent}; --next-soft: ${next.accentSoft}`}>
+          <p class="mono">Next case study →</p>
+          <div class="next-row">
+            <h2>{next.title}</h2>
+            <div class:list={['next-media', { contain: next.coverContain }]} style={next.coverBg ? `background:${next.coverBg}` : undefined}>
+              <img src={nbg.src} alt="" loading="lazy" />
+              {nfg && <img class="fg" src={nfg.src} alt="" loading="lazy" />}
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </article>
+</Base>

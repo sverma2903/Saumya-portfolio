@@ -1,27 +1,5 @@
 {
-	"files": [],
-	"references": [
-		{
-			"path": "./tsconfig.app.json"
-		},
-		{
-			"path": "./tsconfig.node.json"
-		},
-		{
-			"path": "./tsconfig.worker.json"
-		}
-	],
-	"compilerOptions": {
-		"incremental": true,
-		"types": [
-			"@cloudflare/workers-types", 
-		],
-		"baseUrl": ".",
-		"paths": {
-			"@/*": [
-				"./src/*"
-			]
-		},
-        "skipLibCheck": true
-	}
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
 }

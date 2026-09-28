@@ -1,0 +1,24 @@
+---
+import type { Media as M } from '../lib/blocks';
+import Media from './Media.astro';
+interface Props {
+  media: M;
+  alt?: string;
+  frame?: 'soft' | 'bare';
+  zoom?: boolean;
+}
+const { media, alt = '', frame, zoom = true } = Astro.props;
+const canZoom = zoom && frame !== 'bare';
+---
+<div
+  class:list={['frame', frame, { zoomable: canZoom }]}
+  data-zoom={canZoom ? media.src : undefined}
+  data-cursor={canZoom ? 'Zoom' : undefined}
+>
+  <Media media={media} alt={alt} />
+  {canZoom && (
+    <>
+      <i class="corner tl" /><i class="corner tr" /><i class="corner bl" /><i class="corner br" />
+    </>
+  )}
+</div>

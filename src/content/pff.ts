@@ -1,0 +1,196 @@
+import { type CaseStudy, m, h, h3, lede, p, list, img, gallery, stats, cta, cards, feature, stories, insights } from '../lib/blocks';
+
+const cs: CaseStudy = {
+  slug: 'pff',
+  eyebrow: 'PRODUCT DESIGNER, PFF LLC',
+  title: 'Auditable approval chain for federally funded emergency spending',
+  metaTitle: 'Auditable Approvals for Emergency Spending',
+  description: 'Rebuilt a legacy budget platform into a system where AI accelerates the work but a named person signs off on every dollar.',
+  meta: [
+    ['Role', 'Product Designer, Sep 2025 - May 2026'],
+    ['Team', '1 PM, 3 Designers, 1 UX Researcher'],
+    ['Skills', 'User Research, Design System, Prototyping, User Testing'],
+  ],
+  cover: [m('GhlckHHGZtYCWRi9keJEdPMrnI.png'), m('NfispiNGsXrWqGyPllkA6wjliKo.png')],
+  accent: '#2F6E62',
+  accentSoft: '#D6E6DF',
+  sections: [
+    {
+      id: 'overview',
+      label: 'Overview',
+      blocks: [
+        h('At a Glance'),
+        lede('PFF, LLC is a consulting firm that develops tools to help nonprofits, local governments, and small agencies manage their budgeting more effectively.'),
+        p('For their emergency management clients, we redesigned InCEP, a legacy budget planning platform, into Treasora, an AI-assisted system that streamlines how mission assignments, cost estimates, and transactions move through a multi-role approval chain.', 'md'),
+        h('Results'),
+        stats([
+          ['~60%', 'reduction in time spent creating a mission assignment<br>15 minutes → ~6 minutes'],
+          ['~ 10%', 'error rate across core workflows, as seen from 7 usability tests'],
+          ['High AI adoption', 'Users actively relied on AI for cost estimation and decision support'],
+        ]),
+        cta('Interactive Prototype', 'https://www.figma.com/proto/6MnJMvyq7GUbvvp5NESQqx/Draft---Final-Delivarables?node-id=21-23538&t=nUijMTCDuVJcNUGB-1&scaling=scale-down&content-scaling=fixed&page-id=21%3A2&starting-point-node-id=21%3A23538&show-proto-sidebar=1', ['Outcome', '#highlights']),
+        h('Problem'),
+        lede("Imagine you're a financial analyst during a hurricane response. You need to create a Mission Assignment so emergency work can begin fast…"),
+        p("You manually transcribe details from the emergency management document, hoping you've entered everything correctly. You submit it for approval and wait, with no visibility into where it sits in the queue, who's reviewing it, or when work can actually start."),
+        h('InCEP Platform'),
+        cards(
+          [
+            { img: 'I5fQkwJvaQFaVCr4PgTuan7u8.png', title: 'Manual data entry slows workflows' },
+            { img: '7632RhgBDL3t7Gk1dboXMWEU.png', title: 'Error prone submissions' },
+            { img: 'iRlbgfkiP9wFgi1i25VuHfjQCpg.png', title: 'No visibility into approval status' },
+          ],
+          { cols: 3, variant: 'icon' },
+        ),
+        lede("Instead, you're stuck in InCEP", 'lg'),
+      ],
+    },
+    {
+      id: 'highlights',
+      label: 'Highlights',
+      blocks: [
+        h('Product Highlights'),
+        img('0OYkKGPTRRJtg5W9kzasPOReEE.png', { wide: true }),
+        feature({ lede: 'Instead of manually transcribing every field, the analyst uploads the source document and reviews what the system extracts.', media: ['0lWQvXlWN92Ca4YkYqStcDEKY.gif'] }),
+        feature({ lede: 'Funding line amounts are suggested from comparable past mission assignments.', media: ['kDWwW64PagR7INZeCK4xW3Duw.mp4'], flip: true }),
+        feature({ lede: 'AI generates a findings summary ranking every issue by severity.', media: ['TJ24G62X9MOl407PtXBovxgoWw.mp4'] }),
+        feature({ lede: 'Object class codes come from a fixed federal list, so coding is a matching problem.', media: ['Eh8LAs7UnxnzOIQPRHsvnBUH3c.mp4'], flip: true }),
+        feature({ lede: 'From static dashboards to conversational business intelligence.', media: ['HuYD94DXbwjbqrO9Wx52NbnYB6Y.mp4'] }),
+      ],
+    },
+    {
+      id: 'research',
+      label: 'Research',
+      blocks: [
+        lede('Changing a legacy system is never easy.', 'lg'),
+        p("Beyond workflow pain points, we realized InCEP users have varying levels of tech literacy. They've been used to the manual process for years now. We needed to account for this barrier in our solution for high employee adoption."),
+        h('Competitor Analysis'),
+        img('cVgfb0s0hG7fYwQ76o8ctXWHqe8.png', { wide: true }),
+        p('Some insights include:'),
+        list([
+          'There is an opportunity to eliminate the manual burden of the legacy InCEP platform <strong>rather than simply adding an AI layer on top.</strong>',
+          'If the tool requires extensive training, it will face adoption resistance.',
+          'The strongest dashboard patterns share top-level KPIs at a glance with drill-down detail below.',
+        ]),
+        h('Mapping InCEP Workflows'),
+        img('pIpSTafpDbOaomutvkKp5sbo0.png'),
+        p('Some insights include:'),
+        list([
+          'Emergency financial workflows are structured around three core entities: <strong>Mission Assignment (MA), Cost Estimate (CE), and Transaction.</strong>',
+          'Cost estimates define how funding is allocated and must be approved before any spending can occur.',
+          '<strong>Approval is embedded throughout the workflow</strong>, governing both funding decisions and actual spending.',
+        ]),
+        h('Understanding User Needs'),
+        p("We planned to conduct primary interviews with emergency management staff, but a <strong>federal shutdown during our research phase made government employees inaccessible.</strong> Instead, we worked from PFF's existing interview notes from prior client engagements. Working without direct user access meant treating PFF's client-facing staff as domain proxies and validating assumptions in testing rather than assuming them upfront."),
+        stories([
+          { title: 'Financial Analyst', img: 'fcOBmTs2rsYyBZvOIwHLaP0.png', rows: [['As a', 'Financial Analyst'], ['I want to', 'quickly create a Mission Assignment and/or Cost Estimate'], ['So that', 'emergency response work can start without delays']] },
+          { title: 'Requestor', img: '93xfJ7BYpODYoVdbmzvCfqCKwWA.png', rows: [['As a', 'Requestor'], ['I want to', 'record all transactions'], ['So that', 'program managers and directors can track all purchases']] },
+          { title: 'Approver', img: 'fNS3SmfyKO1BF1WehuZiIZcBEM.png', rows: [['As an', 'Approver'], ['I want to', 'spot the discrepancies or missing documents'], ['So that', 'I can make approvals or return request confidently, providing accurate summaries.']] },
+          { title: 'Director', img: 'bKGU2Gfm4HfJMtDQ9Z2iZnBE.png', rows: [['As a', 'Director'], ['I want to', 'use the budget dashboard'], ['So that', 'I can oversee current spending and obligations on a daily basis']] },
+        ]),
+        h('Organizational Workflow'),
+        lede('The current platform treats a multi-role, time-sensitive workflow like a series of isolated forms with no intelligence, visibility, or continuity between steps.'),
+        img('VfuaSVxcN4BBEWYNZc33ZU6vds.jpg', { wide: true }),
+      ],
+    },
+    {
+      id: 'ideate',
+      label: 'Ideate',
+      blocks: [
+        h('How Might We'),
+        cards(
+          [
+            { img: 'SqptrOaSY5frCoEnggjwNLjM0Nw.png', title: 'Faster Creation', html: 'How might we help financial analysts create mission assignments and estimate costs <strong>without manual data entry?</strong>' },
+            { img: 'PtO9PS2QvbvVaYaZaKdVFkVhQ.png', title: 'Informed Purchasing', html: 'How might we help requestors <strong>track spend against allocation</strong> before committing to a purchase?' },
+            { img: 'JlJjbNK85EaEIaTEACnD3q3iLI.png', title: 'Confident Approvals', html: 'How might we help approvers <strong>surface discrepancies and make confident decisions</strong> without line-by-line review?' },
+            { img: 'DL6KltpLPfXe5Mi6SAsgmjzTQOQ.png', title: 'Real-Time Oversight', html: 'How might we give directors <strong>real-time visibility into budget utilization</strong> across all mission assignments?' },
+          ],
+          { cols: 4, variant: 'icon' },
+        ),
+        h('Information Architecture'),
+        p('Then, we finalized the creation of an information architecture for the product, with core workflows such as Emergency Response, Finance, Approve, Admin, and My Profile.'),
+        img('mqbJCfCVxU805J6WaLwVnheGJw.webp', { wide: true }),
+        h('Design Decisions'),
+        lede('Core Principle 1: AI informs, humans decide'),
+        p("Emergency management funding is federally auditable. FEMA requires clear documentation trails showing who approved what, when, and why. <strong>If AI auto-approved a mission assignment or auto-submitted a cost estimate, there's no accountable human in the chain</strong>, and that breaks the audit trail the entire system depends on."),
+        feature({
+          title: 'AI suggests a cost estimate based on past mission assignments',
+          html: "Testing showed a confidence score alone wasn't enough; users wanted to see which past missions the estimate came from, since they're the ones signing off on it. Each suggestion links to the source assignments, allowing the analyst to review the comparison before accepting.",
+          media: ['SIUjUhPvw7zLAcE7wzmMzD1oU.png'],
+        }),
+        feature({
+          title: 'Intelligent funding line suggestions from expense descriptions',
+          html: 'Similarly, AI recommends funding lines based on expense descriptions but never fills them out for the user.',
+          media: ['2T4awq5EndAJdXrXkj5AeDF188.png'],
+          flip: true,
+        }),
+        lede('Core Principle 2: Every decision leaves a trace via audit defensibility'),
+        p('Every approval, rejection, edit, and AI suggestion is attributable to a person and a timestamp, and that history is visible <em>in the workflow</em>, not buried in an export.'),
+        feature({
+          title: 'Define the approval chain once, enforce on every request',
+          html: 'Admins compose the approval sequence as a reusable rule  - roles, order, and parallel reviewers - so routing is a configuration decision, not a per-request judgment call.',
+          media: ['4wlRCx5cRYfpCNgP5qkQTThdY.png'],
+        }),
+        feature({
+          title: 'Who approved what, when, and why, on the record itself',
+          html: 'Every state change is attributable to a named person and timestamp, with reviewer comments inline. The audit trail lives in the workflow, not in an export.',
+          media: ['UEkxg9Mt70G9qVSlt4tPFC8xwE.png'],
+          flip: true,
+        }),
+      ],
+    },
+    {
+      id: 'prototype',
+      label: 'Prototype',
+      blocks: [
+        h('Wireframing'),
+        p('We made early sketches and wireframes to define core layouts and key workflows. We also explored multiple design directions for different interaction patterns and system structures.'),
+        gallery(['DrPQJPmSFy5hqs5Q33Xlj71rEI.jpg', 'qJAYarE3qicN2WRsYUtomwBoo.jpg', 'EgnqSR6ad98l2JnHCdSrBFjxc.jpg'], { cols: 3 }),
+        h('Design System'),
+        p('We built a comprehensive design system from scratch in Figma with <strong>85+ reusable components,</strong> including buttons, tables, navigation, and form elements, so that every screen across web and mobile inherited a shared visual language.'),
+        img('OQ6wkHxSOe6HSg8SF4QCNbNs2Mw.jpg', { wide: true }),
+        cta('View Detailed Design System', 'https://www.figma.com/design/zSGTiKnkfa5pbToJchtBlV/Team-PFF--Design-File?t=bNtQHiV2elmwqKjQ-0'),
+        h('Mobile'),
+        p("The MVP was desktop-first, but field operators don't always have a desk. The mobile experience is scoped to fast, confident decisions: review queues, single-decision approval views, and quick status checks, without trying to compress every desktop flow into a phone."),
+        gallery(['rwBl3lDOsRL93A0emJbOPZscQ.png', 'Ygiz9GXYTtHfJxyhFo3ZtxiiAg.png', 'DwwVAuH70SeP3rU3yJ1Jvvrjs.png', '1ABh6bvuchQUxfEwZb89Hmczo.png', 'ntXxUvW8m9u6iB0N2FmGNDzdvM.png', 'u1hDJy6Xh9RZgsvceD9IqolVn8w.png'], { cols: 6, frame: 'bare', wide: true }),
+      ],
+    },
+    {
+      id: 'test',
+      label: 'Test',
+      blocks: [
+        p('We tested the prototype with 7 participants deliberately recruited across a spectrum, from seasoned InCEP users to first-time users with no financial planning background. <strong>Testing focused on 4 tasks that mirror the full approval chain</strong>: create a Mission Assignment, create a Cost Estimate, approve the estimate, and create and approve a Transaction.', 'md'),
+        h('Key Insights'),
+        insights([
+          { title: 'Discoverability &amp; Clarity', sub: 'Users struggled to understand key actions.', items: ['The “Create Cost Estimate” link is not obvious.', 'Terminology (CE, MA, funding lines) is confusing for new users.'], img: 'Ba0xoRNtdEJFDv0wUIc2Gb1aMo.jpg' },
+          { title: 'AI Visibility', sub: 'AI features were valuable but often missed.', items: ['AI Review is not prominent.'], img: 'kwWf2Uhq8nsR3xcQ2etNd26L5iI.png' },
+          { title: 'Trust &amp; Control', sub: 'Users were unsure how much to trust AI outputs.', items: ['Confusion around confidence score &amp; data source.', 'Users wanted to see the “why” behind confidence scores.'], img: 'IOkPZ3gG1rQACi2A5gntj0ODzVs.jpg' },
+        ]),
+      ],
+    },
+    {
+      id: 'reflection',
+      label: 'Reflection',
+      blocks: [
+        h('Outcomes'),
+        cards(
+          [
+            { title: 'Increased Efficiency', html: '<strong>~15 min → ~6 min</strong> to create a Mission Assignment. Document upload and extraction replace field-by-field transcription. AI Review before submission prevents errors.' },
+            { title: 'Audit Readiness', html: '<strong>Every state change attributable to a person and a timestamp.</strong><br>Created, approved, edited, returned, visible inside the workflow.' },
+            { title: 'Optimized Estimations', html: 'AI proposes an amount from comparable past missions and links to the source assignments, so the person signing off can check the comparison before accepting.' },
+          ],
+          { cols: 3, variant: 'numbered' },
+        ),
+        h('Reflection'),
+        p("This eight-month project with a real client, a real approval chain, and real constraints taught me more than any classroom project could. Here's what stayed with me:"),
+        list([
+          "<strong>Building a design system from scratch</strong> taught me that the system isn't the components, but the decisions baked into them. Every token, spacing rule, or state variant is a decision you make once, so you never have to make it again.",
+          "<strong>Designing for four users sharing one workflow is negotiation. </strong>Every screen had to serve the person using it without breaking the experience for the person who touches it next. The hardest design problems weren't visual; they were figuring out what the Approver needs to see that the Analyst didn't know to provide.",
+          'AI is easiest to design when you stop asking "where can we add AI?" and start asking "where is a human doing work a machine should handle?" That reframe eliminated half our ideas and sharpened the rest. The features we cut were more important than the ones we kept.',
+        ], true),
+        gallery(['xT4pwHFrqO08imbqkUc9DgudRbs.jpg', 'T0bMsC4OSOYoj6l06oeeSXZRpKA.jpeg'], { cols: 2 }),
+      ],
+    },
+  ],
+};
+
+export default cs;

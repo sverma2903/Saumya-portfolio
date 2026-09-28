@@ -1,0 +1,69 @@
+---
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: string;
+  image?: string;
+  footerHeading?: string;
+  autohide?: boolean;
+  style?: string;
+}
+const {
+  title = 'Saumya Verma',
+  description = 'Saumya Verma is a product designer working on complex tools and AI-assisted workflows.',
+  current = '',
+  image = '/media/xVY62d93p5rA2uqmmKmIQwjR8I.gif',
+  footerHeading,
+  autohide = false,
+  style,
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const fullTitle = title === 'Saumya Verma' ? 'Saumya Verma — Product Designer' : `${title} — Saumya Verma`;
+---
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#120b08" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/media/ACwkGtncbgGidk0PGO4wEAjBQ4.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      (function () {
+        var d = document.documentElement;
+        d.classList.remove('no-js');
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          d.classList.add('js-anim');
+          setTimeout(function () {
+            if (!d.classList.contains('app-ready')) d.classList.remove('js-anim');
+          }, 4000);
+        }
+      })();
+    </script>
+  </head>
+  <body style={style}>
+    <a class="sr-only" href="#main">Skip to content</a>
+    <Nav current={current} autohide={autohide} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer heading={footerHeading} />
+    <script>
+      import '../scripts/app.ts';
+    </script>
+  </body>
+</html>

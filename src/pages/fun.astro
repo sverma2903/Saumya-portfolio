@@ -1,0 +1,34 @@
+---
+import Base from '../layouts/Base.astro';
+import Media from '../components/Media.astro';
+import { play } from '../content/site';
+---
+<Base title="Play" description={play.sub} current="play" image="/media/bDbWbcvql01Q5iZy5tdbwCEUt0.jpg">
+  <section class="wrap play-hero">
+    <p class="eyebrow mono" data-reveal>Play</p>
+    <h1 data-split data-immediate><Fragment set:html={play.headline} /> <span style="color: var(--ember)">✦</span></h1>
+    <p data-reveal>{play.sub}</p>
+  </section>
+  <section class="wrap play-grid" aria-label="Side quests">
+    {play.items.map((q, i) => {
+      const ext = !!q.href && q.href.startsWith('http');
+      const Tag = q.href ? 'a' : 'article';
+      const attrs = q.href ? { href: q.href, target: ext ? '_blank' : undefined, rel: ext ? 'noopener' : undefined, 'data-cursor': ext ? 'Devpost' : 'Read' } : {};
+      return (
+        <Tag class="play-item" {...attrs} data-reveal>
+          <div class={`play-media fit-${q.fit}`} style={`background:${q.tone}`}>
+            <Media media={q.media[0]} alt={q.title} eager={i < 2} />
+            {q.media[1] && <Media media={q.media[1]} alt="" class="layer" />}
+          </div>
+          <div class="play-meta">
+            <div>
+              <h2>{q.title}</h2>
+              <p class="mono">{q.tag}</p>
+            </div>
+            {q.href && <span class="go" aria-hidden="true">{ext ? '↗' : '→'}</span>}
+          </div>
+        </Tag>
+      );
+    })}
+  </section>
+</Base>

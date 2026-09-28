@@ -1,0 +1,81 @@
+---
+import Base from '../layouts/Base.astro';
+import Media from '../components/Media.astro';
+import { about, links } from '../content/site';
+const { fiction, writing, meditation, sketching } = about.loves;
+---
+<Base title="About" description="I blend business thinking, psychology, and systems design to create experiences that move metrics." current="about" image={about.portrait.src}>
+  <section class="wrap about-hero" aria-labelledby="about-h">
+    <div>
+      <h1 id="about-h" data-split data-immediate set:html={about.headline} />
+      <p class="eyebrow mono" style="margin-top: clamp(40px, 5vw, 64px)" data-reveal>My Story ↓</p>
+      <div class="story-copy">
+        {about.story.map((para) => <p data-reveal set:html={para} />)}
+      </div>
+      <div style="margin-top: 32px; display:flex; gap:10px; flex-wrap:wrap" data-reveal>
+        <a class="btn solid" href={links.architecture} target="_blank" rel="noopener" data-magnetic>Architecture Portfolio <span class="arrow">↗</span></a>
+      </div>
+    </div>
+    <div class="portrait" data-reveal>
+      <span class="portrait-back two" aria-hidden="true"></span>
+      <span class="portrait-back" aria-hidden="true"></span>
+      <img src={about.portrait.src} width={about.portrait.w} height={about.portrait.h} alt="Portrait of Saumya Verma" fetchpriority="high" />
+      <svg class="stamp" viewBox="0 0 120 120" aria-hidden="true">
+        <defs><path id="circ" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" /></defs>
+        <circle cx="60" cy="60" r="58" fill="var(--paper)" />
+        <text font-family="JetBrains Mono, monospace" font-size="9.5" letter-spacing="3.2" fill="currentColor">
+          <textPath href="#circ">ARCHITECT · HCI · PRODUCT DESIGNER ·</textPath>
+        </text>
+        <g transform="translate(48 48) scale(1)" fill="none" stroke="var(--ember)" stroke-width="1.4" stroke-linejoin="round">
+          <path d="M6 6 L2.25 17.25 L9.75 17.25 Z" /><circle cx="14.625" cy="7.125" r="4.125" /><rect x="12.75" y="13.5" width="8.25" height="6.75" rx="1" />
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="loves-h">
+    <div class="sec-head">
+      <h2 id="loves-h" data-split>Things I <em>love</em> ↓</h2>
+      <p class="meta mono" data-reveal>(04)<br />Off the clock</p>
+    </div>
+    <div class="bento">
+      <article class="tile-card t-fiction" data-reveal>
+        <span class="mono">01</span>
+        <h3 set:html={fiction.title} />
+        <p>{fiction.text}</p>
+        <div class="books">
+          {fiction.books.map((b) => (
+            <div class="book"><Media media={b} alt="Book cover" /></div>
+          ))}
+        </div>
+      </article>
+      <article class="tile-card t-writing" data-reveal>
+        <span class="mono">02</span>
+        <h3 set:html={writing.title} />
+        <p>{writing.text}</p>
+        <p class="pub" set:html={writing.published} />
+        <div class="posts">
+          {writing.posts.map((p) => (
+            <a href={p.href} target="_blank" rel="noopener">{p.title} <span>↗</span></a>
+          ))}
+        </div>
+      </article>
+      <article class="tile-card t-meditation" data-reveal>
+        <span class="mono">03</span>
+        <h3>{meditation.title}</h3>
+        <p>{meditation.text}</p>
+        <div class="med"><Media media={meditation.img} alt="Meditation" /></div>
+      </article>
+      <article class="tile-card t-sketch" data-reveal>
+        <span class="mono">04</span>
+        <h3>{sketching.title}</h3>
+        <p>{sketching.text}</p>
+        <div class="sketches">
+          {sketching.sketches.map((s) => (
+            <button data-zoom={s.src} data-cursor="Zoom" aria-label="Open sketch"><Media media={s} alt="Sketch" /></button>
+          ))}
+        </div>
+      </article>
+    </div>
+  </section>
+</Base>
