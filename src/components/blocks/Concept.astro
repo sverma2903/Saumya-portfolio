@@ -20,6 +20,8 @@ import { rich } from '../../lib/rich';
 import { fileOf, stagingOf } from '../../lib/staging';
 import { alt } from '../../data/alt';
 import { labels } from '../../content/site';
+import { chrome, fill } from '../../data/chrome';
+import { stripHtml } from '../../lib/text';
 interface Props { block: Extract<Block, { t: 'concept' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
@@ -39,6 +41,9 @@ const signed = (line: string) => {
   if (c !== '+' && c !== '-') return rich(line);
   return `<span class="an__sign an__sign--${c === '+' ? 'plus' : 'minus'}">${c}</span>${rich(line.slice(1))}`;
 };
+// phones: the row is a scroll strip → a named, focusable region so it scrolls with the keyboard (§6.2, WCAG 2.1.1).
+// Without JS it is always one; with JS (below) only while it actually scrolls, so desktop gets no empty tab stop.
+const stripLabel = fill(chrome.wp4b.media.scrollable, { fig: ctx.fig ?? stripHtml(block.title) });
 const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : null;
 ---
 <div {...blkAttrs('concept', ctx)}>
@@ -47,6 +52,7 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
       <Tag class="concept__t" data-v set:html={rich(block.title)} />
       {ctx.fig && <p class="concept__fig" data-chrome>{ctx.fig}</p>}
     </div>
+    <div class="concept__strip" role="region" aria-label={stripLabel} tabindex="0" data-concept-strip>
     <ol class="concept__row" role="list" style={rowStyle}>
       {items.map((it) => (
         <li class:list={['concept__item', { 'plan-hide': it.i > 0 }]} style={`--_a: ${it.a.toFixed(4)}`}>
@@ -55,6 +61,7 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
         </li>
       ))}
     </ol>
+    </div>
     {analysis && (
       <div class="concept__analysis plan-hide">
         <p class="concept__alabel" data-v>{labels.conceptAnalysis}</p>
@@ -64,6 +71,19 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
       </div>
     )}
   </div>
+  <script>
+    // inside the block root: a script rendered between blocks would break the .blk + .blk rhythm (base.css)
+    // The strip is a focusable region only while it scrolls (phones); otherwise it is a plain wrapper.
+    const ATTRS = ['tabindex', 'role', 'aria-label'] as const;
+    document.querySelectorAll<HTMLElement>('[data-concept-strip]').forEach((el) => {
+      const saved = ATTRS.map((a) => el.getAttribute(a));
+      const sync = () => {
+        const scrolls = el.scrollWidth > el.clientWidth + 1;
+        ATTRS.forEach((a, i) => (scrolls && saved[i] !== null ? el.setAttribute(a, saved[i]!) : el.removeAttribute(a)));
+      };
+      new ResizeObserver(sync).observe(el);
+    });
+  </script>
 </div>
 <style>
   .concept { --_gap: var(--s-5); --_maxh: 420px; }   /* a row is never taller than 420px (the staging caps' scale) */
@@ -94,9 +114,11 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
   }
 
   /* one row, justified by height: tracks ∝ aspect; never taller than --_maxh (or a staging cap) */
+  .concept__strip { margin-block-start: var(--s-5); }
+  .concept__strip:focus-visible { outline-offset: calc(-1 * var(--s-1)); }   /* the strip bleeds to the screen edges */
   .concept__row {
     list-style: none;
-    margin: var(--s-5) 0 0;
+    margin: 0;
     padding: 0;
     display: grid;
     grid-template-columns: var(--_tracks);
@@ -128,23 +150,27 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
 
   /* phones: a strip at a common height */
   @media (max-width: 767.98px) {
-    .concept__row {
-      --_h: 300px;
-      display: flex;
-      max-inline-size: none;
+    .concept__strip {
+      container-type: inline-size;               /* the items' 80% is of the strip's visible width */
       overflow-x: auto;
       overscroll-behavior-x: contain;
       scroll-snap-type: x mandatory;
       margin-inline: calc(-1 * var(--m));        /* bleed to the screen edges… */
       padding-inline: var(--m);                  /* …while the first image aligns with the text */
       scroll-padding-inline: var(--m);
-      gap: var(--s-3);
       padding-block-end: var(--s-2);
       scrollbar-width: thin;
     }
+    .concept__row {
+      --_h: 300px;
+      display: flex;
+      inline-size: max-content;
+      max-inline-size: none;
+      gap: var(--s-3);
+    }
     .concept__item {
       flex: none;
-      inline-size: min(80%, calc(var(--_h) * var(--_a)));
+      inline-size: min(80cqi, calc(var(--_h) * var(--_a)));
       scroll-snap-align: start;
     }
   }

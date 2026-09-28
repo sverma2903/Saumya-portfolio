@@ -86,7 +86,7 @@ const listLabel = fill(chrome.wp4a.tabs, { fig: ctx.fig ?? '' }).replace(/^,\s*/
     gap: var(--s-4);
     margin-block-start: var(--s-3);
   }
-  :global(html.js) .tabs__bar { margin-block-start: -1px; }    /* the tabs hang from the sheet's bottom edge */
+  :global(html.js) .tabs__bar { margin-block-start: calc(-1 * var(--lw-object)); }   /* the tabs hang from the mat's bottom edge */
   .tabs__list { display: flex; flex-wrap: wrap; }
   .tabs__tab {
     display: inline-flex;
@@ -94,9 +94,13 @@ const listLabel = fill(chrome.wp4a.tabs, { fig: ctx.fig ?? '' }).replace(/^,\s*/
     gap: var(--s-2);
     min-block-size: 44px;
     padding: var(--s-2) var(--s-4) var(--s-3);
-    margin-inline-end: -1px;
+    /* one outline at the mat/tab joint: no tab draws a top edge. An inactive tab hangs just below the mat's bottom
+       edge (that edge is its top); the active tab starts ON it and covers it between its own sides, so its side
+       borders run on from the mat's edge pixel-for-pixel (no nick, no overlap at the corners) */
+    margin-block-start: var(--lw-object);
+    margin-inline-end: calc(-1 * var(--lw-object));
     border: var(--lw-object) solid var(--line-2);
-    border-block-start-color: var(--line-2);
+    border-block-start: 0;
     background: var(--paper-2);
     color: var(--ink-2);
     font-family: var(--font-sans);
@@ -112,8 +116,9 @@ const listLabel = fill(chrome.wp4a.tabs, { fig: ctx.fig ?? '' }).replace(/^,\s*/
     z-index: var(--z-raised);
     color: var(--ink);
     background: var(--plate);
-    border-color: var(--line-3);
-    border-block-start-color: var(--plate);       /* continuous with the sheet's mat above */
+    margin-block-start: 0;
+    padding-block-start: calc(var(--s-2) + var(--lw-object));   /* same bottom edge as the inactive tabs */
+    border-color: var(--line-3);                  /* continuous with the sheet's mat above */
     font-weight: var(--wt-label);
   }
   .tabs__tab:focus-visible { outline-offset: 2px; }

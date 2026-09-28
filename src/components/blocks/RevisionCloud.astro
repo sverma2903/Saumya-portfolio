@@ -66,7 +66,8 @@ const rid = `${ctx.id}-rev`;
   .rev.is-pending .rev__line { stroke-dashoffset: 1; }
   .rev.is-pending .rev__fill { opacity: 0; }
   .rev.is-drawn .rev__line { transition: stroke-dashoffset var(--dur-6) var(--ease-draft); }
-  .rev.is-drawn .rev__fill { transition: opacity calc(var(--dur-6) * 0.75) var(--ease-ui) calc(var(--dur-6) / 4); }
+  /* SM6b: the wash comes 400ms after the draw (--dur-6 × 1.25 = 1600 + 400ms): the pen visibly encloses the note first */
+  .rev.is-drawn .rev__fill { transition: opacity var(--dur-4) var(--ease-ui) calc(var(--dur-6) * 1.25); }
   .rev.is-static :is(.rev__line, .rev__fill) { transition: none; }
 
   /* △1 sits on the cloud's top-left corner, masking the line under it */
@@ -111,7 +112,9 @@ const rid = `${ctx.id}-rev`;
   .rev__t, .rev__lede, .rev__html { position: relative; }   /* above the cloud's fill */
 
   @media (max-width: 767.98px) {
-    .rev { --_out: 6px; padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5); }   /* phones: 6px, inside the 16px margin */
+    /* phones: the callout is inset by --s-2 and the cloud runs 2px out, so its outermost scallop (≈ 2 + 6 + stroke)
+       stays ≈ 15px from the screen edge instead of crowding it */
+    .rev { --_out: 2px; margin-inline: var(--s-2); padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5); }
     .rev__delta { inset-block-start: calc(-1 * var(--_out) - var(--_dh)); inset-inline-start: calc(-1 * var(--_out) - var(--s-1)); }   /* stays on-screen */
   }
   @media print {

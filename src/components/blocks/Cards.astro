@@ -7,14 +7,15 @@
  *             01… top-left (omitted when her kickers already number the cells: "GOAL 1"), an optional image well (--plate; the well takes the pictogram's own aspect when the set
  *             shares one, so her white canvas IS the well — no seam), her kicker (--fs-label, --acc), her title
  *             (h{hl}, Newsreader 440), her html (--fs-body-sm, ink-2). A last cell alone in its row spans the row.
- *  icon     → an icon well 112px tall, as wide as her icon's aspect (--plate; an opaque-white canvas fills it exactly,
- *             so no seam; transparent icons float on it),
+ *  icon     → a square icon well, 112px (104 md, 88 phones) on --plate, her icon contained in it: every tile is the
+ *             same size and her opaque-white canvases disappear into the plate; transparent icons float on it,
  *             her title (Newsreader 440), her html; a --line-1 rule tops each card; left-aligned.
  *  numbered → a boxed numeral 01 (Newsreader 300 in a 56px --lw-border square, chrome), her title, her html.
  *             cols: 1 (Orbit's five concepts) → a vertical list, numeral beside the text.
  * Icons get the per-file optical scale from media-staging (§6.4) inside an overflow-clipped well: only her empty
  * canvas margin can leave the well. Icons are not figures (not enlargeable) → plain <img>, lazy, with dims.
- * Wide when cols ≥ 4, or a plain set with images (lib/blocks-ctx resolveWide).
+ * Wide when cols ≥ 4, or a plain set with images (lib/blocks-ctx resolveWide); a text-only plain schedule of ≥ 3
+ * columns goes wide at ≥ 1280 (.cards-wide-lg, below).
  * Plan view: titles and kickers only — wells and html are .plan-hide.
  */
 import type { Block } from '../../lib/blocks';
@@ -33,6 +34,9 @@ const titlesOnly = block.items.every((it) => !it.html);
 // her kickers already number a schedule ("GOAL 1"): then our chrome mark 01 would say it twice — drop it
 const marks = variant === 'plain' && !block.items.some((it) => it.kicker);
 const list = variant === 'numbered' && cols === 1;
+// a plain schedule of ≥ 3 text-only cells held to the 680px text column wraps her bodies at ≈ 20 characters while the
+// notes column beside it is empty: at ≥ 1280 it spans text + notes (≈ 968px at 1440, ≈ 40 characters a cell)
+const schedWide = variant === 'plain' && !ctx.wide && cols >= 3 && block.items.every((it) => !it.img);
 
 // columns per breakpoint: lg (≥ 1024) · md (768–1023) · sm (< 768)
 const lg = cols;
@@ -57,7 +61,7 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
   };
 };
 ---
-<div {...blkAttrs('cards', ctx)}>
+<div {...blkAttrs('cards', ctx, schedWide && 'cards-wide-lg')}>
   <div class="blk__main">
     <ul
       class:list={['cards', `cards--${variant}`, { 'cards--list': list, 'cards--titles': titlesOnly, 'cards--shared': !!sharedAspect }]}
@@ -183,11 +187,11 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
   .card__well--icon {
     position: relative;
     overflow: hidden;
-    align-self: flex-start;                    /* not stretched: the width comes from height × her icon's aspect */
-    block-size: var(--_icon);                  /* one height across the row, so the titles align */
-    inline-size: auto;
+    align-self: flex-start;
+    inline-size: var(--_icon);                 /* SPEC: a square well, max 112px — every tile identical, titles align */
+    isolation: isolate;                        /* the icon's multiply blends with the plate only */
     max-inline-size: 100%;
-    aspect-ratio: var(--_a);
+    aspect-ratio: 1;
     margin-block-end: var(--s-4);
     background: var(--plate);
     outline: var(--lw-object) solid var(--line-1);
@@ -196,8 +200,9 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
   .card__well--icon img {
     inline-size: 100%;
     block-size: 100%;
-    object-fit: contain;                       /* a no-op at her aspect; a guard if a narrow column caps the width */
+    object-fit: contain;                       /* her icon whole inside the square */
     transform: scale(var(--_s, 1));
+    mix-blend-mode: multiply;                  /* her opaque-white canvas takes the plate's tone: no seam (file untouched) */
   }
 
   /* ── numbered ──────────────────────────────────────────────────────── */
@@ -233,6 +238,11 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
   @media (max-width: 767.98px) {
     .card__num { inline-size: var(--s-7); font-size: calc(var(--fs-stat) * 0.7); }
     .cards--list > .card { column-gap: var(--s-4); }
+  }
+
+  /* text-only plain schedules of ≥ 3 columns: span text + notes at ≥ 1280 (see schedWide) */
+  @media (min-width: 1280px) {
+    :global(.blk.cards-wide-lg:not(.blk--nested) > .blk__main) { grid-column: text-start / notes-end; }
   }
 
   @media print {

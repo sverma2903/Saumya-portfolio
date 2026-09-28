@@ -3,6 +3,10 @@
  * Stats · WP4a (SPEC §6.2 `stats`): her numbers as dimensioned specimens.
  *
  * Each stat: a dimension line (45° ticks, --line-2, aria-hidden) → her value <p class="stat__v" data-v> → her html.
+ * The dimension lines chain across the row (each spans its whole column track, the separators drop from the shared
+ * ticks), and the row is a subgrid: dims, values and descriptions each share one line across the row.
+ * The value <p> holds her text only (textContent === her decoded v); the sidenote marker is its sibling, set inline
+ * after it (the <p> is display:inline inside .stat__val).
  * The value is split TYPOGRAPHICALLY ONLY by lib/text.ts splitStat (pre + num + rest === her decoded value, always):
  *   pre  → rust, .6em, raised     num → --fs-stat     rest → italic --fs-body on its own line
  *   no match ("High AI adoption") → .stat__v--word (Newsreader 340, ≈ 34px at 1440).
@@ -12,7 +16,7 @@
  *
  * Sidenotes: an html that starts with "Source:" leaves the column and becomes a numbered sidenote in the notes column
  * (≥ 1280) or a footnote under the row (< 1280). Identical sources share one number (Cloudflare's two earnings-call
- * stats share ¹). The stat keeps a rust superscript marker (chrome) that links to its note.
+ * stats share ¹). The stat keeps a rust superscript marker (chrome, outside the data-v <p>) that links to its note.
  * Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
@@ -74,15 +78,15 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
             <line x1="-4" y1="9.5" x2="4" y2="1.5" />
             <svg x="100%" y="0" overflow="visible"><line x1="-4" y1="9.5" x2="4" y2="1.5" /></svg>
           </svg>
-          {sp ? (
-            <p class="stat__v" data-v><span class="stat__head">{glued
-              ? <span class="stat__num stat__num--glued">{sp.pre + sp.num}</span>
-              : <>{sp.pre && <span class="stat__pre">{sp.pre}</span>}<span class="stat__num">{sp.num}</span></>}</span>{sp.rest
-              ? <span class="stat__rest">{sp.rest}{note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</span>
-              : note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</p>
-          ) : (
-            <p class="stat__v stat__v--word" data-v>{decodeEntities(it.v)}{note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}</p>
-          )}
+          <div class:list={['stat__val', { 'stat__val--word': !sp, 'stat__val--solo': !!sp && !sp.rest && !!note }]}>
+            {sp ? (
+              <p class="stat__v" data-v><span class="stat__head">{glued
+                ? <span class="stat__num stat__num--glued">{sp.pre + sp.num}</span>
+                : <>{sp.pre && <span class="stat__pre">{sp.pre}</span>}<span class="stat__num">{sp.num}</span></>}</span>{sp.rest && <span class="stat__rest">{sp.rest}</span>}</p>
+            ) : (
+              <p class="stat__v stat__v--word" data-v>{decodeEntities(it.v)}</p>
+            )}{note && <sup class="stat__mark" data-chrome><a href={`#${note.id}`} aria-label={fill(chrome.wp4a.sidenote, { n: note.n })}>{note.n}</a></sup>}
+          </div>
           {!note && <p class="stat__html" data-v set:html={rich(it.html)} />}
         </li>
       ))}
@@ -105,32 +109,55 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
     display: grid;
     grid-template-columns: repeat(var(--_n), minmax(0, 1fr));
   }
+  /* a row is a subgrid of three lines: dimension · value · description (so every description starts level) */
   .stat {
-    display: flex;
-    flex-direction: column;
-    padding-inline: var(--s-5);
+    position: relative;
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+    align-content: start;
+  }
+  /* the dimension line spans the whole track (a chained dimension: equal modules, shared ticks); the separator gap
+     lives in the value and description, and the separator drops from the shared tick */
+  .stat > :not(.stat__dim) { padding-inline: var(--s-5); }
+  .stat:first-child > :not(.stat__dim) { padding-inline-start: 0; }
+  .stat:last-child > :not(.stat__dim) { padding-inline-end: 0; }
+  .stat + .stat::before {
+    content: '';
+    position: absolute;
+    inset-block: calc(var(--_dimh) / 2) 0;
+    inset-inline-start: 0;
     border-inline-start: var(--lw-object) solid var(--line-1);
   }
-  .stat:first-child { padding-inline-start: 0; border-inline-start: 0; }
-  .stat:last-child { padding-inline-end: 0; }
 
   /* the dimension line: the specimen is "measured" */
   .stat__dim { display: block; block-size: var(--_dimh); overflow: visible; color: var(--line-2); }
   .stat__dim line { stroke: currentColor; stroke-width: var(--lw-dim); }
 
   .stats { --_fit: var(--_fitn, var(--fs-stat)); }
-  .stat__v {
+  /* the value block: the line box of her rest ("of user data") + the sidenote marker; the numeral is its own block */
+  .stat__val {
     margin-block-start: var(--s-4);
     font-family: var(--font-serif);
+    font-size: var(--fs-body);
+    font-weight: var(--wt-body);
+    line-height: var(--lh-lede);
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .stat__v { display: inline; }
+  .stat__head {
+    display: block;
     font-size: var(--_fit);
     font-weight: var(--wt-stat);
     line-height: var(--lh-stat);
     letter-spacing: var(--tr-stat);
     font-variant-numeric: tabular-nums;
-    color: var(--ink);
-    text-wrap: balance;
+    white-space: nowrap;                   /* "~ 600 K" never breaks from its unit (the row size fits it, above) */
   }
-  .stat__head { white-space: nowrap; }     /* "~ 600 K" never breaks from its unit (the row size fits it, above) */
+  .stat__head:not(:last-child) { margin-block-end: var(--s-2); }
+  .stat__val--solo .stat__head { display: inline-block; }   /* no rest: the marker follows the numeral */
   .stat__pre {
     font-size: 0.6em;
     vertical-align: 0.35em;
@@ -146,23 +173,13 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
     color: var(--rust);
     margin-inline-end: 0.06em;
   }
-  .stat__rest {
-    display: block;
-    margin-block-start: var(--s-2);
-    font-size: var(--fs-body);
-    font-style: italic;
-    font-weight: var(--wt-body);
-    line-height: var(--lh-lede);
-    letter-spacing: 0;
-    font-variant-numeric: normal;
-    text-wrap: pretty;
-  }
-  .stat__v--word {
+  .stat__rest { font-style: italic; }
+  .stat__val--word {
     font-size: calc(var(--fs-stat) * 0.57);   /* Newsreader 340 · 34px at 1440; words wrap, so no fit */
     font-weight: var(--wt-title);             /* 340 */
     line-height: var(--lh-h);
     letter-spacing: var(--tr-h);
-    font-variant-numeric: normal;
+    text-wrap: balance;
   }
   .stat__html {
     margin-block-start: var(--s-3);
@@ -222,11 +239,14 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
   /* one column below ~520px of text: separators turn horizontal */
   @container (max-width: 519.98px) {
     /* one column: each specimen's own dimension line is the separator (no second rule) */
-    .stats { --_fit: var(--_fit1, var(--fs-stat)); grid-template-columns: minmax(0, 1fr); row-gap: var(--s-6); }
-    .stat { padding-inline: 0; border-inline-start: 0; }
+    .stats { --_fit: var(--_fit1, var(--fs-stat)); grid-template-columns: minmax(0, 1fr); }
+    .stat { display: flex; flex-direction: column; grid-row: auto; }
+    .stat + .stat { margin-block-start: var(--s-6); }
+    .stat + .stat::before { content: none; }
+    .stat > :not(.stat__dim) { padding-inline: 0; }
   }
   @media print {
-    .stat__v { font-size: calc(var(--_fit) * 0.62); }
-    .stat__v--word { font-size: calc(var(--fs-stat) * 0.45); }
+    .stat__head { font-size: calc(var(--_fit) * 0.62); }
+    .stat__val--word { font-size: calc(var(--fs-stat) * 0.45); }
   }
 </style>

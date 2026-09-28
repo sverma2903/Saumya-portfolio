@@ -4,7 +4,7 @@
  * casing (Plex Sans 560, wdth 85, 13px, .04em), a --lw-border ink frame on --sheet, min 44px tall, and an Icon —
  * ↗ for external links (new tab, described by #sv-newtab), ↓ for in-page links. Hover: the blush hatch slides in
  * (background-position, --dur-3). Pointer clicks on in-page links scroll smoothly when Motion is on (§4.9);
- * keyboard activation keeps the native instant jump. Print: WP1 prints the URL of `a.cta[href^=http]`.
+ * keyboard activation keeps the native instant jump. Either way focus moves to the destination (Tab continues there). Print: WP1 prints the URL of `a.cta[href^=http]`.
  * Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
@@ -25,7 +25,7 @@ const { block, ctx } = Astro.props;
   </p>
   <script>
     // inside the block root: a script rendered between blocks would break the .blk + .blk rhythm (base.css)
-    import { scrollToEl } from '../../scripts/core/dom';
+    import { focusNoScroll, scrollToEl } from '../../scripts/core/dom';
     // Pointer-initiated in-page CTAs scroll smoothly when Motion is on; keyboard (detail === 0) keeps the native jump.
     document.addEventListener('click', (e) => {
       const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>('a.cta[data-inpage]');
@@ -36,6 +36,8 @@ const { block, ctx } = Astro.props;
       e.preventDefault();
       history.pushState(null, '', `#${id}`);
       scrollToEl(target);
+      // as a native fragment jump would: the next Tab continues from the destination, not from this CTA
+      focusNoScroll(target);
     });
   </script>
 </div>

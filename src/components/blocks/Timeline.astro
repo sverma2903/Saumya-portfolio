@@ -4,9 +4,10 @@
  * Horizontal: a --lw-border ink baseline with a tick at each (evenly spaced) phase; her `k` ("Week 2") in label caps
  * above the tick, her `v` (her <br> kept) in Newsreader ≈ 15px ink-2 below. "Onboarding" has an empty `v`, rendered
  * as-is. No "current" marker: the timeline is historical.
- * The layout follows the space it actually has (a container query, not the viewport): one row of phases when every
- * phase gets ≥ 94px (the wide track at ≥ 1366), two rows when it has 560–939px (tablets, 1024–1365),
- * and a vertical track below that (phones). Plan view: keep.
+ * The layout follows the space it actually has (a container query, not the viewport): one row of phases only when
+ * every phase gets ≥ 130px (a container ≥ 1300px — wider than today's widest track, 968px, so her 2-line values never
+ * stack 4–6 deep), two rows of five from 560px (tablets and every desktop width), and a vertical track below that
+ * (phones). Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
@@ -93,7 +94,7 @@ const half = Math.ceil(n / 2);
   .tl__k { grid-column: 1; }
   .tl__v { grid-column: 2; }
 
-  /* ── horizontal: two rows (560–939px) or one row (≥ 940px, so "ONBOARDING" fits at the label tracking) ── */
+  /* ── horizontal: two rows (≥ 560px) or one row (≥ 1300px: ≥ 130px a phase, her values stay 1–2 lines) ── */
   @container (min-width: 560px) {
     .timeline { grid-template-columns: repeat(var(--_half), minmax(0, 1fr)); row-gap: var(--s-6); }
     .tl {
@@ -141,7 +142,7 @@ const half = Math.ceil(n / 2);
       border-inline-end: var(--lw-object) solid var(--ink);
     }
   }
-  @container (min-width: 940px) {
+  @container (min-width: 1300px) {
     /* evenly spaced; min-content only as a safety net for a longer word than today's */
     .timeline { grid-template-columns: repeat(var(--_n), minmax(min-content, 1fr)); }
     .tl--row-end::after { content: none; }

@@ -54,4 +54,12 @@ for (const g of groups) {
   }
   .chapter:not(:first-of-type) { content-visibility: auto; contain-intrinsic-size: auto 1400px; }
   @media (max-width: 1279.98px) { .chapter { grid-column: text; display: block; } }
+  /* SHARED CHANGE (WP4a, for WP5 to keep): content-visibility:auto = paint containment, which clips at the chapter's
+     padding box. Blocks draw outside the text column on purpose (leaders / keynote tags hang in the gutter; the phone
+     concept strip bleeds to the screen edges), so the chapter's box takes in the gutter (and the phone margins) and pads
+     its content back: the content box and every track are unchanged, nothing is clipped, in every engine (Safari has
+     no overflow-clip-margin). ≥ 1280: the gutter is --gap; 1024–1279: 32px (CaseBody); < 1024: --m on both sides. */
+  .chapter { --_bleed: var(--gap); margin-inline-start: calc(-1 * var(--_bleed)); padding-inline-start: var(--_bleed); }
+  @media (max-width: 1279.98px) { .chapter { --_bleed: var(--s-6); } }
+  @media (max-width: 1023.98px) { .chapter { --_bleed: var(--m); margin-inline-end: calc(-1 * var(--_bleed)); padding-inline-end: var(--_bleed); } }
 </style>
