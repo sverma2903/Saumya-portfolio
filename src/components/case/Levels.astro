@@ -1,30 +1,220 @@
 ---
 /**
- * Levels · OWNER: WP5 (P0 functional stub). The building-section rail (SM4): floors with heights ∝ minutes, a rust
- * datum ▼ and the reading trace (scripts/case/levels.ts). No-JS baseline (this stub): a static <nav aria-label="Levels">
- * list of floors with elevations, the View toggle and the match line.
+ * Levels · WP5. The case study drawn as a building section (SPEC SM4), sticky in the rail column (≥ 1024).
+ *
+ *   LEVELS · A-101            ≈ 13 MIN
+ *   ┆
+ *   ▼─ OVERVIEW                 each chapter is a floor; floor heights ∝ the minutes it takes to read,
+ *   ▒┆ ±00:00                   clamp(30px, k·s, 180px) with Σ = H — solved by flexbox (flex-grow = seconds,
+ *   ▒┆                          min/max-block-size = the clamps: the flex algorithm freezes clamped floors and
+ *   ┆─ EMPATHIZE                redistributes the rest, which is exactly the clamp solve), so it holds without JS
+ *   ┆  +00:36                   and never shifts when the script arrives.
+ *   …
+ *   ┴  END +12:32               the base: the whole case read, as an elevation
+ *   VIEW  [V]   ( Section | Plan )
+ *   MATCH LINE ─·─·─  SEE SHEET A-102 · her next title
+ *
+ * scripts/case/levels.ts moves the rust datum ▼ continuously (y = y_i + p_i·h_i at the 40% reading line), paints the
+ * reading trace (a --hatch-acc strip left of the line, trace_i = max(trace_i, p_i), per session), marks the current
+ * floor (rust label, aria-current="location") and emits sv:level. No JS: a plain nav of floors that still links.
  */
 import Glyphs from '../symbols/Glyphs.astro';
+import Datum from '../symbols/Datum.astro';
+import MatchLine from '../symbols/MatchLine.astro';
+import Icon from '../symbols/Icon.astro';
 import type { CaseReading } from '../../lib/reading';
 import { chrome, fill } from '../../data/chrome';
+import { formatElevation } from '../../lib/text';
+import { keepCompounds } from '../../lib/typeset';
 import ViewToggle from './ViewToggle.astro';
 interface Props { reading: CaseReading; sheetNo: string; next: { href: string; no: string; title: string } }
 const { reading, sheetNo, next } = Astro.props;
 const l = chrome.wp5.levels;
+const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
 ---
-<nav class="levels" aria-label={l.title}>
-  <p class="t-label ink-2">{l.title} · {sheetNo} · <Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></p>
-  <ol class="levels__floors" role="list">
-    {reading.sections.map((s) => (
-      <li><a href={`#${s.id}`}><span class="t-label" data-v>{s.label}</span><span class="levels__elev t-caption ink-2">{s.elev}</span></a></li>
-    ))}
-  </ol>
-  <p class="t-label ink-2">{l.view}</p>
-  <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} class="levels__view" />
-  <p class="levels__match t-label"><span class="ink-2">{l.matchLine}</span> <a href={next.href}>{next.no}</a></p>
-</nav>
+<div class="rail" data-rail>
+  <nav class="levels" aria-label={l.title} data-levels-rail data-slug={reading.slug}>
+    <p class="levels__head t-label">
+      <span><span>{l.title}</span><span class="levels__sheet"> <span class="levels__dot" aria-hidden="true">·</span> <span class="t-code levels__no">{sheetNo}</span></span></span>
+      <span class="levels__total"><Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></span>
+    </p>
+    <div class="levels__section">
+      <ol class="levels__floors" role="list" data-floors>
+        {reading.sections.map((s, i) => (
+          <li class="floor" style={`--_s: ${Math.max(1, s.sec)}`} data-floor={i}>
+            <a class="floor__link" href={`#${s.id}`} data-level-link={i} data-elev={s.elev}>
+              <span class="floor__text"><span class="floor__label t-label" data-v>{s.label}</span><span class="floor__elev">{s.elev}</span></span>
+            </a>
+            <span class="floor__trace" aria-hidden="true"></span>
+          </li>
+        ))}
+      </ol>
+      <p class="levels__base" aria-hidden="true"><span class="t-label">{l.end}</span> <span class="floor__elev">{end}</span></p>
+      <span class="levels__datum" aria-hidden="true" data-datum><Datum size={10} /></span>
+    </div>
+  </nav>
+
+  <div class="rail__view">
+    <p class="rail__sub t-label"><span>{l.view}</span><kbd class="rail__key t-code" aria-hidden="true">{chrome.wp5.view.key}</kbd></p>
+    <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} variant="stack" class="rail__toggle" />
+  </div>
+
+  <a class="rail__match" href={next.href} data-rail-match>
+    <span class="rail__sub rail__matchrule t-label" aria-hidden="true"><span>{l.matchLine}</span><MatchLine /></span>
+    <span class="rail__matchsee t-label">{fill(l.seeSheet, { no: next.no })}<Icon name="arrow-right" size={12} /></span>
+    <span class="rail__matcht" data-v set:html={keepCompounds(next.title)} />
+  </a>
+</div>
+
 <style>
-  .levels { position: sticky; inset-block-start: calc(var(--bar) + 24px); display: grid; gap: var(--s-3); }
-  .levels__floors { list-style: none; padding: 0; display: grid; gap: var(--s-2); border-inline-start: var(--lw-dim) dashed var(--line-2); padding-inline-start: var(--s-4); }
-  .levels__floors a { display: grid; text-decoration: none; }
+  .rail {
+    /* ── the drawing's geometry (SPEC SM4), in one place ──
+       the section is H tall: min(56vh, 520px), less on short windows so the rail's header, base, View and Match
+       line (--_chrome) always fit beside the text; never below --_Hmin */
+    --_chrome: 310px;
+    --_Hmin: 252px;
+    --_Hmax: 520px;
+    --_H: clamp(var(--_Hmin), min(56vh, 100vh - var(--bar) - var(--s-5) - var(--_chrome)), var(--_Hmax));
+    --_x: var(--s-3);       /* the dashed alignment line at x = 12 */
+    --_lx: var(--s-6);      /* labels at x = 32 */
+    --_tick: 14px;          /* floor tick length */
+    --_tw: 10px;            /* the reading-trace strip, left of the line */
+    --_floor-min: 36px;     /* SM4 clamps floors to 30–180px; 36 keeps a short level's elevation clear of the next label */
+    --_floor-max: 180px;
+    --_elev: 0.875rem;      /* the italic elevation: Newsreader 14px */
+    --_datum: 10px;         /* the ▼ (Datum size 10): 10 wide, 9 tall */
+    --_ground: 7px;         /* the earth-hatch band under the ground line */
+    position: sticky; inset-block-start: calc(var(--bar) + var(--s-5));
+    display: grid; gap: var(--s-5);
+    padding-block-end: var(--s-3);
+  }
+
+  /* ── header ── */
+  .levels__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-4); color: var(--ink-2); }
+  .levels__no { color: var(--ink-2); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
+  .levels__total { white-space: nowrap; }
+
+  /* ── the building section ── */
+  .levels__section { position: relative; }
+  .levels__floors {
+    position: relative; list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; block-size: var(--_H);
+  }
+  /* the dashed alignment line (--dash-hidden 4 3, --line-2) through every floor down to the ground line */
+  .levels__floors::before {
+    content: ''; position: absolute; inset-block: 0; inset-inline-start: var(--_x); inline-size: var(--lw-dim);
+    background: repeating-linear-gradient(to bottom, var(--line-2) 0 4px, transparent 4px 7px);
+  }
+  .floor {
+    position: relative; flex: var(--_s) 1 0px;
+    min-block-size: var(--_floor-min); max-block-size: var(--_floor-max);
+  }
+  /* the floor tick: a level line from the alignment line toward its label */
+  .floor::before {
+    content: ''; position: absolute; inset-block-start: 0; inset-inline-start: calc(var(--_x) - var(--s-1));
+    inline-size: calc(var(--_tick) + var(--s-1)); border-block-start: var(--lw-object) solid var(--ink);
+    transition: border-color var(--dur-1) var(--ease-ui);
+  }
+  .floor__link {
+    display: block; position: relative; block-size: 100%;
+    padding-inline-start: var(--_lx); padding-inline-end: var(--s-1);
+    color: var(--ink); text-decoration: none;
+    /* the label's first line sits centred on the tick (her Issuu levels: caps label over an italic elevation) */
+    margin-block-start: calc(var(--fs-label) * -0.55);
+  }
+  /* the whole floor is the click target; the focus ring hugs the label + elevation */
+  .floor__link:focus-visible { outline: none; }
+  .floor__text { display: inline-block; vertical-align: top; }
+  .floor__link:focus-visible .floor__text { outline: 2px solid var(--focus); outline-offset: var(--s-1); }
+  .floor__label { display: block; line-height: 1.1; margin-block-end: 2px; transition: color var(--dur-1) var(--ease-ui); }
+  .floor__elev {
+    display: block; font-family: var(--font-serif); font-style: italic; font-size: var(--_elev); line-height: 1.1;
+    color: var(--ink-2); font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  @media (hover: hover) {
+    .floor__link:hover .floor__label { color: var(--rust-deep); }
+    .floor:has(.floor__link:hover)::before { border-color: var(--rust-deep); }
+  }
+  .floor.is-current .floor__label { color: var(--rust); }
+  .floor.is-current::before { border-color: var(--rust); }
+
+  /* the reading trace: a pencil hatch in the case accent, filled as far as this floor was read */
+  .floor__trace {
+    position: absolute; inset-block: 0; inset-inline-start: calc(var(--_x) - var(--_tw)); inline-size: var(--_tw);
+    background-image: var(--hatch-acc);
+    clip-path: inset(0 0 calc(100% - var(--t, 0) * 100%) 0);
+    pointer-events: none;
+  }
+
+  /* the base: a ground line (--lw-border) with an earth-hatch band below, labelled like a floor with the whole case
+     read, as an elevation (END +12:32) */
+  .levels__base {
+    position: relative; display: flex; align-items: baseline; gap: var(--s-2);
+    margin: 0; padding-inline-start: var(--_lx);
+    margin-block-start: calc(var(--fs-label) * -0.55);
+    color: var(--ink-3);
+  }
+  .levels__base::before {
+    content: ''; position: absolute; inset-block-start: calc(var(--fs-label) * 0.55); inset-inline-start: calc(var(--_x) - var(--_tw));
+    inline-size: calc(var(--_tw) + var(--_tick)); block-size: var(--_ground);
+    border-block-start: var(--lw-border) solid var(--ink);
+    background-image: var(--hatch-45);
+  }
+  .levels__base .t-label { color: var(--ink-3); line-height: 1.1; }
+  .levels__base .floor__elev { color: var(--ink-3); }
+
+  /* the datum ▼: "you are here", moved by levels.ts (transform only) */
+  .levels__datum {
+    position: absolute; inset-block-start: 0; inset-inline-start: 0;
+    display: none; color: var(--rust);
+    /* the ▼'s tip sits on the alignment line at y */
+    transform: translate3d(calc(var(--_x) - var(--_datum) / 2), calc(var(--_y, 0px) - var(--_datum) * .9), 0);
+    will-change: transform;
+  }
+  .levels__datum::after {
+    content: ''; position: absolute; inset-block-start: calc(var(--_datum) * .9); inset-inline-start: calc(var(--_datum) / 2);
+    inline-size: var(--_tick); border-block-start: var(--lw-object) solid var(--rust);
+  }
+  .levels__datum :global(.sym-datum) { display: block; }
+  :global(html.js) .levels__datum.is-live { display: block; }
+
+  /* ── View ── */
+  .rail__sub { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin: 0 0 var(--s-2); color: var(--ink-2); }
+  .rail__key {
+    display: inline-grid; place-items: center; min-inline-size: 20px; block-size: 20px; padding-inline: var(--s-1);
+    border: var(--lw-object) solid var(--line-3); border-radius: var(--r-1); color: var(--ink-2); background: var(--sheet);
+    font-size: var(--fs-code-sm); line-height: 1;
+  }
+  :global(html[data-keys='off']) .rail__key { display: none; }
+
+  /* ── Match line ── */
+  .rail__match {
+    display: grid; gap: var(--s-1); padding-block-start: var(--s-1);
+    color: var(--ink); text-decoration: none;
+  }
+  .rail__matchrule { margin-block-end: var(--s-1); }
+  .rail__matchrule :global(.sym-matchline) { color: var(--ink); }
+  .rail__matchsee { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
+  .rail__matcht { font-size: var(--fs-body-sm); line-height: 1.3; text-wrap: balance; transition: color var(--dur-1) var(--ease-ui); }
+  @media (hover: hover) {
+    .rail__match:hover .rail__matcht { color: var(--rust-deep); }
+  }
+  .rail__match :global(.icon) { transition: transform var(--dur-2) var(--ease-ui); }
+  @media (hover: hover) {
+    .rail__match:hover :global(.icon) { transform: translateX(2px); }
+  }
+
+  /* lg (1024–1279): the rail is 168px — the sheet number is already in the title bar */
+  @media (max-width: 1279.98px) {
+    .levels__sheet { display: none; }
+  }
+  @media (max-height: 640px) {
+    .rail__match { display: none; }
+  }
+  /* forced colours: hatches become none (base.css); the trace is drawn in the system highlight instead */
+  @media (forced-colors: active) {
+    .floor__trace { forced-color-adjust: none; background-color: Highlight; }
+    .levels__base::before { background-image: none; }
+  }
+  @media print { .rail { display: none; } }
 </style>

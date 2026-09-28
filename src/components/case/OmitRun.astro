@@ -1,37 +1,87 @@
 ---
 /**
- * OmitRun · OWNER: WP5 (P0 functional stub). Consecutive Plan-view omissions, coalesced into one counted break line
- * (SM5c): <div class="omit-run" data-omit-run><div class="omit-run__body">…</div><button class="breakline"
- * aria-expanded="false">BreakLine · "Omitted: 3 paragraphs · 1 figure" · Show</button></div>.
- * The body is visible in Section view; hidden in Plan view unless the run is open (base.css).
+ * OmitRun · WP5. Consecutive Plan-view omissions, coalesced into one counted break line (SPEC SM5c):
+ *
+ *   <div class="omit-run" data-omit-run>
+ *     <button class="breakline" aria-expanded="false" aria-controls="…">OMITTED: 3 PARAGRAPHS · 1 FIGURE ──⌇── SHOW</button>
+ *     <div class="omit-run__body" id="…">…her blocks…</div>
+ *   </div>
+ *
+ * Section view: the body shows, the break line is hidden (base.css). Plan view: the body is hidden until this run is
+ * opened (.is-open; Show ↔ Hide, scripts/case/planview.ts). The button comes FIRST (the disclosure pattern): restored
+ * blocks open below it, where the reader is looking. The run is transparent to the block rhythm (§6.1): it takes the
+ * spacing its first block would have had, and the block after it the spacing it would have after the run's last block.
+ * A run with nothing countable (only spacers) has no break line (label null).
  */
 import { chrome } from '../../data/chrome';
 import BreakLine from '../symbols/BreakLine.astro';
-interface Props { label: string }
-const { label } = Astro.props;
+interface Props { id: string; label: string | null }
+const { id, label } = Astro.props;
+const p = chrome.wp5.plan;
 ---
-<div class="omit-run" data-omit-run>
-  <div class="omit-run__body"><slot /></div>
-  <button type="button" class="breakline t-label ink-2" aria-expanded="false" data-js-only data-chrome data-show={chrome.wp5.plan.show} data-hide={chrome.wp5.plan.hide}>
-    <BreakLine /><span class="breakline__label">{label}</span><span class="breakline__act">{chrome.wp5.plan.show}</span>
-  </button>
+<div class:list={['omit-run', { 'omit-run--silent': !label }]} data-omit-run>
+  {label && (
+    <button type="button" class="breakline" aria-expanded="false" aria-controls={`${id}-body`} data-js-only data-chrome data-show={p.show} data-hide={p.hide}>
+      <span class="breakline__label t-label">{label}</span>
+      <BreakLine class="breakline__line" />
+      <span class="breakline__act t-label">{p.show}</span>
+    </button>
+  )}
+  <div class="omit-run__body" id={`${id}-body`}><slot /></div>
 </div>
-<script>
-  document.querySelectorAll<HTMLButtonElement>('.omit-run > .breakline').forEach((b) =>
-    b.addEventListener('click', () => {
-      const run = b.closest('.omit-run');
-      const open = !run?.classList.contains('is-open');
-      run?.classList.toggle('is-open', open);
-      b.setAttribute('aria-expanded', String(open));
-      const act = b.querySelector('.breakline__act');
-      if (act) act.textContent = (open ? b.dataset.hide : b.dataset.show) ?? '';
-    }),
-  );
-</script>
+
 <style>
-  .omit-run, .omit-run__body { grid-column: text-start / notes-end; display: grid; grid-template-columns: subgrid; }
-  .breakline { grid-column: text; display: grid; grid-template-columns: minmax(2rem, 1fr) auto auto; align-items: center; gap: var(--s-3); min-block-size: 44px; text-align: start; }
+  /* the run and its body are subgrids of the chapter, so her blocks keep their text | gap | notes rows */
+  .omit-run, .omit-run__body { grid-column: text-start / notes-end; display: grid; grid-template-columns: subgrid; min-inline-size: 0; }
+
+  .breakline {
+    grid-column: text;
+    display: grid; grid-template-columns: auto minmax(var(--s-6), 1fr) auto; align-items: center; gap: var(--s-3);
+    inline-size: 100%; min-block-size: 44px; padding-block: var(--s-1);
+    text-align: start; color: var(--ink-2);
+  }
+  .breakline__label { color: var(--ink-2); }
+  .breakline__line { color: var(--line-3); transition: color var(--dur-1) var(--ease-ui); }
+  .breakline__act { color: var(--rust); }
+  @media (hover: hover) {
+    .breakline:hover .breakline__line { color: var(--rust); }
+    .breakline:hover .breakline__act { color: var(--rust-deep); }
+  }
+  .omit-run.is-open > .breakline .breakline__line { color: var(--ink-2); }
+  /* an opened run in Plan view: the restored blocks hang from the break line */
+  :global(html[data-view='plan']) .omit-run.is-open > .omit-run__body { margin-block-start: var(--flow-m); }
+
+  /* ── the §6.1 rhythm, carried across the wrapper (Section view; same values as base.css) ── */
+  .omit-run__body > :global(.blk:first-child) { margin-block-start: 0; }
+  :global(.blk) + .omit-run, .omit-run + .omit-run { margin-block-start: var(--flow-m); }
+  :global(.blk) + .omit-run:has(> .omit-run__body > :global(.blk--h:first-child)) { margin-block-start: var(--flow-xl); }
+  :global(.blk) + .omit-run:has(> .omit-run__body > :global(.blk--h3:first-child)) { margin-block-start: var(--flow-l); }
+  :global(.blk) + .omit-run:has(> .omit-run__body > :global(.blk--lede:first-child)) { margin-block-start: var(--flow-s); }
+  :global(.blk) + .omit-run:has(> .omit-run__body > :global(:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split):first-child)) { margin-block-start: var(--flow-l); }
+  :global(.blk--lede) + .omit-run { margin-block-start: var(--flow-l); }
+  :global(:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split)) + .omit-run { margin-block-start: var(--flow-xl); }
+  :global(.section-mark) + .omit-run { margin-block-start: 0; }
+  .omit-run + :global(.blk) { margin-block-start: var(--flow-m); }
+  .omit-run + :global(.blk--h) { margin-block-start: var(--flow-xl); }
+  .omit-run + :global(.blk--h3) { margin-block-start: var(--flow-l); }
+  .omit-run + :global(.blk--lede) { margin-block-start: var(--flow-s); }
+  .omit-run + :global(:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split)) { margin-block-start: var(--flow-l); }
+  .omit-run:has(> .omit-run__body > :global(:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split):last-child)) + :global(.blk:not(.blk--h)) { margin-block-start: var(--flow-xl); }
+  .omit-run:has(> .omit-run__body > :global(.blk--lede:last-child)) + :global(.blk:not(.blk--h)) { margin-block-start: var(--flow-l); }
+
+  /* Plan view: a closed run is just its break line — spaced like a paragraph between kept blocks */
+  :global(html[data-view='plan']) .omit-run:not(.is-open) { margin-block-start: var(--flow-s); }
+  :global(html[data-view='plan']) .omit-run:not(.is-open) + :global(.blk) { margin-block-start: var(--flow-s); }
+  :global(html[data-view='plan']) .omit-run:not(.is-open) + :global(:is(.blk--h, .blk--h3)) { margin-block-start: var(--flow-l); }
+  :global(html[data-view='plan']) .omit-run--silent:not(.is-open) { margin: 0; }
+
   @media (max-width: 1279.98px) {
-    .omit-run, .omit-run__body { grid-column: text; display: block; }
+    .breakline { grid-column: text; }
+  }
+  /* print opens every run (base.css reverts the body to a block) and lays chapters out as plain blocks (print.css):
+     a subgrid with no grid parent falls back to implicit tracks and pushes her blocks into a stray column. On paper
+     the run and its blocks are plain blocks, whatever the chapter around them does. */
+  @media print {
+    .omit-run, .omit-run__body > :global(.blk) { display: block; }
   }
 </style>

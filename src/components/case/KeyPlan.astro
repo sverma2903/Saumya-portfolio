@@ -1,41 +1,222 @@
 ---
 /**
- * KeyPlan · OWNER: WP5 (P0 functional stub). The 60-second layer (SM5a): KEY PLAN · One line per level, verbatim;
- * a proportional strip (segments ∝ chapter minutes); one stop per chapter: her label, the italic elevation, ONE of her
- * sentences (lib/keyplan.ts; " · " joiners are chrome, aria-hidden) and "Go ↓" (aria-label "Go to <label>").
+ * KeyPlan · WP5. The 60-second layer, part 1 (SPEC SM5a): one verbatim line per level.
+ *
+ *   KEY PLAN · ONE LINE PER LEVEL, VERBATIM                                     A-101 · 6 LEVELS · ≈ 13 MIN
+ *   ▨▨▨|▨▨▨▨▨▨▨|▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨|▨▨▨▨▨▨▨▨▨▨▨▨|▨▨▨▨▨|▨▨▨        ← the key plan proper: the whole case as a strip,
+ *   01   02      03                04           05    06            segments ∝ minutes, the level you are in hatched
+ *   ─────────────────────────────────────────────────────────────     in the case accent (scripts/case/levels.ts)
+ *   01 OVERVIEW   02 EMPATHIZE   …        one stop per level: her label, the italic elevation, ONE of her sentences
+ *   ±00:00        +00:36                  (lib/keyplan.ts: a deterministic rule + audited overrides), "Go ↓"
+ *   R2's core …   I conducted …
+ *   GO ↓          GO ↓
+ *
+ * Columns: ≤ 6 levels sit in one row ≥ 1280 and wrap 3 + 3 at 768–1279; 7 levels (PFF) wrap 4 + 3 at every width
+ * ≥ 768 — seven equal columns would give her longest stop a 16–20-character measure (14–15 lines) even at 1440, while
+ * 4 + 3 sets it at 35–40 characters in the same height; a vertical list < 768.
+ * The level you are in (scripts/case/levels.ts) is hatched on the strip and carries an accent rule over its stop, so the
+ * two register; hovering a stop (or focusing its Go ↓) lights its segment, and a pointer can take a segment as a
+ * shortcut to its level (the Go ↓ links stay the keyboard and screen-reader control; the strip is aria-hidden).
+ * Words: her labels and sentences (data-v). Chrome: the title, sub-label, numbers, elevations, "Go ↓", " · " joiners.
  */
 import type { KeyStop } from '../../lib/keyplan';
 import { chrome, fill } from '../../data/chrome';
 import { rich } from '../../lib/rich';
-interface Props { stops: KeyStop[]; seconds: number[] }
-const { stops, seconds } = Astro.props;
+import { pad2, splitStat } from '../../lib/text';
+import Glyphs from '../symbols/Glyphs.astro';
+interface Props { stops: KeyStop[]; seconds: number[]; sheetNo: string; minutes: number }
+const { stops, seconds, sheetNo, minutes } = Astro.props;
 const k = chrome.wp5.keyPlan;
+const n = stops.length;
+const perRow = n <= 6 ? Math.ceil(n / 2) : 4;
+const lastRow = (Math.ceil(n / perRow) - 1) * perRow; // index of the first stop in the last row (768–1279)
+const oneRow = n <= 6; // ≥ 1280: every level in one row (7 levels keep 4 + 3)
+const total = seconds.reduce((a, s) => a + s, 0) || 1;
+const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0 ? [k.go, ''] : [k.go.slice(0, i), k.go.slice(i + 1)]; })();
 ---
-<section class="keyplan shell" aria-labelledby="keyplan-h">
-  <h2 id="keyplan-h" class="keyplan__h t-label-lg">{k.title} <span class="ink-2">· {k.sub}</span></h2>
-  <div class="keyplan__strip" aria-hidden="true">{seconds.map((s) => <span style={`flex-grow: ${s}`}></span>)}</div>
-  <ol class="keyplan__stops" role="list">
-    {stops.map((s) => (
-      <li class="keyplan__stop">
-        <p class="t-label" data-v>{s.label}</p>
-        <p class="keyplan__elev t-caption ink-2">{s.elev}</p>
-        <p class="keyplan__line t-body-sm">
-          {s.kind === 'html' && <span data-v set:html={rich(s.html)} />}
-          {s.kind === 'text' && <span data-v>{s.text}</span>}
-          {s.kind === 'parts' && s.parts?.map((p, i) => <>{i > 0 && <span class="ink-3" data-chrome aria-hidden="true"> · </span>}<span data-v>{p}</span></>)}
-          {s.kind === 'stat' && s.stat && <><span class="keyplan__stat" data-v set:html={s.stat.v} /> <span data-v set:html={s.stat.html} /></>}
-        </p>
-        <a class="t-label" href={s.anchor} aria-label={fill(k.goLabel, { label: s.label })}>{k.go}</a>
-      </li>
+<section class:list={['keyplan shell', { 'keyplan--one-row': oneRow }]} aria-labelledby="keyplan-h" data-keyplan style={`--_n: ${n}; --_row: ${perRow}`}>
+  <div class="keyplan__head">
+    <h2 id="keyplan-h" class="keyplan__h">
+      <span class="keyplan__title t-label-lg">{k.title}</span>
+      <span class="keyplan__sub t-label">{k.sub}</span>
+    </h2>
+    <p class="keyplan__meta t-code">{sheetNo} · <Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></p>
+  </div>
+
+  <div class="keyplan__strip" aria-hidden="true" data-kp-strip>
+    {seconds.map((s, i) => (
+      <span class="keyplan__seg" style={`flex-grow: ${s}; --_w: ${((s / total) * 100).toFixed(3)}%`} data-kp-seg={i}>
+        <span class="keyplan__segno t-code">{pad2(i + 1)}</span>
+      </span>
     ))}
+  </div>
+
+  <ol class="keyplan__stops" role="list">
+    {stops.map((s, i) => {
+      const stat = s.kind === 'stat' && s.stat ? splitStat(s.stat.v) : null;
+      return (
+        <li class:list={['keyplan__stop', { 'is-rowstart': i % perRow === 0, 'is-lastrow': i >= lastRow }]} data-kp-stop={i}>
+          <p class="keyplan__label">
+            <span class="keyplan__no t-code" aria-hidden="true">{pad2(i + 1)}</span>
+            <span class="t-label" data-v>{s.label}</span>
+          </p>
+          <p class="keyplan__elev">{s.elev}</p>
+          <p class="keyplan__line">
+            {s.kind === 'html' && s.html && <span data-v set:html={rich(s.html)} />}
+            {s.kind === 'text' && <span data-v>{s.text}</span>}
+            {s.kind === 'parts' && s.parts?.map((p, j) => (
+              <>{j > 0 && <span class="keyplan__join" aria-hidden="true" data-chrome>{'\u00A0· '}</span>}<span data-v>{p}</span></>
+            ))}
+            {s.kind === 'stat' && s.stat && (
+              <>
+                <span class:list={['keyplan__stat', { 'keyplan__stat--word': !stat }]} data-v set:html={s.stat.v} />
+                <span class="keyplan__statl" data-v set:html={s.stat.html} />
+              </>
+            )}
+          </p>
+          <a class="keyplan__go t-label" href={s.anchor} aria-label={fill(k.goLabel, { label: s.label })} data-level-link={i}>
+            <span>{goWord}</span>{goArrow && <span class="keyplan__arrow" aria-hidden="true">{goArrow}</span>}
+          </a>
+        </li>
+      );
+    })}
   </ol>
 </section>
+
 <style>
-  .keyplan { padding-block: var(--s-6); }
-  .keyplan__h { margin-block-end: var(--s-3); }
-  .keyplan__strip { display: flex; gap: 2px; block-size: 10px; margin-block-end: var(--s-4); }
-  .keyplan__strip span { background: var(--hatch-45); outline: var(--lw-object) solid var(--line-2); outline-offset: -1px; }
-  .keyplan__stops { list-style: none; padding: 0; display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
-  .keyplan__stop { display: grid; gap: var(--s-2); align-content: start; border-block-start: var(--lw-object) solid var(--line-2); padding-block-start: var(--s-2); }
-  .keyplan__stat { font-size: 1.5rem; font-weight: 300; }
+  .keyplan {
+    --_strip: 10px;
+    padding-block: var(--s-5) 0;
+  }
+  @media (min-width: 1024px) { .keyplan { padding-block-start: var(--s-7); } }
+  .keyplan__head {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-5);
+    padding-block-end: var(--s-3);
+  }
+  .keyplan__h { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); margin: 0; font: inherit; }
+  .keyplan__title { color: var(--ink); }
+  .keyplan__sub { color: var(--ink-2); text-transform: none; letter-spacing: .02em; font-size: var(--fs-label-lg); font-weight: var(--wt-ui); }
+  .keyplan__meta { margin: 0; color: var(--ink-2); }
+
+  /* ── the strip: the whole case drawn as a graphic scale in minutes (alternate levels filled, like the 0–50 M bar
+     on the cover sheet), a miniature of the Levels section; the level you are in is hatched in the case accent ── */
+  .keyplan__strip {
+    display: flex; block-size: var(--_strip);
+    border: var(--lw-object) solid var(--ink);
+    background: var(--sheet);
+  }
+  .keyplan__seg {
+    position: relative; flex-basis: 0; min-inline-size: 0;
+    transition: background-color var(--dur-2) var(--ease-ui);
+  }
+  /* a pointer shortcut to the level (levels.ts): the hit area takes in the segment's number below the strip */
+  :global(html.js[data-case]) .keyplan__seg { cursor: pointer; }
+  .keyplan__seg::before { content: ''; position: absolute; inset: calc(-1 * var(--s-2)) 0 calc(-1 * var(--s-6)); }
+  .keyplan__seg:nth-child(odd) { background-color: var(--ink); }
+  .keyplan__seg:is(.is-current, .is-hover, .is-focus) { background-color: var(--acc-soft); background-image: var(--hatch-acc); }
+  .keyplan__seg:is(.is-current, .is-hover, .is-focus)::after {
+    content: ''; position: absolute; inset: calc(-1 * var(--lw-object) - 1px) 0; pointer-events: none;
+    border-block: var(--lw-cut) solid var(--acc);
+  }
+  .keyplan__segno {
+    position: absolute; inset-block-start: calc(100% + var(--s-2)); inset-inline-start: 0;
+    font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm); color: var(--ink-3);
+    line-height: 1;
+  }
+  .keyplan__seg:is(.is-current, .is-hover, .is-focus) .keyplan__segno { color: var(--acc); font-weight: var(--wt-code); }
+
+  /* ── the stops ── */
+  .keyplan__stops {
+    list-style: none; margin: 0; padding: 0;
+    margin-block-start: calc(var(--s-5) + var(--s-3));
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .keyplan__stop {
+    position: relative;
+    display: flex; flex-direction: column; gap: var(--s-1);
+    padding-block: var(--s-4) var(--s-3);
+    border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  /* the level you are in: an accent rule over the stop's head, registering with its hatched segment on the strip */
+  .keyplan__stop::before {
+    content: ''; position: absolute; inset-inline: 0; inset-block-start: calc(-1 * var(--lw-border));
+    block-size: var(--lw-cut); background: var(--acc);
+    transform: scaleX(0); transform-origin: left;
+  }
+  .keyplan__stop:is(.is-current, .is-hover, .is-focus)::before { transform: none; }
+  /* only a pointer draws it across; keyboard focus and the reading position set it instantly (motion law 1) */
+  .keyplan__stop.is-hover::before { transition: transform var(--dur-3) var(--ease-pen); }
+  .keyplan__label { display: flex; align-items: baseline; gap: var(--s-2); margin: 0; color: var(--ink); }
+  .keyplan__no { color: var(--ink-3); font-size: var(--fs-code-sm); transition: color var(--dur-1) var(--ease-ui); }
+  .keyplan__stop:is(.is-current, .is-hover, .is-focus) .keyplan__no { color: var(--acc); font-weight: var(--wt-code); }
+  .keyplan__elev {
+    margin: 0; font-style: italic; font-size: var(--fs-caption); line-height: 1.2; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .keyplan__line {
+    margin: var(--s-2) 0 0; font-size: var(--fs-body-sm); line-height: 1.45; color: var(--ink);
+    text-wrap: pretty; hyphens: manual;
+  }
+  .keyplan__join { color: var(--clay); }
+  .keyplan__stat { font-size: var(--fs-lede); font-weight: var(--wt-stat); line-height: 1; letter-spacing: var(--tr-stat); font-variant-numeric: tabular-nums; margin-inline-end: var(--s-1); }
+  .keyplan__go {
+    align-self: flex-start; margin-block-start: auto;
+    display: inline-flex; align-items: center; gap: var(--s-1);
+    min-block-size: 32px; padding-block-start: var(--s-2);
+    color: var(--ink-2); text-decoration: none;
+  }
+  .keyplan__arrow { font-family: var(--font-sans); transition: transform var(--dur-2) var(--ease-ui); }
+  @media (hover: hover) {
+    .keyplan__go:hover { color: var(--rust-deep); }
+    .keyplan__go:hover .keyplan__arrow { transform: translateY(2px); }
+  }
+
+  /* print: the key plan is one unit (never parted from its strip), its strip is drawing (printed without "background
+     graphics"), and paper has no reader: the "you are here" states stay on screen */
+  @media print {
+    .keyplan { break-inside: avoid; }
+    .keyplan__strip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus) { background-color: transparent; background-image: none; }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus):nth-child(odd) { background-color: var(--ink); }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus)::after, .keyplan__stop::before { display: none; }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus) .keyplan__segno,
+    .keyplan__stop:is(.is-current, .is-hover, .is-focus) .keyplan__no { color: var(--ink-3); font-weight: var(--wt-code-sm); }
+  }
+
+  /* forced colours: the scale keeps its alternate fills, the level you are in is the system highlight */
+  @media (forced-colors: active) {
+    .keyplan__seg { forced-color-adjust: none; background-color: Canvas; }
+    .keyplan__seg:nth-child(odd) { background-color: CanvasText; }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus) { background-color: Highlight; background-image: none; }
+    .keyplan__seg:is(.is-current, .is-hover, .is-focus)::after { border-color: Highlight; }
+    .keyplan__stop::before { background: Highlight; }
+    .keyplan__segno { forced-color-adjust: auto; }
+  }
+
+  /* phones: a vertical list — number + label with the elevation on the right, then her sentence */
+  @media (max-width: 767.98px) {
+    .keyplan__segno { display: none; }
+    .keyplan__stops { margin-block-start: var(--s-5); }
+    .keyplan__stop { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-3); padding-block: var(--s-4); }
+    .keyplan__elev { align-self: baseline; }
+    .keyplan__line, .keyplan__go { grid-column: 1 / -1; }
+  }
+  /* 768–1279: ≤ 4 per row (6 levels → 3 + 3, PFF 4 + 3); rows are ruled by the full rows above them and the grid is
+     closed by one full-width rule, so a short last row (PFF) never leaves its rule stopping short; ≥ 1280: one row */
+  @media (min-width: 768px) {
+    .keyplan__stops {
+      grid-template-columns: repeat(var(--_row), minmax(0, 1fr));
+      border-block-end: var(--lw-object) solid var(--line-2);
+    }
+    .keyplan__stop { padding-inline: var(--s-4); border-inline-start: var(--lw-object) solid var(--line-2); }
+    .keyplan__stop.is-lastrow { border-block-end: 0; }
+    .keyplan__stop.is-rowstart { border-inline-start: 0; padding-inline-start: 0; }
+  }
+  @media (min-width: 1280px) {
+    .keyplan--one-row .keyplan__stops { grid-template-columns: repeat(var(--_n), minmax(0, 1fr)); border-block-end: 0; }
+    .keyplan--one-row .keyplan__stop { border-block-end: 0; padding-block-end: 0; }
+    .keyplan--one-row .keyplan__stop.is-rowstart { border-inline-start: var(--lw-object) solid var(--line-2); padding-inline-start: var(--s-4); }
+    .keyplan--one-row .keyplan__stop:first-child { border-inline-start: 0; padding-inline-start: 0; }
+  }
 </style>

@@ -1,17 +1,31 @@
 ---
 /**
- * CaseHeader · OWNER: WP5 (P0 functional stub). The 6-second layer (§5.2.1): back link, her eyebrow (--acc), her title
- * (h1), the deck (her description; for orbit/educademy the index line), the title block, the primary CTA (first `cta`
- * in the first section; PFF's second CTA as a text link), the View toggle, and the 16:10 cover plate
- * (view-transition-name plate-<slug>, fetchpriority high, bubble 0 / A-10x · COVER).
+ * CaseHeader · WP5. The 6-second layer of a sheet (SPEC §5.2.1).
+ *
+ *   ← A-000 DRAWING INDEX
+ *   PERSONAL PROJECT                         ┌──────────────────────────────┐
+ *   Cloudflare R2 Object                     │ cover plate 16:10 on its stage│  view-transition-name: plate-<slug>
+ *   Storage Redesign                         └──────────────────────────────┘
+ *   Redesigned R2's configuration, …         ⓪ A-101 · COVER
+ *   ┌ title block ┐
+ *   [ Jump to Prototype ↗ ]  ( Section · ≈ 13 min | Plan · ≈ 5 min )
+ *
+ * DOM order is the phone order (back · eyebrow · h1 · deck · PLATE · title block · CTA · View), so the image arrives
+ * in the first scroll on phones and reading/focus order never jumps; ≥ 1024 the plate is placed in the right-hand
+ * track of the same grid (cols 6–12 of the shell), top-aligned with the eyebrow.
+ * Words: her eyebrow, title, deck (her description; orbit/educademy: their index line, sheets.ts deckOf), her meta,
+ * her CTA labels. Chrome: the back link, "Cover", the title block keys we add (Rev., Sheet) — chrome.wp5.case.
+ * The primary CTA is the first `cta` block of her first section (CSBS, Orbit and Educademy have none); PFF's second
+ * CTA ("Outcome" → #highlights) is a secondary text link.
  */
 import type { CaseStudy } from '../../lib/blocks';
 import type { CaseReading } from '../../lib/reading';
 import type { CoverPlate } from '../../data/sheets';
 import { plateLayers } from '../../data/sheets';
-import { chrome } from '../../data/chrome';
+import { chrome, fill } from '../../data/chrome';
 import { alt } from '../../data/alt';
 import { externalAttrs, isExternal } from '../../lib/rich';
+import { keepCompounds } from '../../lib/typeset';
 import Plate from '../media/Plate.astro';
 import Bubble from '../symbols/Bubble.astro';
 import Icon from '../symbols/Icon.astro';
@@ -19,38 +33,134 @@ import TitleBlock from './TitleBlock.astro';
 import ViewToggle from './ViewToggle.astro';
 interface Props { cs: CaseStudy; sheetNo: string; reading: CaseReading; deck: string; cover: CoverPlate }
 const { cs, sheetNo, reading, deck, cover } = Astro.props;
+const c = chrome.wp5.case;
 const firstCta = cs.sections[0]?.blocks.find((b) => b.t === 'cta');
 const ctas = firstCta && firstCta.t === 'cta' ? firstCta.items : [];
+const [primary, secondary] = ctas;
 const layers = plateLayers(cover);
 const top = cover.layers[cover.layers.length - 1].file;
 ---
-<header class="case-head shell">
-  <a class="case-head__back t-label" href="/#index"><Icon name="arrow-left" size={14} /> {chrome.wp5.case.back}</a>
-  <div class="case-head__grid">
-    <div class="case-head__text">
-      <p class="case-head__eyebrow t-label-lg" data-v>{cs.eyebrow}</p>
-      <h1 class="t-title" data-v>{cs.title}</h1>
-      <p class="case-head__deck t-deck ink-2" data-v>{deck}</p>
-      <TitleBlock cs={cs} sheetNo={sheetNo} reading={reading} />
-      <div class="case-head__actions">
-        {ctas[0] && <a class="btn" href={ctas[0].href} {...externalAttrs(ctas[0].href)} data-v>{ctas[0].label}<Icon name={isExternal(ctas[0].href) ? 'arrow-up-right' : 'arrow-down'} /></a>}
-        {ctas[1] && <a class="case-head__second t-label" href={ctas[1].href} {...externalAttrs(ctas[1].href)} data-v>{ctas[1].label}</a>}
-        <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} />
-      </div>
-    </div>
+<header class="case-head" data-case-head>
+  <div class="case-head__grid shell">
+    <a class="case-head__back t-label" href="/#index"><Icon name="arrow-left" size={14} /><span>{c.back}</span></a>
+    <p class="case-head__eyebrow t-label-lg" data-v>{cs.eyebrow}</p>
+    <h1 class:list={['case-head__title', 't-title', { 'case-head__title--long': cs.title.length > 44 }]} data-v set:html={keepCompounds(cs.title)} />
+    <p class="case-head__deck t-deck" data-v>{deck}</p>
     <figure class="case-head__plate">
-      <Plate layers={layers} stage={cover.stage} aspect={cover.aspect} vt={`plate-${cs.slug}`} priority="high" dims alt={alt(top)} frame="bare" />
-      <figcaption class="case-head__cap t-label ink-2"><Bubble n="0" sheet={sheetNo} size="sm" /> {chrome.wp5.case.cover}</figcaption>
+      <Plate
+        layers={layers}
+        stage={cover.stage}
+        aspect={cover.aspect}
+        vt={`plate-${cs.slug}`}
+        priority="high"
+        dims
+        alt={alt(top)}
+        frame="bare"
+        fig={{ no: fill(c.coverFig, { no: sheetNo }) }}
+        class="case-head__cover"
+      />
+      <figcaption class="case-head__cap">
+        <Bubble n="0" sheet={sheetNo} />
+        <span class="case-head__cap-t t-label">{c.cover}</span>
+      </figcaption>
     </figure>
+    <TitleBlock cs={cs} sheetNo={sheetNo} reading={reading} />
+    <div class="case-head__actions">
+      {primary && (
+        <a class="btn case-head__cta" href={primary.href} {...externalAttrs(primary.href)}>
+          <span data-v>{primary.label}</span><Icon name={isExternal(primary.href) ? 'arrow-up-right' : 'arrow-down'} />
+        </a>
+      )}
+      {secondary && (
+        <a class="case-head__second" href={secondary.href} {...externalAttrs(secondary.href)} data-cite-link={isExternal(secondary.href) ? undefined : ''}>
+          <span data-v>{secondary.label}</span><Icon name={isExternal(secondary.href) ? 'arrow-up-right' : 'arrow-down'} size={14} />
+        </a>
+      )}
+      <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} class="case-head__view" />
+    </div>
   </div>
 </header>
+
 <style>
-  .case-head { padding-block: var(--s-6) var(--s-8); }
-  .case-head__back { display: inline-flex; align-items: center; gap: var(--s-1); text-decoration: none; margin-block-end: var(--s-6); }
-  .case-head__grid { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
-  @media (max-width: 1023.98px) { .case-head__grid { grid-template-columns: minmax(0, 1fr); } }
+  /* ── the grid: phones stack in DOM order; ≥ 1024 the text takes cols 1–5 of the shell and the plate cols 6–12 ── */
+  .case-head { padding-block: var(--s-4) var(--s-7); }
+  .case-head__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .case-head__back {
+    justify-self: start;
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    min-block-size: 44px; margin-block-end: var(--s-4);
+    color: var(--ink-2); text-decoration: none;
+  }
+  .case-head__back :global(.icon) { transition: transform var(--dur-2) var(--ease-ui); }
+  @media (hover: hover) {
+    .case-head__back:hover { color: var(--rust-deep); }
+    .case-head__back:hover :global(.icon) { transform: translateX(calc(-1 * var(--s-1))); }
+  }
+
   .case-head__eyebrow { color: var(--acc); margin-block-end: var(--s-3); }
-  .case-head__deck { margin-block-start: var(--s-4); }
-  .case-head__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); }
-  .case-head__cap { display: flex; align-items: center; gap: var(--s-2); margin-block-start: var(--s-2); }
+  .case-head__title { max-inline-size: 16ch; text-wrap: balance; }
+  /* a long title (PFF's is 63 characters) steps the title token down a size, so it sets in three or four lines, not
+     five, beside the plate */
+  .case-head__title--long { font-size: calc(var(--fs-title) * .82); line-height: 1.04; max-inline-size: 18ch; }
+  .case-head__deck { color: var(--ink-2); margin-block-start: var(--s-4); max-inline-size: 30em; text-wrap: pretty; }
+
+  .case-head__plate { margin-block: var(--s-6) 0; min-inline-size: 0; }
+  /* the plate sits on the paper like a print: its stage runs to the edge, a hairline and the plate shadow lift it */
+  .case-head__plate :global(.case-head__cover) { box-shadow: var(--shadow-plate); outline: var(--lw-object) solid var(--line-1); }
+  .case-head__cap {
+    display: flex; align-items: center; gap: var(--s-3);
+    margin-block-start: var(--s-3); color: var(--ink-2);
+  }
+  .case-head__cap-t { color: var(--ink-2); }
+
+  /* actions: her CTA(s) on one line, then the View toggle as a strip the width of the title block */
+  .case-head__actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5);
+    margin-block-start: var(--s-5);
+  }
+  .case-head__actions > :global(.case-head__view) { flex: 1 0 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .case-head__cta { gap: var(--s-2); }
+  .case-head__cta :global(.icon) { transition: transform var(--dur-2) var(--ease-ui); }
+  @media (hover: hover) {
+    .case-head__cta:hover :global(.icon--arrow-up-right) { transform: translate(2px, -2px); }
+    .case-head__cta:hover :global(.icon--arrow-down) { transform: translateY(2px); }
+  }
+  .case-head__second {
+    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 44px;
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
+    font-variation-settings: var(--wdth-label); letter-spacing: .04em;
+    color: var(--ink);
+  }
+  @media (hover: hover) {
+    .case-head__second:hover { color: var(--rust-deep); }
+  }
+
+  /* tablets: one column, but text keeps a reading measure, and the title block, her CTA and the View strip share one
+     drawing-sheet width (their right edges align, as they do beside the plate on desktop) */
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .case-head { --_sheet: 36rem; }
+    .case-head__grid > :global(.titleblock), .case-head__actions { max-inline-size: var(--_sheet); }
+  }
+
+  @media (min-width: 1024px) {
+    .case-head { padding-block: var(--s-4) var(--s-7); }
+    .case-head__grid {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      column-gap: var(--g);
+      /* the last row absorbs the plate when it is taller than the text, so the text rows never stretch */
+      grid-template-rows: auto auto auto auto auto auto 1fr;
+    }
+    .case-head__eyebrow, .case-head__title, .case-head__deck, .case-head__actions, .case-head__grid > :global(.titleblock) { grid-column: 1; }
+    .case-head__back { grid-column: 1 / -1; }
+    .case-head__plate { grid-column: 2; grid-row: 2 / -1; margin: 0; }
+    .case-head__title { max-inline-size: none; }
+    .case-head__deck { max-inline-size: none; }
+  }
+  @media (min-width: 1280px) {
+    .case-head__grid { column-gap: calc(var(--g) * 2); }
+  }
 </style>

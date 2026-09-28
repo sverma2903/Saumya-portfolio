@@ -1,44 +1,175 @@
 ---
 /**
- * DecisionSchedule · OWNER: WP5 (P0 functional stub). SM5b: a <table> NO. / CONSIDERED / DECIDED (↳) / LEVEL; every
- * cell verbatim; LEVEL is her section label linking to the source block (first block containing `decided`, else
- * `considered`; lib/verbatim.ts findBlock). Cloudflare D-04 lists her three bold lead-ins.
+ * DecisionSchedule · WP5. The 60-second layer, part 2 (SPEC SM5b): a drafting schedule of what she considered and
+ * what she decided, in her words, each linked to its source.
+ *
+ *   DECISION SCHEDULE · VERBATIM, LINKED TO SOURCE
+ *   NO.    CONSIDERED                         DECIDED                               LEVEL
+ *   D-01   Looking at how Cloudflare …        ↳ The proposed flow condenses …       IDEATE ↓
+ *   D-04   My first instinct was …            ↳ Administrators need … changes:      IDEATE ↓
+ *                                               · Surfacing the S3 API endpoint
+ *
+ * A real <table> (th scope) with explicit table roles, so the phone layout (stacked cards: D-01 · LEVEL ↓,
+ * considered, ↳ decided) keeps its semantics when the rows stop being table rows. Every cell is a contiguous
+ * verbatim substring (data/decisions.ts, test-enforced); no evidence chips, no interpretive labels. The LEVEL link
+ * lands on the first block holding the decided sentence (else the considered one) and brackets it (scripts/case/cite.ts).
  */
 import type { CaseStudy } from '../../lib/blocks';
-import type { Decision } from '../../data/decisions';
-import { THREE_CHANGES } from '../../data/decisions';
+import { resolveDecisions } from '../../data/decisions';
 import { chrome, fill } from '../../data/chrome';
-import { findBlock } from '../../lib/verbatim';
 import { pad2 } from '../../lib/text';
 import Icon from '../symbols/Icon.astro';
-interface Props { cs: CaseStudy; rows: Decision[] }
-const { cs, rows } = Astro.props;
+interface Props { cs: CaseStudy }
+const { cs } = Astro.props;
 const d = chrome.wp5.decisions;
-const resolved = rows.map((row) => ({ row, at: findBlock(cs, row.decided) ?? findBlock(cs, row.considered) }));
+const rows = resolveDecisions(cs);
 ---
-<section class="decisions shell" aria-labelledby="decisions-h">
-  <h2 id="decisions-h" class="t-label-lg">{d.title} <span class="ink-2">· {d.sub}</span></h2>
-  <table class="decisions__t">
-    <thead class="t-label ink-2">
-      <tr><th scope="col">{d.no}</th><th scope="col">{d.considered}</th><th scope="col">{d.decided}</th><th scope="col">{d.level}</th></tr>
-    </thead>
-    <tbody>
-      {resolved.map(({ row, at }, i) => (
-        <tr>
-          <th scope="row" class="t-code">{fill(d.rowNo, { nn: pad2(i + 1) })}</th>
-          <td class="t-body-sm" data-v>{row.considered}</td>
-          <td class="t-body-sm">
-            <span class="rust" data-chrome><Icon name="return" size={14} /></span> <span data-v>{row.decided}</span>
-            {row.plus === 'three-changes' && <ul>{THREE_CHANGES.map((x) => <li data-v>{x}</li>)}</ul>}
-          </td>
-          <td class="t-label">{at && <a href={`#${at.id}`} data-v>{at.sectionLabel}</a>}</td>
+{rows.length > 0 && (
+  <section class="decisions shell" aria-labelledby="decisions-h" data-decisions>
+    <div class="decisions__head">
+      <h2 id="decisions-h" class="decisions__h">
+        <span class="decisions__title t-label-lg">{d.title}</span>
+        <span class="decisions__sub">{d.sub}</span>
+      </h2>
+    </div>
+    <table class="decisions__t" role="table">
+      <thead class="decisions__thead" role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader" class="decisions__no t-label">{d.no}</th>
+          <th scope="col" role="columnheader" class="t-label">{d.considered}</th>
+          <th scope="col" role="columnheader" class="decisions__dh t-label">{d.decided}</th>
+          <th scope="col" role="columnheader" class="decisions__lv t-label">{d.level}</th>
         </tr>
-      ))}
-    </tbody>
-  </table>
-</section>
+      </thead>
+      <tbody role="rowgroup">
+        {rows.map((row) => {
+          const no = fill(d.rowNo, { nn: pad2(row.no) });
+          return (
+            <tr class="decisions__row" role="row">
+              <th scope="row" role="rowheader" class="decisions__no t-code">{no}</th>
+              <td role="cell" class="decisions__c">
+                <p data-v>{row.considered}</p>
+              </td>
+              <td role="cell" class="decisions__d">
+                <span class="decisions__ret" aria-hidden="true" data-chrome><Icon name="return" size={16} /></span>
+                <p data-v>{row.decided}</p>
+                {row.plusItems.length > 0 && (
+                  <ul class="decisions__plus" role="list">
+                    {row.plusItems.map((x) => <li data-v>{x}</li>)}
+                  </ul>
+                )}
+              </td>
+              <td role="cell" class="decisions__lv">
+                {row.anchor && (
+                  <a class="decisions__lk t-label" href={`#${row.anchor.id}`} data-cite-link aria-label={fill(d.source, { label: row.anchor.sectionLabel, no })}>
+                    <span data-v>{row.anchor.sectionLabel}</span><span class="decisions__arrow" aria-hidden="true">↓</span>
+                  </a>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </section>
+)}
+
 <style>
-  .decisions { padding-block: var(--s-6); overflow-x: auto; }
-  .decisions__t { inline-size: 100%; margin-block-start: var(--s-3); }
-  .decisions__t th, .decisions__t td { text-align: start; vertical-align: top; padding: var(--s-2) var(--s-3); border-block-start: var(--lw-object) solid var(--line-2); }
+  .decisions {
+    --_ret: var(--s-6);    /* the hanging gutter for ↳ in the DECIDED column */
+    --_no: var(--s-9);     /* NO. column: "D-01" and its gutter */
+    --_lv: var(--s-10);    /* LEVEL column: her longest label ("Reflection ↓") on one line */
+    padding-block: var(--s-8) 0;
+  }
+  .decisions__head { padding-block-end: var(--s-3); }
+  .decisions__h { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); margin: 0; font: inherit; }
+  .decisions__title { color: var(--ink); }
+  .decisions__sub {
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-ui); font-variation-settings: var(--wdth-label);
+    letter-spacing: .02em; color: var(--ink-2);
+  }
+
+  /* ── the schedule (≥ 768): a ruled table ── */
+  .decisions__t { inline-size: 100%; border-block-start: var(--lw-border) solid var(--ink); }
+  .decisions__t th, .decisions__t td { text-align: start; vertical-align: top; font-weight: inherit; }
+  .decisions__thead th {
+    padding: var(--s-3) var(--s-4) var(--s-2) 0; color: var(--ink-2);
+    border-block-end: var(--lw-object) solid var(--ink);
+  }
+  .decisions__row > th, .decisions__row > td {
+    padding: var(--s-4) var(--s-5) var(--s-4) 0;
+    border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .decisions__row:last-child > th, .decisions__row:last-child > td { border-block-end: var(--lw-border) solid var(--ink); }
+  .decisions__no { inline-size: var(--_no); white-space: nowrap; }
+  .decisions__row > th.decisions__no { color: var(--ink-2); padding-block-start: calc(var(--s-4) + var(--s-1)); }
+  .decisions__c p, .decisions__d p { margin: 0; font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); text-wrap: pretty; }
+  .decisions__c p { color: var(--ink-2); }
+  .decisions__d p { color: var(--ink); }
+  /* ↳ hangs in the column's own gutter so her decided text keeps one left edge */
+  .decisions__row > td.decisions__d, .decisions__thead th.decisions__dh { padding-inline-start: var(--_ret); }
+  .decisions__d { position: relative; }
+  .decisions__ret { position: absolute; inset-inline-start: var(--s-2); inset-block-start: calc(var(--s-4) + 1px); color: var(--rust); }
+  .decisions__plus { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+  .decisions__plus li {
+    position: relative; padding-inline-start: var(--s-5);
+    font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
+  }
+  /* her Issuu leader: a clay hairline ending in a dot */
+  .decisions__plus li::before {
+    content: ''; position: absolute; inset-inline-start: 0; inset-block-start: .8em;
+    inline-size: var(--s-3); border-block-start: var(--lw-object) solid var(--clay);
+  }
+  .decisions__plus li::after {
+    content: ''; position: absolute; inset-inline-start: calc(var(--s-3) - 2px); inset-block-start: calc(.8em - 2.5px);
+    inline-size: 5px; block-size: 5px; border-radius: var(--r-dot); background: var(--clay);
+  }
+  .decisions__lv { inline-size: var(--_lv); }
+  .decisions__row > td.decisions__lv, .decisions__thead th.decisions__lv { padding-inline-end: 0; }
+  .decisions__lk {
+    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 32px; margin-block-start: -6px;
+    color: var(--ink); text-decoration: none; white-space: nowrap;
+  }
+  .decisions__arrow { font-family: var(--font-sans); color: var(--ink-2); transition: transform var(--dur-2) var(--ease-ui); }
+  @media (hover: hover) {
+    .decisions__lk:hover { color: var(--rust-deep); }
+    .decisions__lk:hover .decisions__arrow { color: currentColor; transform: translateY(2px); }
+  }
+
+  @media (min-width: 1024px) {
+    .decisions__c { inline-size: 42%; }
+  }
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .decisions { --_no: var(--s-8); }
+  }
+
+  /* print (a sheet ≈ 180 mm wide): considered and decided share the width, the LEVEL cell is just her label (a page
+     cannot be followed with ↓), and the schedule never falls into the phone cards */
+  @media print {
+    .decisions { --_no: var(--s-8); --_lv: var(--s-9); }
+    /* fixed layout: NO. and LEVEL take their widths from the head row, CONSIDERED and DECIDED share the rest evenly */
+    .decisions__t { table-layout: fixed; }
+    .decisions__c { inline-size: auto; }
+    .decisions__arrow { display: none; }
+  }
+
+  /* ── phones: stacked cards — D-01 · LEVEL ↓, considered, ↳ decided (table roles keep the semantics) ── */
+  @media screen and (max-width: 767.98px) {
+    .decisions { --_ret: var(--s-5); padding-block-start: var(--s-7); }
+    .decisions__t, .decisions__t tbody, .decisions__row, .decisions__row > th, .decisions__row > td { display: block; }
+    .decisions__thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .decisions__row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'no lv' 'c c' 'd d';
+      padding-block: var(--s-4) var(--s-5); border-block-end: var(--lw-object) solid var(--line-2);
+    }
+    .decisions__row:last-child { border-block-end: var(--lw-border) solid var(--ink); }
+    .decisions__row > th, .decisions__row > td,
+    .decisions__row:last-child > th, .decisions__row:last-child > td { padding: 0; border: 0; inline-size: auto; }
+    .decisions__row > th.decisions__no { grid-area: no; align-self: center; padding: 0; }
+    .decisions__row > td.decisions__lv { grid-area: lv; }
+    .decisions__lk { margin: 0; }
+    .decisions__row > td.decisions__c { grid-area: c; margin-block-start: var(--s-3); }
+    .decisions__row > td.decisions__d { grid-area: d; margin-block-start: var(--s-3); padding-inline-start: var(--_ret); }
+    .decisions__ret { inset-inline-start: 0; inset-block-start: 2px; }
+  }
 </style>

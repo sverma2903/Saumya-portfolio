@@ -1,32 +1,103 @@
 ---
 /**
- * ViewToggle · OWNER: WP5 (P0 functional stub). Section · full text / Plan · bold only, each with its minutes
- * (SM5c). role="radiogroup" with two role="radio" buttons; persisted via core/prefs (sv:view); `V` key (WP5);
- * hidden without JS (data-js-only). Appears in the header, the Levels rail and the drawer.
+ * ViewToggle · WP5. Section · full text / Plan · bold only, each with its minutes (SPEC SM5c).
+ * A radiogroup of two role="radio" buttons (roving tabindex, arrows move and select, Space/Enter select); hidden
+ * without JS (data-js-only). Used in the case header, the Levels rail (variant "stack") and WP1's drawer
+ * (class "drawer__view"). Behaviour lives in scripts/case/planview.ts, which binds every [data-view-value] on the
+ * page (so this component renders no <script> of its own — a script rendered between blocks would break the
+ * block rhythm). The checked state is drawn from html[data-view] (set before first paint by the head script), so
+ * the control never flashes the wrong state; aria-checked is synced by planview.ts.
+ * Props: { minutes, planMinutes, class?, variant?: 'inline' | 'stack' }.
  */
 import Glyphs from '../symbols/Glyphs.astro';
 import { chrome, fill } from '../../data/chrome';
-interface Props { minutes: number; planMinutes: number; class?: string }
-const { minutes, planMinutes, class: cls } = Astro.props;
+interface Props { minutes: number; planMinutes: number; class?: string; variant?: 'inline' | 'stack' }
+const { minutes, planMinutes, class: cls, variant = 'inline' } = Astro.props;
 const v = chrome.wp5.view;
+const split = (s: string) => {
+  const i = s.indexOf(' · ');
+  return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i + 3)];
+};
+const opts = [
+  { value: 'section', parts: split(v.section), m: minutes },
+  { value: 'plan', parts: split(v.plan), m: planMinutes },
+] as const;
 ---
-<div class:list={['viewtoggle', 't-label', cls]} role="radiogroup" aria-label={v.label} data-js-only data-viewtoggle>
-  <button type="button" role="radio" aria-checked="true" data-view-value="section">{v.section} <span class="ink-2"><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span></button>
-  <button type="button" role="radio" aria-checked="false" data-view-value="plan">{v.plan} <span class="ink-2"><Glyphs text={fill(chrome.wp3.index.minutes, { n: planMinutes })} /></span></button>
+<div class:list={['viewtoggle', `viewtoggle--${variant}`, cls]} role="radiogroup" aria-label={v.label} data-js-only data-viewtoggle>
+  {opts.map((o) => (
+    <button type="button" role="radio" class="viewtoggle__opt" aria-checked={o.value === 'section' ? 'true' : 'false'} tabindex={o.value === 'section' ? 0 : -1} data-view-value={o.value}>
+      <span class="viewtoggle__label"><span class="viewtoggle__name">{o.parts[0]}</span><span class="viewtoggle__sep" aria-hidden="true"> · </span><span class="viewtoggle__desc">{o.parts[1]}</span></span>
+      <span class="viewtoggle__min"><Glyphs text={fill(chrome.wp3.index.minutes, { n: o.m })} /></span>
+    </button>
+  ))}
 </div>
-<script>
-  import { get, set } from '../../scripts/core/prefs';
-  import { listen } from '../../scripts/core/bus';
-  const sync = () => document.querySelectorAll<HTMLElement>('[data-view-value]').forEach((b) => b.setAttribute('aria-checked', String(get('view') === b.dataset.viewValue)));
-  document.querySelectorAll<HTMLElement>('[data-view-value]').forEach((b) =>
-    b.addEventListener('click', () => set('view', b.dataset.viewValue === 'plan' ? 'plan' : 'section')),
-  );
-  listen('sv:view', sync);
-  sync();
-</script>
+
 <style>
-  .viewtoggle { display: inline-flex; flex-wrap: wrap; border: var(--lw-object) solid var(--line-3); }
-  .viewtoggle button { min-block-size: 44px; padding: 6px 12px; }
-  .viewtoggle button[aria-checked='true'] { background: var(--ink); color: var(--paper); }
-  .viewtoggle button[aria-checked='true'] .ink-2 { color: inherit; }
+  /* A segmented drafting control: hairline box, the chosen view on --sheet with a 2px rust rule (the site's
+     "current" mark, like the title bar's current page) — quieter than the primary CTA it sits beside. */
+  .viewtoggle {
+    display: inline-grid; grid-template-columns: repeat(2, auto);
+    border: var(--lw-object) solid var(--line-3);
+  }
+  .viewtoggle__opt {
+    position: relative;
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--s-3);
+    min-block-size: 44px; padding: var(--s-3) var(--s-4) calc(var(--s-3) + 1px);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label);
+    font-variation-settings: var(--wdth-label); letter-spacing: var(--tr-label); line-height: var(--lh-label);
+    text-transform: uppercase; text-align: start; color: var(--ink-2);
+    transition: background-color var(--dur-1) var(--ease-ui), color var(--dur-1) var(--ease-ui);
+  }
+  .viewtoggle__opt + .viewtoggle__opt { border-inline-start: var(--lw-object) solid var(--line-3); }
+  .viewtoggle__label { display: inline; }
+  /* "SECTION" and "FULL TEXT" are atomic: a narrow toggle breaks after the " · ", never inside "FULL / TEXT" */
+  .viewtoggle__name, .viewtoggle__desc { display: inline-block; }
+  .viewtoggle__sep, .viewtoggle__desc { color: inherit; }
+  .viewtoggle__min {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code-sm); letter-spacing: var(--tr-code);
+    text-transform: none; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .viewtoggle__opt::after {
+    content: ''; position: absolute; inset-inline: 0; inset-block-end: -1px; block-size: var(--lw-cut);
+    background: var(--rust); transform: scaleX(0); transform-origin: left;
+    transition: transform var(--dur-2) var(--ease-pen);
+  }
+  @media (hover: hover) {
+    .viewtoggle__opt:hover { color: var(--rust-deep); }
+  }
+
+  /* checked = the drawn state of html[data-view] (set before first paint, so it never flashes) */
+  :global(html:not([data-view='plan'])) .viewtoggle__opt[data-view-value='section'],
+  :global(html[data-view='plan']) .viewtoggle__opt[data-view-value='plan'] { background: var(--sheet); color: var(--ink); }
+  :global(html:not([data-view='plan'])) .viewtoggle__opt[data-view-value='section']::after,
+  :global(html[data-view='plan']) .viewtoggle__opt[data-view-value='plan']::after { transform: scaleX(1); }
+  :global(html:not([data-view='plan'])) .viewtoggle__opt[data-view-value='section'] .viewtoggle__min,
+  :global(html[data-view='plan']) .viewtoggle__opt[data-view-value='plan'] .viewtoggle__min { color: var(--ink-2); }
+
+  /* stack (Levels rail): two cells, "SECTION / full text / ≈ 13 min" on three short lines */
+  .viewtoggle--stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); inline-size: 100%; }
+  .viewtoggle--stack .viewtoggle__opt { display: grid; justify-content: stretch; gap: 3px; align-content: center; padding: var(--s-2) var(--s-3) calc(var(--s-2) + 2px); }
+  .viewtoggle--stack .viewtoggle__label { display: grid; gap: 2px; }
+  .viewtoggle--stack .viewtoggle__sep { display: none; }
+  .viewtoggle--stack .viewtoggle__desc {
+    font-family: var(--font-serif); font-style: italic; font-size: var(--fs-code-sm); font-weight: var(--wt-body);
+    font-variation-settings: normal; letter-spacing: 0; text-transform: none; line-height: 1.2;
+  }
+  .viewtoggle--stack .viewtoggle__min { font-size: var(--fs-code-sm); }
+
+  /* the drawer (WP1) lays the two options out as full-width rows on its --sheet: rule them horizontally, and mark the
+     chosen row on its leading edge (like the current floor above it), so the rule belongs to one row, not the seam */
+  .viewtoggle.drawer__view .viewtoggle__opt + .viewtoggle__opt { border-inline-start: 0; border-block-start: var(--lw-object) solid var(--line-3); }
+  .viewtoggle.drawer__view .viewtoggle__opt::after {
+    inset-block: 0; inset-inline: calc(-1 * var(--lw-object)) auto; inline-size: var(--lw-cut); block-size: auto;
+    transform: scaleY(0); transform-origin: top;
+  }
+  :global(html:not([data-view='plan'])) .viewtoggle.drawer__view .viewtoggle__opt[data-view-value='section']::after,
+  :global(html[data-view='plan']) .viewtoggle.drawer__view .viewtoggle__opt[data-view-value='plan']::after { transform: scaleY(1); }
+
+  @media (forced-colors: active) {
+    .viewtoggle__opt::after { background: Highlight; }
+    :global(html:not([data-view='plan'])) .viewtoggle__opt[data-view-value='section'],
+    :global(html[data-view='plan']) .viewtoggle__opt[data-view-value='plan'] { border: 2px solid Highlight; }
+  }
 </style>
