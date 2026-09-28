@@ -53,8 +53,7 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
   /* ---------- the shelf ---------- */
   .shelf {
     --_h: var(--s-11);                   /* cover height: 192px */
-    --_pages: var(--plate);              /* the page block: paper, ruled by its leaves */
-    --_leaf: var(--line-1);
+    --_pages: var(--plate);              /* the page block: paper, shading into the shelf's shadow */
     --_spine-w: var(--s-3);              /* the spine: 12px (§5.3) */
     --_edge: var(--s-1);                 /* the page block's depth */
     grid-column: text-start / notes-end;
@@ -90,16 +89,15 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
       color-mix(in oklab, var(--_spine) 70%, var(--detail-bg)) 100%);
     border-radius: var(--r-1) 0 0 var(--r-1);
   }
-  /* the page block behind the front board: paper, ruled by its leaves */
+  /* the page block behind the front board: one solid strip of paper (a tone, not leaves — at 1× ruled leaves read as a
+     perforation), one hairline where it meets the board, shading down toward the shelf */
   .book::after {
     content: '';
     position: absolute;
     inset-block: var(--s-1) var(--s-1);
     inset-inline-start: 100%;
     inline-size: var(--_edge);
-    background:
-      repeating-linear-gradient(0deg, var(--_leaf) 0 var(--lw-object), transparent var(--lw-object) calc(var(--s-1) - var(--lw-object))),
-      var(--_pages);
+    background: linear-gradient(180deg, var(--_pages), color-mix(in oklab, var(--_pages) 55%, var(--paper-2)));
     box-shadow: inset var(--lw-object) 0 0 var(--line-1);
   }
   .book :global(.book__cover) { inline-size: 100%; block-size: 100%; }
@@ -119,7 +117,7 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
     .shelf__row { gap: calc(var(--_spine-w) + var(--_edge) + var(--s-4)); }
   }
   /* on the dark wall the page block is paper in shade, not a lit strip */
-  :global(html[data-theme='dusk']) .shelf { --_pages: color-mix(in oklab, var(--plate) 62%, var(--paper)); --_leaf: color-mix(in srgb, var(--detail-bg) 22%, transparent); }
+  :global(html[data-theme='dusk']) .shelf { --_pages: color-mix(in oklab, var(--plate) 62%, var(--paper)); }
   @media (forced-colors: active) {
     .book::before, .book::after { border: 1px solid CanvasText; background: Canvas; }
   }

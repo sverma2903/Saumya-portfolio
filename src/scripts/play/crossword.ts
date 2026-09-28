@@ -106,6 +106,12 @@ function init(root: HTMLElement): void {
       case 'ArrowUp': next = focusables[r - 1]?.[c]; break;
       case 'Home': next = e.ctrlKey || e.metaKey ? focusables[0][0] : focusables[r][0]; break;
       case 'End': next = e.ctrlKey || e.metaKey ? focusables[last][focusables[last].length - 1] : focusables[r][focusables[r].length - 1]; break;
+      case ' ':
+      case 'Enter':
+        // a letter tile does nothing when pressed, and Space must not scroll the page out from under it; a material
+        // tile is a <button> and keeps its native activation
+        if (!(e.target as Element).closest('.xw__btn')) e.preventDefault();
+        return;
       default: return;
     }
     e.preventDefault();

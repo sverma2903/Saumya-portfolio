@@ -146,10 +146,11 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     font-size: calc(var(--_t) * 0.46);
     line-height: 1;
   }
-  /* letter tiles: printed samples in her colours, the same in Vellum and Dusk (like plates) */
-  .xw__cell--outline { color: var(--_ink); background: var(--plate); box-shadow: inset 0 0 0 var(--lw-border) currentColor; }
-  .xw__cell--solid { color: var(--plate); background: var(--_solid); }
-  /* a material tile's bed: a faint outline, seen only while its swatch is away (re-laying) */
+  /* letter tiles: raised pieces in her colours (a --lw-cut frame and a plate's shadow), the same in Vellum and Dusk
+     (like plates). Materials are the other register: swatches inset in their beds, never framed like a letter. */
+  .xw__cell--outline { color: var(--_ink); background: var(--plate); box-shadow: inset 0 0 0 var(--lw-cut) currentColor, var(--shadow-plate); }
+  .xw__cell--solid { color: var(--plate); background: var(--_solid); box-shadow: inset 0 0 0 var(--lw-cut) color-mix(in oklab, var(--_solid) 70%, var(--ink)), var(--shadow-plate); }
+  /* a material tile's bed: a faint sunk outline around its swatch (the whole bed shows while the swatch is away) */
   .xw__cell--mat { box-shadow: inset 0 0 0 var(--lw-object) var(--line-1); }
   /* optically centred: in a line-height-1 box Newsreader's capitals sit .13em above the middle (measured), so each
      letter comes down by that much */
@@ -170,7 +171,15 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     background-color: var(--plate);
     box-shadow: inset 0 0 0 var(--lw-object) color-mix(in srgb, var(--_c) 70%, transparent);
   }
+  /* in the grid a swatch sits one --s-1 inside its bed */
+  .xw .xw__m { inset: var(--s-1); border-radius: 0; }
   .xw__m[data-p='solid'] { background-color: var(--_c); box-shadow: none; }
+  /* poché is grained, not flat: a fine 45° hatch of its own colour let down toward the plate */
+  .xw__m[data-p='poche'] {
+    background-color: var(--_c);
+    background-image: repeating-linear-gradient(45deg, color-mix(in oklab, var(--_c) 72%, var(--plate)) 0 var(--lw-object), transparent var(--lw-object) var(--s-1));
+    box-shadow: none;
+  }
   .xw__m[data-p='hatch'] { background-image: repeating-linear-gradient(-45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
   .xw__m[data-p='hatch2'] { background-image: repeating-linear-gradient(45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
   .xw__m[data-p='cross'] {
@@ -183,7 +192,8 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     background-image: radial-gradient(circle, var(--_c) 0 var(--lw-border), transparent calc(var(--lw-border) * 1.4));
     background-size: calc(var(--s-1) * 1.5) calc(var(--s-1) * 1.5);
   }
-  .xw__m[data-p='void'] { box-shadow: inset 0 0 0 var(--lw-object) var(--_c); }
+  /* the void is an absence: a dashed hidden line on the sheet, not the letters' rust outline and not a lit plate */
+  .xw__m[data-p='void'] { background: none; box-shadow: none; border: var(--lw-object) dashed var(--line-2); }
 
   /* with JS, material tiles are buttons; while re-laid, each swatch flies from its old cell to its new one */
   .xw :global(.xw__btn) { position: absolute; inset: 0; border-radius: var(--r-1); cursor: pointer; }
@@ -196,13 +206,24 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
 
   /* ---------- the keys ---------- */
   .legend__key { min-inline-size: var(--s-11); }
-  .legend__kh { color: var(--ink-2); padding-block-end: var(--s-3); border-block-end: var(--lw-object) solid var(--line-2); }
-  .legend__list { list-style: none; padding: 0; margin-block-start: var(--s-2); display: grid; }
+  /* both keys read on one pitch: half a tile row (35px; 28px on phones), so their lines share baselines with each other
+     and fall on the grid's rows. The key header takes the first half-row: its cap line is level with the grid's top. */
+  .legend__keys { --_pitch: calc((var(--_t) + var(--_gap)) / 2); }
+  .legend__kh {
+    display: flex;
+    align-items: flex-start;
+    block-size: var(--_pitch);
+    line-height: 1;
+    color: var(--ink-2);
+    border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .legend__list { list-style: none; padding: 0; display: grid; }
   .legend__row {
     display: flex;
     align-items: center;
     gap: var(--s-3);
-    padding-block: var(--s-1);
+    min-block-size: var(--_pitch);
+    padding-block: 0;
     font-family: var(--font-sans);
     font-size: var(--fs-ui);
     font-variation-settings: var(--wdth-ui);
@@ -240,11 +261,20 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     .legend__keys { flex-direction: column; flex-wrap: nowrap; }
   }
   @media (min-width: 1280px) {
-    /* at least the Orbit print's eight columns wide, so the legend stands on the pin board's column lines */
-    .legend__panel { min-inline-size: calc((100% - 11 * var(--g)) / 12 * 8 + 7 * var(--g)); }
-    .legend__body, .legend__keys { flex-wrap: nowrap; }
-    .legend__keys { flex: 1; column-gap: var(--s-6); }
-    .legend__key { flex: 1; }
+    /* the whole sheet width, on the pin board's twelve columns: the grid in 1–4, WORDS in 5–8, MATERIALS in 9–12
+       (the panel's padding is taken out of the first and last columns, so the inner column lines are the board's) */
+    .legend__panel { inline-size: auto; }
+    .legend__body {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--g);
+      padding-inline: var(--s-5);
+    }
+    .xw { grid-column: 1 / span 4; }
+    .legend__keys { grid-column: 5 / -1; display: grid; grid-template-columns: subgrid; }
+    .legend__key { min-inline-size: 0; }
+    .legend__key:first-child { grid-column: 1 / span 4; }
+    .legend__key:last-child { grid-column: 5 / -1; }
   }
 
   @media (max-width: 767.98px) {

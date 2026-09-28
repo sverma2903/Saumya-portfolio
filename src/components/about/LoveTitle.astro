@@ -100,6 +100,11 @@ const label = fill(a.permalink, { n, sheet: a.sheet, title: stripHtml(title) });
   .lt__b :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
   .lt__b:hover :global(.bubble), .lt__b:focus-visible :global(.bubble) { color: var(--rust); }
   :global(:target) > .lt .lt__b :global(.bubble) { color: var(--rust); background: var(--blush); }
+  /* Meditation (data-still) has no hover effect and no motion (§5.3): its bubble is still a permalink (and still shows
+     focus), but it does not answer the pointer */
+  :global([data-still]) .lt__b, :global([data-still]) .lt__b :global(.bubble) { transition: none; }
+  :global([data-still]) .lt__b:hover:not(:focus-visible) { color: var(--ink); }
+  :global([data-still]) .lt__b:hover:not(:focus-visible) :global(.bubble) { color: var(--ink); }
 
   @media (max-width: 1023.98px) {
     .lt { display: flex; align-items: flex-start; gap: var(--s-4); }

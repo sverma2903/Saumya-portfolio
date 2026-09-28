@@ -45,8 +45,11 @@ const id = slugify(w.title); // 'blog-writing'
   .love__p { color: var(--ink-2); }
 
   /* ---------- the reference list ---------- */
+  /* the list keeps to her text's measure, so each post's domain stands at the paragraphs' right edge, one gutter from
+     the longest title (the section has one right edge; only the shelf board runs on to the sheet's edge) */
   .refs {
     grid-column: text-start / notes-end;
+    max-inline-size: var(--measure);
     margin-block-start: var(--s-7);
     padding: 0;
     list-style: none;

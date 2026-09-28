@@ -273,8 +273,8 @@ export const chrome = {
       sketchCaption: N('The linework on the cover sheet is drawn in this hand.'),
       /** figure numbers keyed to the detail bubble they sit under: 'FIG. 1.2' (Historical Fiction, 2nd cover) */
       fig: 'Fig. {d}.{n}',
-      /** the compass construction behind her portrait: native size, as a diameter callout */
-      diameter: 'Ø {w} px',
+      /** the dimension string under her portrait (on hover): the file's native width */
+      diameter: '{w} px',
       /** the detail bubble is a permalink, as on case pages */
       permalink: '{n}/{sheet}, permalink to {title}',
     },

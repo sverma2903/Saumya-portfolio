@@ -12,6 +12,9 @@
  * #7A1F06. Her letter weights are kept: the T is set light, the R bold (her original T/R).
  * Every other cell is a MATERIAL tile: her colours #7A1F06 #A73E02 #D36431 #C57658 #F2DACD drawn as drafting
  * materials (poché, hatch, cross-hatch, courses, stipple, fill), plus the void her empty outline tiles are.
+ * Letters and materials are drawn in two registers so the grid never reads as a crossword with letters missing:
+ * letter tiles are raised pieces (a --lw-cut frame, --shadow-plate); a material is a swatch inset in its bed (poché
+ * grained with a fine 45° hatch, never a flat tile; the void a dashed hidden line, never the letters' outline).
  * Each material tile starts as the colour her original tile had (the nearest of the five).
  *
  * Her colours are content (like her stages), so they never follow the theme: a tile is a printed sample, like a plate.
@@ -25,12 +28,12 @@ export const HER = {
 } as const;
 
 export type MatId = 'poche' | 'rust' | 'rustx' | 'orange' | 'courses' | 'clay' | 'blush' | 'void';
-export type Pattern = 'solid' | 'hatch' | 'hatch2' | 'cross' | 'rows' | 'dots' | 'void';
+export type Pattern = 'solid' | 'poche' | 'hatch' | 'hatch2' | 'cross' | 'rows' | 'dots' | 'void';
 export interface Material { id: MatId; c: string; p: Pattern }
 
 /** The legend's materials, in the order Enter cycles through them. */
 export const MATERIALS: Material[] = [
-  { id: 'poche', c: HER.oxblood, p: 'solid' },
+  { id: 'poche', c: HER.oxblood, p: 'poche' },
   { id: 'rust', c: HER.rust, p: 'hatch' },
   { id: 'rustx', c: HER.rust, p: 'cross' },
   { id: 'orange', c: HER.orange, p: 'hatch2' },
@@ -53,7 +56,7 @@ export const GRID: Tile[][] = [
   [L('E', 'outline'), M('rust'), M('poche'), L('I', 'solid'), M('orange')],
   [L('S', 'solid'), M('void'), M('poche'), M('void'), M('rustx')],
   [L('I', 'solid'), M('courses'), M('rust'), M('poche'), M('blush')],
-  [L('G', 'solid'), M('clay'), M('void'), M('rustx'), M('clay')],
+  [L('G', 'solid'), M('blush'), M('void'), M('rustx'), M('clay')],
   [L('N', 'outline'), L('E', 'solid'), L('R', 'solid', 700), L('D', 'solid'), L('S', 'solid')],
 ];
 

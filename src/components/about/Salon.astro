@@ -2,13 +2,16 @@
 /**
  * Salon · WP6 (SPEC §5.3). Sketching: her title (detail 4 / B-100), her line, and her seven sketches hung as a salon.
  *
- *   · never cropped: every piece renders at its native aspect (the image box is width = h · aspect)
- *   · ONE drawing scale: all seven images share one height h, so no piece is shown bigger than another; rows are
- *     centred. h is solved in CSS from the salon's width (container units) for the hang in use:
+ *   · never cropped: every piece renders at its native aspect (the image box is width = (H − 2·pad) · aspect)
+ *   · hung from the text axis (text-start → notes-end, the shelf's edges), left-aligned: every row is solved for that
+ *     one width, so both edges of the salon land on the page's lines. Rows may differ in height; widths never do.
  *       ≥ 768px  two rows, 4 + 3 (the order and grouping of her original page)
- *       < 768px  rows of two (the last one alone), ≈ 180–200px tall at 390
- *     h = min over rows of (width − mounts − gaps) / Σ aspect, and never more than her low-res portrait `uEhkOC`
- *     allows (media-staging cap: 240px wide), so nothing is shown softer than it was drawn.
+ *       < 768px  2 + 2 + 3 (no lone piece)
+ *   · the row height H is solved on the FRAME box, not the drawing, so the mounts (16px) and the prints (8px) of a row
+ *     share their top and bottom edges: Σ((H − 2pᵢ)·aᵢ + 2pᵢ) + gaps = width
+ *       ⇒ H = (width − gaps − Σ 2pᵢ(1 − aᵢ)) / Σ aᵢ
+ *     never more than her low-res portrait `uEhkOC` allows (media-staging cap: 240px wide), so nothing is shown softer
+ *     than it was drawn
  *   · scans `RNUtuB` `DkdSjN` `uEhkOC` on paper mounts (--plate, 16px, hairline); photos `JDDLKV` `TewBJL` `UwqDbC`
  *     `L6lUNQ` as prints (8px --plate border, --shadow-plate)
  *   · each opens in the Enlarged detail at full resolution (FIG. 4.1–4.7)
@@ -33,34 +36,33 @@ const pieces = s.sketches.map((m, i) => {
 });
 type Piece = (typeof pieces)[number];
 
-/** the two hangs: pairs (phones), and rows of pairs (≥ 768): 4 + 3 */
-const pairs: Piece[][] = [];
-for (let i = 0; i < pieces.length; i += 2) pairs.push(pieces.slice(i, i + 2));
-const rows: Piece[][][] = [pairs.slice(0, 2), pairs.slice(2)];
+/** the hangs: rows 4 + 3 (≥ 768), each made of groups that are the phone rows: [2, 2] + [3] */
+const groups: Piece[][] = [pieces.slice(0, 2), pieces.slice(2, 4), pieces.slice(4)];
+const rows: Piece[][][] = [groups.slice(0, 2), groups.slice(2)];
 
 const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
-/** the image height that fits a row of `ps` across the salon: (100cqi − 2·pads − gaps) / Σ aspect */
+/** a length term `k · token`, signed, for calc() */
+const term = (k: number, tok: string) => (Math.abs(k) < 1e-6 ? '' : ` ${k > 0 ? '-' : '+'} ${r5(Math.abs(k))} * var(${tok})`);
+/** the frame height H that fills the salon's width with `ps` (see the header); the capped piece bounds it */
 const fit = (ps: Piece[]) => {
-  const mounts = ps.filter((p) => p.mount).length;
-  const prints = ps.length - mounts;
   const sumA = r5(ps.reduce((t, p) => t + p.a, 0));
-  return `calc((100cqi - ${2 * mounts} * var(--s-4) - ${2 * prints} * var(--s-2) - ${ps.length - 1} * var(--_g)) / ${sumA})`;
+  const kMount = ps.filter((p) => p.mount).reduce((t, p) => t + 2 * (1 - p.a), 0);
+  const kPrint = ps.filter((p) => !p.mount).reduce((t, p) => t + 2 * (1 - p.a), 0);
+  const w = `calc((100cqi - ${ps.length - 1} * var(--_g)${term(kMount, '--s-4')}${term(kPrint, '--s-2')}) / ${sumA})`;
+  const caps = ps.filter((p) => p.cap).map((p) => `calc(${p.cap}px / ${r5(p.a)} + 2 * var(${p.mount ? '--s-4' : '--s-2'}))`);
+  return caps.length ? `min(${[w, ...caps].join(', ')})` : w;
 };
-/** the height no capped piece may exceed (its cap is a width) */
-const caps = pieces.filter((p) => p.cap).map((p) => `calc(${p.cap}px / ${r5(p.a)})`);
-const hWide = `min(${[...rows.map((r) => fit(r.flat())), ...caps].join(', ')})`;
-const hNarrow = `min(${[...pairs.filter((p) => p.length > 1).map(fit), ...caps].join(', ')})`;
 ---
 <article class="love" id={id} aria-labelledby={`${id}-h`}>
   <LoveTitle n={4} id={id} title={s.title} />
   <p class="love__p" data-v set:html={s.text} />
   <div class="salon">
-    <div class="salon__hang" style={`--h-wide: ${hWide}; --h-narrow: ${hNarrow}`}>
+    <div class="salon__hang">
       {rows.map((row) => (
-        <div class="salon__row">
-          {row.map((pair) => (
-            <div class="salon__pair">
-              {pair.map((p) => (
+        <div class="salon__row" style={`--hw: ${fit(row.flat())}`}>
+          {row.map((g) => (
+            <div class="salon__grp" style={`--hn: ${fit(g)}`}>
+              {g.map((p) => (
                 <figure class:list={['sk', p.mount ? 'sk--mount' : 'sk--print']} style={`--a: ${r5(p.a)}`}>
                   <Plate layers={[p.m]} alt={alt(p.file)} frame="bare" fig={{ no: p.no }} class="sk__plate" />
                 </figure>
@@ -83,25 +85,25 @@ const hNarrow = `min(${[...pairs.filter((p) => p.length > 1).map(fit), ...caps].
   .love__p { grid-column: text; max-inline-size: var(--measure); margin-block-start: var(--s-5); color: var(--ink-2); }
 
   .salon {
-    grid-column: rail-start / notes-end;
+    grid-column: text-start / notes-end;
     container-type: inline-size;
     margin-block-start: var(--s-8);
   }
   .salon__hang {
     --_g: var(--s-5);
-    --h: var(--h-wide);
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: var(--_g);
   }
-  .salon__row { display: flex; justify-content: center; align-items: center; gap: var(--_g); }
-  .salon__pair { display: contents; }
+  /* each row is solved to the full width; space-between only absorbs sub-pixel rounding */
+  .salon__row { --H: var(--hw); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--_g); }
+  .salon__grp { display: contents; }
 
   .sk {
     --_p: var(--s-2);
     flex: none;
-    inline-size: calc(var(--h) * var(--a) + 2 * var(--_p));
+    box-sizing: border-box;
+    inline-size: calc((var(--H) - 2 * var(--_p)) * var(--a) + 2 * var(--_p));
     padding: var(--_p);
     background: var(--plate);
     /* nothing drawn for a piece leaves its paper (a loading label wider than a small sketch would otherwise add
@@ -116,13 +118,13 @@ const hNarrow = `min(${[...pairs.filter((p) => p.length > 1).map(fit), ...caps].
   .sk :global(.sk__plate) { inline-size: 100%; }
   .sk :global(.plate__open) { cursor: zoom-in; }
 
-  .salon__cap { margin-block-start: var(--s-5); text-align: center; color: var(--ink-2); }
+  .salon__cap { margin-block-start: var(--s-5); color: var(--ink-2); }
 
   @media (max-width: 767.98px) {
     .salon { margin-block-start: var(--s-6); }
-    .salon__hang { --_g: var(--s-3); --h: var(--h-narrow); }
+    .salon__hang { --_g: var(--s-3); }
     .salon__row { display: contents; }
-    .salon__pair { display: flex; justify-content: center; align-items: center; gap: var(--_g); }
+    .salon__grp { --H: var(--hn); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--_g); }
   }
   @media (forced-colors: active) {
     .sk { outline: 1px solid CanvasText; }

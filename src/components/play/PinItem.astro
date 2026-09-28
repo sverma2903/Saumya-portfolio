@@ -3,7 +3,7 @@
  * PinItem · WP6 (SPEC §5.4). One of her Play items, pinned to the sheet as a print:
  *   · the print: an 8px --plate border and --shadow-plate around her stage (`tone`) with her media on it, rotated a
  *     fraction of a degree at rest (≥ 1024px); hover or focus inside it straightens and lifts it (--dur-3)
- *   · two drafting-tape strips (--blush, 80%) on the top corners — on the print's border only, never on her pixels
+ *   · two drafting-tape strips (--blush with a hairline edge; let down on the Dusk wall) on the top corners — on the print's border only, never on her pixels
  *   · the media, per board.ts: a phone video sized by height (Conversense `phone-video`, Teachable `bezel-dark`),
  *     ExpressLanes at 1.2× in its 1:1 stage, Orbit's backdrop + laptop layered, Educademy as it is
  *   · a mini title block: her title (Newsreader 420), her tag (label), the link (label, rust): Devpost ↗ /
@@ -44,6 +44,9 @@ const da = video ? deviceAspect(ft.w, ft.h, frame === 'bezel-dark' ? BEZEL.ring 
 const link = item.href
   ? { href: item.href, label: isExternal(item.href) ? p.devpost : item.href === '/orbit' ? p.openA105 : item.href === '/educademy' ? p.openA106 : undefined, ext: isExternal(item.href) }
   : undefined;
+/** the sound pill's words break into "Play ·" / "0:48 · sound" when narrow (never before a dot) */
+const [soundA, ...soundRest] = p.teachablePlay.split(' · ');
+const soundB = soundRest.join(' · ');
 const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { ...top, pad: conf.pad }] : item.media;
 ---
 <li class:list={['pin', `pin--${conf.key}`]} id={id} style={`--_rot: ${conf.rot}deg; --_ar: ${conf.box}${conf.scale ? `; --_scale: ${conf.scale}` : ''}`}>
@@ -54,6 +57,11 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
       {conf.kind === 'device' && (
         <div class="pin__device" style={`--_da: ${da}`}>
           <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />
+          {sound && (
+            <button type="button" class="pin__sound" data-pin-sound data-js-only hidden>
+              <Icon name="play" size={14} /><span class="pin__sl"><span class="pin__sp">{soundA}{'\u00a0·'}</span> <span class="pin__sp">{soundB}</span></span>
+            </button>
+          )}
         </div>
       )}
       {conf.kind === 'scaled' && (
@@ -63,11 +71,6 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
         <Plate layers={layers} stage={item.tone} aspect={conf.box} alt={a} fig={fig} class="pin__plate" />
       )}
       {conf.kind === 'natural' && <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />}
-      {sound && (
-        <button type="button" class="pin__sound" data-pin-sound data-js-only hidden>
-          <Icon name="play" size={14} /><span>{p.teachablePlay}</span>
-        </button>
-      )}
       {video && (
         <div class="pin__ctl" role="group" aria-label={p.playerLabel} data-pin-ctl data-js-only hidden>
           <button type="button" class="pin__btn" data-pin-toggle aria-label={p.pause} data-l-pause={p.pause} data-l-play={p.resume}>
@@ -97,7 +100,10 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
 </li>
 <style>
   .pin {
-    --_tape: color-mix(in srgb, var(--blush) 80%, transparent);
+    /* drafting tape: on the warm Vellum paper blush alone nearly vanishes, so it is laid at full strength with a hairline
+       edge; on the Dusk wall it is let down toward the wall (see the theme rule below) so it never outshines the prints */
+    --_tape: var(--blush);
+    --_tape-edge: var(--line-2);
     display: grid;
     grid-template-rows: subgrid;
     grid-row: span 2;
@@ -125,6 +131,7 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
     inline-size: var(--s-6);
     block-size: var(--s-3);
     background: var(--_tape);
+    box-shadow: 0 0 0 var(--lw-object) var(--_tape-edge);
     translate: 0 -50%;
     pointer-events: none;
   }
@@ -159,12 +166,22 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
     background: var(--bezel-dark, var(--detail-bg));
     box-shadow: 0 0 0 var(--lw-object) var(--line-2);
   }
-  .pin__device > :global(.plate--bezel-dark:has(> video)) > :global(video) { background: var(--detail-bg); }
+  /* the unplayed screen (preload=none, no poster) reads as a drawing of a video — the placeholder's --plate field and
+     its two --line-2 diagonals — not as a dead black slab; once a frame is decoded the video paints over it */
+  .pin__device > :global(.plate--bezel-dark:has(> video)) > :global(video) {
+    background:
+      linear-gradient(to top right, transparent calc(50% - var(--lw-object) / 2), var(--line-2) calc(50% - var(--lw-object) / 2) calc(50% + var(--lw-object) / 2), transparent calc(50% + var(--lw-object) / 2)),
+      linear-gradient(to bottom right, transparent calc(50% - var(--lw-object) / 2), var(--line-2) calc(50% - var(--lw-object) / 2) calc(50% + var(--lw-object) / 2), transparent calc(50% + var(--lw-object) / 2)),
+      var(--plate);
+  }
 
   /* ExpressLanes: 1.2× inside its 1:1 stage (the stage clips only her uniform #f2f2f2 margin, §6.4 #2) */
   .pin__stage > :global(.pin__plate--scaled) { scale: var(--_scale); }
 
   /* ---------- the Teachable player (P0 Plate fallback, see pinboard.ts) ---------- */
+  /* sized from the device, not from its words: it keeps ≥ --s-3 of clear bezel each side at every width, and its words
+     break onto two centred lines ("Play ·" / "0:48 · sound") when the phone is narrow */
+  .pin__device { container-type: inline-size; }
   .pin__sound {
     position: absolute;
     inset: 50% auto auto 50%;
@@ -172,19 +189,30 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
     z-index: calc(var(--z-raised) + 1);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--s-2);
+    inline-size: max-content;
+    max-inline-size: calc(100% - 2 * var(--s-3));
     min-block-size: 44px;
-    padding: var(--s-2) var(--s-4);
+    padding: var(--s-2) var(--s-3);
+    text-align: center;
     font-family: var(--font-sans);
     font-size: var(--fs-label-lg);
     font-weight: var(--wt-label-lg);
     font-variation-settings: var(--wdth-label);
     letter-spacing: var(--tr-label-lg);
     text-transform: uppercase;
-    white-space: nowrap;
     color: var(--ink);
     background: var(--sheet);
     border: var(--lw-border) solid var(--ink);
+  }
+  .pin__sl { min-inline-size: 0; }
+  /* each half stays whole while it fits (the break falls after "Play ·"); on the narrowest phone it may wrap too */
+  @container (min-width: 150px) { .pin__sp { white-space: nowrap; } }
+  :global(.pin__sound > svg) { flex: none; }
+  /* a narrow phone: the icon over the words, the words on centred lines */
+  @container (max-width: 200px) {
+    .pin__sound { flex-direction: column; gap: var(--s-1); }
   }
   .pin__sound:hover { color: var(--rust-deep); }
   .pin__ctl {
@@ -244,7 +272,7 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
   .pin__link:hover { color: var(--rust-deep); }
   @media (pointer: coarse) { .pin__link { min-block-size: 44px; } }
 
-  :global(html[data-theme='dusk']) .pin { --_tape: color-mix(in oklab, var(--rust-2) 22%, var(--plate)); }
+  :global(html[data-theme='dusk']) .pin { --_tape: color-mix(in srgb, color-mix(in oklab, var(--rust-2) 22%, var(--plate)) 55%, transparent); --_tape-edge: transparent; }
   @media (forced-colors: active) {
     .pin__print { outline: 1px solid CanvasText; }
     .pin__tape { display: none; }
