@@ -1,8 +1,371 @@
 ---
 /**
- * Palette · OWNER: WP1 (P0 stub). The Sheet list (⌘K): <dialog class="palette"> with a combobox + listbox
- * (SPEC §4.4). Index fetched lazily from /search-index.json. P0: the empty dialog.
+ * Palette · WP1. The Sheet list (⌘K / Ctrl K, `/`, `?`; SPEC §4.4): jump anywhere, search her own words.
+ *
+ * Server-rendered here: the dialog frame (header, combobox, footer), the empty state (suggestion chips; Sheets; on a
+ * case, its Levels; Actions) and the Keys view — so the list opens complete and instantly. scripts/palette/open.ts
+ * (always loaded, tiny) opens it; scripts/palette/palette.ts (lazy) runs the search over /search-index.json and renders
+ * results into [data-pl-results]. ARIA: an <input role="combobox"> controlling a role="listbox" of role="group"s of
+ * role="option"s (aria-activedescendant); a polite status announces the result count. Full screen on phones.
+ * Passages are her sentences, cited to where they live; the only thing added to her text is <mark class="q">.
  */
+import { cases, labels, links } from '../../content/site';
 import { chrome } from '../../data/chrome';
+import { sheets } from '../../data/sheets';
+import { reading } from '../../lib/reading';
+import { emailAddress } from '../../lib/verbatim';
+import Icon from '../symbols/Icon.astro';
+import Datum from '../symbols/Datum.astro';
+import PrefSwitch from './PrefSwitch.astro';
+
+const t = chrome.wp1.palette;
+const w1 = chrome.wp1;
+// which sheet is this? (Base renders <Palette /> without props; the URL is enough)
+const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
+const cs = cases.find((c) => `/${c.slug}` === path);
+const r = cs ? reading(cs) : null;
+const sheetNoOf = (slug: string) => String(sheets.find((s) => s.slug === slug)?.no ?? '');
+
+const sheetRows = [
+  { no: 'A-000', title: w1.titleBar.coverSheet, hers: false, href: '/', ext: false },
+  ...sheets.map((s) => ({ no: String(s.no), title: s.title.text, hers: true, href: s.href, ext: !!s.external })),
+];
+const actions: { id: string; label: string; icon: 'copy' | 'arrow-up-right' | 'fit' | 'pause' | 'sun' | 'keycap-cmd' }[] = [
+  { id: 'copy-email', label: t.actions.copyEmail, icon: 'copy' },
+  { id: 'resume', label: t.actions.resume, icon: 'arrow-up-right' },
+  { id: 'linkedin', label: t.actions.linkedin, icon: 'arrow-up-right' },
+  ...(cs ? [{ id: 'view', label: t.actions.planView, icon: 'fit' as const }] : []),
+  { id: 'motion', label: t.actions.motionOff, icon: 'pause' },
+  { id: 'theme', label: t.actions.duskOn, icon: 'sun' },
+  { id: 'keys', label: t.actions.keysOff, icon: 'keycap-cmd' },
+  { id: 'show-keys', label: t.actions.showKeys, icon: 'keycap-cmd' },
+];
+// every chrome word the lazy module needs (it renders results; the words stay reviewable here)
+const strings = {
+  sheets: t.groups.sheets, levels: t.groups.levels, details: t.groups.details, passages: t.groups.passages, actions: t.groups.actions,
+  sheet: t.kinds.sheet, level: t.kinds.level, detail: t.kinds.detail, action: t.kinds.action, external: t.kinds.external,
+  found: t.found, searching: t.searching, none: t.none, count: t.count,
+  copyEmail: t.actions.copyEmail, resume: t.actions.resume, linkedin: t.actions.linkedin, planView: t.actions.planView,
+  sectionView: t.actions.sectionView, motionOff: t.actions.motionOff, motionOn: t.actions.motionOn, duskOn: t.actions.duskOn,
+  duskOff: t.actions.duskOff, keysOff: t.actions.keysOff, keysOn: t.actions.keysOn, showKeys: t.actions.showKeys,
+  copied: w1.endSheet.copied, email: emailAddress, resumeHref: links.resume, linkedinHref: links.linkedin,
+};
+let n = 0;
+const oid = () => `pl-h-${n++}`;
+const keyCap = (k: string) => (k === 'mod+k' ? null : k);
+const subParts = t.keys.sub.split('{mod}');
 ---
-<dialog class="palette" data-dialog="palette" aria-label={chrome.wp1.palette.title}></dialog>
+<dialog class="palette" data-dialog="palette" aria-labelledby="pl-title" data-mode="home" data-t={JSON.stringify(strings)} data-js-only>
+  <div class="pl-frame">
+    {/* divs, not header/footer: inside a dialog those would surface as page-level banner/contentinfo landmarks */}
+    <div class="pl-head">
+      <p id="pl-title" class="pl-title t-label">{t.title}</p>
+      <form method="dialog">
+        <button class="pl-esc" value="close">
+          <span class="pl-esc__touch t-label" aria-hidden="true"><Icon name="close" size={14} />{t.close}</span>
+          <span class="sr-only">{t.close} </span><kbd class="pl-esc__key">{t.hints.esc}</kbd>
+        </button>
+      </form>
+    </div>
+
+    <label class="pl-field">
+      <Icon name="search" size={20} />
+      <input
+        id="pl-q"
+        data-pl-input
+        type="text"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="pl"
+        aria-autocomplete="list"
+        aria-labelledby="pl-title"
+        placeholder={t.placeholder}
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="go"
+      />
+    </label>
+
+    <div class="pl-chips" data-pl-chips>
+      <span class="pl-chips__label t-label" id="pl-chips-l">{t.tryLabel}</span>
+      <div class="pl-chips__list" role="group" aria-labelledby="pl-chips-l">
+        {t.suggestions.map((s) => <button type="button" class="pl-chip" data-pl-chip={s}>{s}</button>)}
+      </div>
+    </div>
+
+    <div id="pl" class="pl-list" role="listbox" aria-label={t.results} data-pl-list>
+      <div class="pl-home" data-pl-home>
+        <div role="group" class="pl-grp" aria-labelledby="pl-h-g-sheets">
+          <div class="pl-g t-label" id="pl-h-g-sheets" aria-hidden="true"><span>{t.groups.sheets}</span></div>
+          {sheetRows.map((s) => {
+            const here = s.href === path;
+            return (
+              <div role="option" id={oid()} class:list={['pl-opt', s.ext ? 'pl-opt--external' : 'pl-opt--sheet', { 'is-here': here }]} aria-selected="false" data-go={s.href} data-ext={s.ext ? '' : undefined}>
+                <span class="pl-opt__code">{s.ext ? <Icon name="arrow-up-right" size={14} /> : s.no}</span>
+                <span class="pl-opt__main">{s.hers ? <span class="pl-opt__t" data-v>{s.title}</span> : <span class="pl-opt__t">{s.title}</span>}</span>
+                <span class="pl-opt__side t-label">{here ? <Datum size={9} /> : null}{s.ext ? t.kinds.external : t.kinds.sheet}</span>
+              </div>
+            );
+          })}
+        </div>
+        {cs && r && (
+          <div role="group" class="pl-grp" aria-labelledby="pl-h-g-levels">
+            <div class="pl-g t-label" id="pl-h-g-levels" aria-hidden="true"><span>{t.groups.levels}</span><span class="pl-g__meta">{sheetNoOf(cs.slug)}</span></div>
+            {r.sections.map((sec, i) => (
+              <div role="option" id={oid()} class="pl-opt pl-opt--level" aria-selected="false" data-jump={sec.id}>
+                <span class="pl-opt__code">{sheetNoOf(cs.slug)}.{i + 1}</span>
+                <span class="pl-opt__main"><span class="pl-opt__t" data-v>{sec.label}</span><span class="pl-opt__elev">{sec.elev}</span></span>
+                <span class="pl-opt__side t-label">{t.kinds.level}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div role="group" class="pl-grp" aria-labelledby="pl-h-g-actions">
+          <div class="pl-g t-label" id="pl-h-g-actions" aria-hidden="true"><span>{t.groups.actions}</span></div>
+          {actions.map((a) => (
+            <div role="option" id={oid()} class="pl-opt pl-opt--action" aria-selected="false" data-act={a.id}>
+              <span class="pl-opt__code"><Icon name={a.icon} size={15} /></span>
+              <span class="pl-opt__main"><span class="pl-opt__t">{a.label}</span></span>
+              <span class="pl-opt__side t-label">{t.kinds.action}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div class="pl-results" data-pl-results hidden></div>
+    </div>
+
+    <div class="pl-empty" data-pl-empty hidden>
+      <p class="pl-empty__msg" data-pl-empty-msg></p>
+    </div>
+
+    <section class="pl-keys" data-pl-keys hidden aria-labelledby="pl-keys-h">
+      <div class="pl-keys__head">
+        <h2 id="pl-keys-h" class="pl-keys__h t-label">{t.keys.title}</h2>
+        <div class="pl-keys__switch"><PrefSwitch pref="keys" /></div>
+      </div>
+      <table class="pl-keys__t">
+        <tbody>
+          {t.keys.rows.map((row) => (
+            <tr>
+              <th scope="row" class="pl-keys__k">
+                {row.keys.map((k, i) => (
+                  <>{i > 0 && <span class="pl-keys__or" aria-hidden="true">/</span>}{keyCap(k)
+                    ? <kbd class="kbd">{k}</kbd>
+                    : <kbd class="kbd kbd--mod" data-keycap><span class="keycap__apple"><Icon name="keycap-cmd" size={12} />K</span><span class="keycap__other">{w1.titleBar.keycapOther}</span></kbd>}</>
+                ))}
+              </th>
+              <td class="pl-keys__label">{row.label}</td>
+              <td class="pl-keys__where t-label">{row.where}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="pl-keys__note">
+        {subParts[0]}<kbd class="kbd kbd--mod" data-keycap><span class="keycap__apple"><Icon name="keycap-cmd" size={12} />K</span><span class="keycap__other">{w1.titleBar.keycapOther}</span></kbd>{subParts[1]}
+      </p>
+    </section>
+
+    <p class="sr-only" data-pl-status role="status" aria-live="polite"></p>
+
+    <div class="pl-foot">
+      <p class="pl-foot__note">{t.footer}</p>
+      <p class="pl-foot__keys t-label" aria-hidden="true">
+        <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> {t.hints.select}</span>
+        <span><kbd class="kbd"><Icon name="return" size={12} /></kbd> {t.hints.open}</span>
+        <span><kbd class="kbd">{t.hints.esc}</kbd> {t.hints.close}</span>
+      </p>
+    </div>
+  </div>
+
+  <template data-pl-icon="copy"><Icon name="copy" size={15} /></template>
+  <template data-pl-icon="arrow-up-right"><Icon name="arrow-up-right" size={15} /></template>
+  <template data-pl-icon="fit"><Icon name="fit" size={15} /></template>
+  <template data-pl-icon="pause"><Icon name="pause" size={15} /></template>
+  <template data-pl-icon="sun"><Icon name="sun" size={15} /></template>
+  <template data-pl-icon="keycap-cmd"><Icon name="keycap-cmd" size={15} /></template>
+</dialog>
+
+<script>
+  import { installPalette } from '../../scripts/palette/open';
+  installPalette();
+</script>
+
+<style is:global>
+  /* Global on purpose: result rows are created by scripts/palette/palette.ts (no scoped attribute). Every class is pl-*. */
+  /* ── the dialog: a title-block card over a vellum wash ── */
+  .palette {
+    inline-size: min(46rem, calc(100vw - 2 * var(--m))); max-inline-size: none;
+    block-size: min(40rem, calc(100svh - 2 * var(--s-9))); max-block-size: none; margin: 12svh auto auto;
+    padding: 0; border: var(--lw-border) solid var(--ink); border-radius: var(--r-0);
+    background: var(--sheet); color: var(--ink); box-shadow: var(--shadow-dialog); overflow: hidden;
+  }
+  .palette[open] { display: flex; }
+  .palette::backdrop { background: color-mix(in srgb, var(--paper) 78%, transparent); }
+  :root[data-theme='dusk'] .palette::backdrop { background: var(--scrim); }
+  .pl-frame { display: flex; flex-direction: column; inline-size: 100%; min-block-size: 0; }
+
+  .pl-head {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+    padding: var(--s-2) var(--s-3) var(--s-2) var(--s-5); border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .pl-title { margin: 0; color: var(--ink-2); }
+  .pl-esc { display: inline-grid; place-items: center; min-inline-size: 44px; min-block-size: var(--s-6); color: var(--ink-2); }
+  .pl-esc:hover { color: var(--rust-deep); }
+  /* touch has no Esc key: say Close */
+  .pl-esc__touch { display: none; align-items: center; gap: var(--s-2); color: var(--ink); }
+  @media (pointer: coarse) {
+    .pl-esc { min-block-size: 44px; padding-inline: var(--s-3); }
+    .pl-esc__key { display: none !important; }
+    .pl-esc__touch { display: inline-flex; }
+  }
+  .pl-esc kbd, .palette .kbd {
+    display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-inline-size: 1.9em; block-size: 20px;
+    padding-inline: 5px; border: var(--lw-object) solid var(--line-3); border-block-end-width: 2px; border-radius: var(--r-1);
+    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: 500;
+    line-height: 1; letter-spacing: 0; text-transform: none;
+  }
+  .palette .kbd--mod .keycap__other { display: none; }
+  .palette .kbd--mod[data-platform='other'] .keycap__apple { display: none; }
+  .palette .kbd--mod[data-platform='other'] .keycap__other { display: inline; }
+
+  /* ── the combobox: her words are searched in her face ── */
+  .pl-field {
+    display: flex; align-items: center; gap: var(--s-3); padding-inline: var(--s-5);
+    border-block-end: var(--lw-object) solid var(--line-2); background: var(--paper); color: var(--ink-3);
+  }
+  .pl-field:focus-within { color: var(--rust); }
+  .pl-field input {
+    flex: 1 1 auto; min-inline-size: 0; block-size: calc(var(--s-7) + var(--s-3)); border: 0; background: transparent; outline: none;
+    font-family: var(--font-serif); font-size: var(--fs-lede-sm); font-weight: var(--wt-lede-sm); letter-spacing: 0; color: var(--ink);
+  }
+  .pl-field input::placeholder { color: var(--ink-3); opacity: 1; font-style: italic; }
+
+  /* ── suggestions (empty state) ── */
+  .pl-chips { display: flex; align-items: baseline; gap: var(--s-3); padding: var(--s-3) var(--s-5) var(--s-1); flex-wrap: wrap; }
+  .pl-chips[hidden] { display: none; }
+  .pl-chips__label { color: var(--ink-3); }
+  .pl-chips__list { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .pl-chip {
+    min-block-size: calc(var(--s-6) - var(--s-1)); padding-inline: var(--s-3); border: var(--lw-object) solid var(--line-2); border-radius: var(--r-1);
+    font-family: var(--font-serif); font-size: var(--fs-body-sm); font-style: italic; color: var(--ink-2); background: transparent;
+    transition: border-color var(--dur-1) var(--ease-ui), color var(--dur-1) var(--ease-ui);
+  }
+  .pl-chip:hover { border-color: var(--rust); color: var(--rust-deep); }
+
+  /* ── the list ── */
+  .pl-list { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-block: var(--s-1) var(--s-3); scroll-padding-block: var(--s-7) var(--s-2); }
+  .pl-list[hidden] { display: none; }
+  .pl-grp + .pl-grp { margin-block-start: var(--s-2); }
+  .pl-g {
+    position: sticky; inset-block-start: 0; z-index: var(--z-raised);
+    display: flex; justify-content: space-between; gap: var(--s-3); margin: 0;
+    padding: var(--s-3) var(--s-5) var(--s-2); background: var(--sheet); color: var(--ink-2);
+  }
+  .pl-g__meta { color: var(--ink-3); }
+  .pl-opt {
+    position: relative; display: grid; grid-template-columns: 5.25rem minmax(0, 1fr) auto; align-items: baseline; gap: var(--s-3);
+    min-block-size: 44px; padding: var(--s-2) var(--s-5); cursor: pointer; color: var(--ink);
+  }
+  .pl-opt[aria-selected='true'] { background: var(--paper-2); }
+  /* the redline marks the current row */
+  .pl-opt[aria-selected='true']::before {
+    content: ''; position: absolute; inset-block: var(--s-1); inset-inline-start: 0; inline-size: var(--lw-cut); background: var(--rust);
+  }
+  .pl-opt__code {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; letter-spacing: var(--tr-code);
+    font-variant-numeric: tabular-nums; color: var(--rust); white-space: nowrap;
+  }
+  .pl-opt--action .pl-opt__code, .pl-opt--external .pl-opt__code { color: var(--ink-2); align-self: center; }
+  .pl-opt--passage .pl-opt__code { color: var(--clay); font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 400; }
+  .pl-opt__main { display: grid; gap: 2px; min-inline-size: 0; }
+  .pl-opt__t { font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: 1.4; text-wrap: pretty; }
+  .pl-opt--sheet .pl-opt__t, .pl-opt--external .pl-opt__t, .pl-opt--level .pl-opt__t, .pl-opt--detail .pl-opt__t { font-size: var(--fs-body); line-height: 1.3; }
+  .pl-opt--level .pl-opt__main { display: flex; align-items: baseline; gap: var(--s-3); }
+  .pl-opt__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .pl-opt__why { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.4; }
+  .pl-opt__lead { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pl-opt__side { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--ink-3); white-space: nowrap; text-align: end; }
+  .pl-opt--passage .pl-opt__side { color: var(--ink-2); }
+  .pl-opt.is-here .pl-opt__side { color: var(--rust); }
+  .pl-opt mark.q { background: var(--blush); color: var(--ink); padding: 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+  /* the standing actions: one quiet line at the foot of the results, "Copy email · Open Resume ↗ · …". Each chip's
+     separator hangs in the gap before it; the tray clips the one that would open a line. */
+  .pl-tray { overflow: hidden; margin-inline: calc(var(--s-5) - var(--s-2)) var(--s-3); }
+  .pl-tray__in { display: flex; flex-wrap: wrap; margin-inline-start: calc(-1 * var(--s-4)); }
+  .pl-opt.pl-opt--chip {
+    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: 44px; margin-inline-start: var(--s-4); padding: 0 var(--s-2);
+    font-family: var(--font-sans); font-size: var(--fs-ui); color: var(--ink-2);
+  }
+  .pl-opt--chip::after {
+    content: '·'; content: '·' / '';
+    position: absolute; inset-inline-start: calc(-1 * var(--s-4)); inline-size: var(--s-4); text-align: center;
+    color: var(--ink-3); pointer-events: none;
+  }
+  .pl-opt--chip .pl-opt__t { font-family: inherit; font-size: inherit; line-height: 1.2; }
+  .pl-opt--chip[aria-selected='true'] { color: var(--ink); }
+  /* on a chip the redline runs under the label instead of down the edge */
+  .pl-opt--chip[aria-selected='true']::before { inset-block: auto var(--s-2); inset-inline: var(--s-2); inline-size: auto; block-size: var(--lw-cut); }
+
+  .pl-empty { padding: var(--s-5); }
+  .pl-empty[hidden] { display: none; }
+  .pl-empty__msg { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body); color: var(--ink-2); }
+
+  /* ── keys ── */
+  .pl-keys { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; padding-block-end: var(--s-3); }
+  .pl-keys[hidden] { display: none; }
+  .pl-keys__t { inline-size: 100%; }
+  .pl-keys__t th, .pl-keys__t td { padding: var(--s-2) var(--s-3); border-block-start: var(--lw-object) solid var(--line-1); text-align: start; vertical-align: baseline; }
+  .pl-keys__t tr > :first-child { padding-inline-start: var(--s-5); }
+  .pl-keys__t tr > :last-child { padding-inline-end: var(--s-5); }
+  .pl-keys__k { white-space: nowrap; font-weight: 400; inline-size: 7.5rem; }
+  .pl-keys__or { margin-inline: 4px; color: var(--ink-3); font-family: var(--font-mono); font-size: var(--fs-code-sm); }
+  .pl-keys__label { font-family: var(--font-serif); font-size: var(--fs-body-sm); }
+  .pl-keys__where { color: var(--ink-3); text-align: end !important; }
+  .pl-keys__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-2) var(--s-5); }
+  .pl-keys__h { margin: 0; color: var(--ink-2); }
+  /* the switch sits compact at the head's end: "Shortcuts ● On" */
+  .palette .pl-keys__switch .pswitch { grid-template-columns: auto auto; gap: var(--s-3); inline-size: auto; }
+  .pl-keys__note { margin: 0; padding: var(--s-3) var(--s-5) 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); }
+  .pl-keys__note .kbd { margin-inline: 3px; font-style: normal; }
+
+  /* ── footer: the promise ── */
+  .pl-foot {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-5);
+    padding: var(--s-3) var(--s-5); border-block-start: var(--lw-object) solid var(--line-2); background: var(--sheet);
+  }
+  .pl-foot__note { flex: 1 1 18rem; margin: 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--ink-2); }
+  .pl-foot__keys { display: flex; gap: var(--s-4); margin: 0; color: var(--ink-3); }
+  .pl-foot__keys span { display: inline-flex; align-items: center; gap: 4px; }
+
+  /* ── phones: full screen ── */
+  @media (max-width: 767.98px) {
+    .palette { inline-size: 100vw; max-inline-size: 100vw; block-size: 100svh; max-block-size: 100svh; margin: 0; border: 0; box-shadow: none; }
+    .pl-opt { grid-template-columns: 4.25rem minmax(0, 1fr) auto; padding-inline: var(--m); }
+    /* a passage's citation drops under the sentence; short kinds (sheet, level, detail, action) stay on the row */
+    .pl-opt--passage { grid-template-columns: 4.25rem minmax(0, 1fr); }
+    .pl-opt--passage .pl-opt__side { grid-column: 2; justify-self: start; }
+    .pl-g, .pl-head, .pl-field, .pl-chips, .pl-foot { padding-inline: var(--m); }
+    .pl-tray { margin-inline: calc(var(--m) - var(--s-2)); }
+    .pl-foot__keys { display: none; }
+  }
+  @media print { .palette { display: none !important; } }
+</style>
+
+<style is:global>
+  /* The cited sentence (Custom Highlight API) and a native text-fragment landing: her words on blush, never recoloured. */
+  ::highlight(cite) { background-color: var(--blush); color: var(--ink); }
+  ::target-text { background-color: var(--blush); color: var(--ink); }
+  /* The cited block: a 2px rust bracket in the gutter for 4 s (SPEC §4.4). Absolutely positioned, so it never takes a
+     grid cell in the block's subgrid. */
+  .is-cited { position: relative; }
+  .is-cited::before {
+    content: ''; position: absolute; z-index: var(--z-raised); pointer-events: none;
+    inset-block: calc(-1 * var(--s-2)); inset-inline-start: calc(-1 * var(--s-5)); inline-size: var(--s-2);
+    border: var(--lw-cut) solid var(--rust); border-inline-end: 0;
+    animation: sv-cited 4s var(--ease-ui) both;
+  }
+  @keyframes sv-cited { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+  @media (max-width: 1023.98px) { .is-cited::before { inset-inline-start: calc(-1 * var(--s-3)); inline-size: var(--s-1); } }
+</style>

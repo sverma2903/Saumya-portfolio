@@ -1,4 +1,31 @@
 ---
-/** Toast · OWNER: WP1 (P0 stub). The polite status region for "Copied" (1.6s). */
+/**
+ * Toast · WP1. The one polite status region (role="status"): "Copied" for 1.6 s after Copy (SPEC §4.3, 4.1.3).
+ * Written by core/copy.ts `toast()`; a small title-block chip above the bottom bar (phones) or bottom-centre.
+ */
+import Icon from '../symbols/Icon.astro';
 ---
-<div class="toast" role="status" aria-live="polite"></div>
+<div class="toast" role="status" aria-live="polite" aria-atomic="true">
+  <span class="toast__chip"><Icon name="check" size={14} /><span data-toast-text></span></span>
+</div>
+<style>
+  .toast {
+    position: fixed; z-index: var(--z-toast); inset-inline: 0; inset-block-end: var(--s-6);
+    display: flex; justify-content: center; pointer-events: none;
+  }
+  .toast__chip {
+    display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-4);
+    border: var(--lw-border) solid var(--ink); background: var(--sheet); color: var(--ink); box-shadow: var(--shadow-lift);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); font-variation-settings: var(--wdth-label);
+    letter-spacing: var(--tr-label); text-transform: uppercase;
+    opacity: 0; transform: translateY(var(--s-2));
+    transition: opacity var(--dur-2) var(--ease-ui), transform var(--dur-2) var(--ease-ui);
+  }
+  .toast__chip :global(.icon) { color: var(--rust); }
+  .toast:not(.is-on) .toast__chip { visibility: hidden; transition: opacity var(--dur-2) var(--ease-ui), transform var(--dur-2) var(--ease-ui), visibility 0s linear var(--dur-2); }
+  :global(.toast.is-on) .toast__chip { opacity: 1; transform: none; visibility: visible; }
+  @media (max-width: 1023.98px) {
+    .toast { inset-block-end: calc(var(--bar) + env(safe-area-inset-bottom) + var(--s-4)); }
+  }
+  @media print { .toast { display: none; } }
+</style>

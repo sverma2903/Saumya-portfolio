@@ -1,9 +1,16 @@
 ---
 /**
- * TitleBar · OWNER: WP1 (P0 functional stub). Desktop ≥1024 running head (SPEC §4.1):
- * brand (Mark + "Saumya Verma") · <span class="sheetno"> + sheet title (+ current LEVEL on cases, from sv:level) ·
- * Primary nav (Index, About, Play, Resume ↗) with aria-current · the Sheet list button (⌘K / Ctrl K).
- * Props: { page: PageMeta } (see layouts/Base.astro).
+ * TitleBar · WP1. The desktop running head (≥ 1024px, SPEC §4.1), set like the title strip of a drawing:
+ *   [ △○□ Saumya Verma ] │ [ A-101 · CLOUDFLARE R2 OBJECT STORAGE REDESIGN — IDEATE ]  INDEX ABOUT PLAY RESUME ↗ │ [ ⌘K SHEET LIST ]
+ * - brand → / (the mark's clay construction lines draw in on hover/focus);
+ * - the sheet number (view-transition-name: sheetno → rolls between sheets, transitions.css), the sheet title (hers on
+ *   cases; on Home "Cover sheet", then "Drawing index" once the index is being read; chrome elsewhere) and, on cases,
+ *   the current LEVEL in rust — live from WP5's `sv:level` event;
+ * - Primary nav with aria-current + a 2px rust rule on the title bar's lower edge; Resume opens a new tab;
+ * - the Sheet list button with the platform keycap (⌘K on Apple, Ctrl K elsewhere, detected once).
+ * Its script also installs the page-level keyboard shortcuts (core/shortcuts.ts): it runs before any <main>
+ * component script, so a package that registers the same key later takes over (keys.ts runs the last registration).
+ * At 1024–1279 the sheet title is dropped (sheet number + level only). Hidden below 1024 (the bottom bar takes over).
  */
 import type { PageMeta } from '../../lib/page';
 import { labels, links } from '../../content/site';
@@ -15,41 +22,164 @@ interface Props { page: PageMeta }
 const { page } = Astro.props;
 const t = chrome.wp1.titleBar;
 const current = page.kind === 'about' ? 'about' : page.kind === 'play' ? 'play' : page.kind === 'home' ? 'home' : null;
+// "— · Sheet not in set": a sheet outside the set has no number (§5.5)
+const sheetNo = page.kind === '404' ? '—' : page.sheet;
+const levelIds = page.levels?.map((l) => l.id).join(' ');
 ---
-<header class="titlebar" role="banner">
-  <a class="titlebar__brand" href="/"><Mark size={22} construction class="rust" /><span class="titlebar__name">{chrome.p0.brand}</span></a>
-  <p class="titlebar__head t-label-lg ink-2">
-    <span class="sheetno t-code rust">{page.sheet}</span>
-    <span class="titlebar__sep" aria-hidden="true"> · </span><span class="sr-only">, </span>
-    {page.sheetTitleIsHers ? <span class="titlebar__title" data-v>{page.sheetTitle}</span> : <span class="titlebar__title">{page.sheetTitle}</span>}
-    <span class="titlebar__level rust" data-level></span>
+<header class="titlebar" role="banner" data-levels={levelIds}>
+  <a class="titlebar__brand" href="/">
+    <Mark size={22} construction class="titlebar__mark" />
+    <span class="titlebar__name">{chrome.p0.brand}</span>
+  </a>
+  <p class="titlebar__head t-label-lg">
+    <span class="titlebar__no sheetno t-code">{sheetNo}</span>
+    <span class="titlebar__sep" aria-hidden="true">·</span><span class="sr-only">, </span>
+    {page.sheetTitleIsHers
+      ? <span class="titlebar__title" data-v>{page.sheetTitle}</span>
+      : page.kind === 'home'
+        ? <span class="titlebar__title" data-home-title data-cover={t.coverSheet} data-index={t.drawingIndex}>{page.sheetTitle}</span>
+        : <span class="titlebar__title">{page.sheetTitle}</span>}
+    {page.kind === 'case' && (
+      <span class="titlebar__level" data-titlebar-level hidden>
+        <span class="titlebar__dash" aria-hidden="true">—</span><span class="sr-only">, {t.level} </span><span data-level-label></span>
+      </span>
+    )}
   </p>
   <nav class="titlebar__nav t-label-lg" aria-label={t.primaryNav}>
     <ul role="list">
       <li><a href="/#index" aria-current={current === 'home' ? 'page' : undefined}>{t.index}</a></li>
       <li><a href="/about" aria-current={current === 'about' ? 'page' : undefined} data-v>{labels.nav.about}</a></li>
       <li><a href="/fun" aria-current={current === 'play' ? 'page' : undefined} data-v>{labels.nav.play}</a></li>
-      <li><a href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" size={14} /></a></li>
+      <li><a href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" size={13} /></a></li>
     </ul>
   </nav>
-  <button type="button" class="titlebar__list t-label" data-js-only data-palette-open aria-keyshortcuts="Meta+K Control+K">
-    <kbd class="t-code" aria-hidden="true"><Icon name="keycap-cmd" size={12} />K</kbd><span>{t.sheetList}</span>
+  <button type="button" class="titlebar__list" data-js-only data-palette-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K">
+    <kbd class="keycap" aria-hidden="true" data-keycap>
+      <span class="keycap__apple"><Icon name="keycap-cmd" size={12} />K</span><span class="keycap__other">{t.keycapOther}</span>
+    </kbd>
+    <span class="titlebar__list-label t-label">{t.sheetList}</span>
   </button>
 </header>
+
+<script>
+  import { installShortcuts } from '../../scripts/core/shortcuts';
+  import { listen } from '../../scripts/core/bus';
+  import { isApple } from '../../scripts/core/keys';
+
+  installShortcuts();
+
+  // the keycap: ⌘K on Apple platforms, Ctrl K elsewhere (detected once)
+  const platform = isApple() ? 'apple' : 'other';
+  document.querySelectorAll<HTMLElement>('[data-keycap]').forEach((k) => { k.dataset.platform = platform; });
+
+  // Home: the running head names the part of A-000 being read — "Cover sheet", then "Drawing index" once the index has
+  // crossed the reading line (40%). One IntersectionObserver; its entry carries the geometry, so nothing is measured.
+  const homeTitle = document.querySelector<HTMLElement>('[data-home-title]');
+  const index = document.getElementById('index');
+  if (homeTitle && index && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      const e = entries[entries.length - 1];
+      const line = e.rootBounds ? e.rootBounds.bottom : innerHeight * 0.4;
+      const name = (e.boundingClientRect.top <= line ? homeTitle.dataset.index : homeTitle.dataset.cover) ?? '';
+      if (name && homeTitle.textContent !== name) homeTitle.textContent = name;
+    }, { rootMargin: '0px 0px -60% 0px' }).observe(index);
+  }
+
+  // the running head's live level (WP5 → sv:level {index, label, elev})
+  const level = document.querySelector<HTMLElement>('[data-titlebar-level]');
+  const label = level?.querySelector<HTMLElement>('[data-level-label]');
+  if (level && label) {
+    listen('sv:level', (d) => {
+      if (!d || typeof d.label !== 'string' || !d.label) { level.hidden = true; return; }
+      if (label.textContent !== d.label) label.textContent = d.label;
+      level.hidden = false;
+    });
+  }
+</script>
+
 <style>
   .titlebar {
     position: sticky; inset-block-start: 0; z-index: var(--z-bar);
-    display: flex; align-items: center; gap: var(--s-5);
-    block-size: var(--bar); padding-inline: var(--m);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: stretch;
+    block-size: var(--bar); padding-inline: var(--m) 0;
     background: var(--sheet); border-block-end: var(--lw-object) solid var(--line-2);
+    /* its own group in the page cut (transitions.css): cut like the page, but above a morphing plate */
+    view-transition-name: vt-titlebar;
   }
-  .titlebar__brand { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; font-size: 1.125rem; font-weight: 420; white-space: nowrap; }
-  .titlebar__head { flex: 1 1 auto; min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-  .titlebar__nav ul { display: flex; gap: var(--s-4); list-style: none; margin: 0; padding: 0; }
-  .titlebar__nav a { display: inline-flex; align-items: center; gap: var(--s-1); text-decoration: none; }
-  .titlebar__nav a[aria-current='page'] { text-decoration: underline 2px var(--rust); text-underline-offset: 6px; }
-  .titlebar__list { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: 32px; padding: 4px 10px; border: var(--lw-object) solid var(--line-3); }
-  .titlebar__list kbd { display: inline-flex; align-items: center; gap: 2px; }
-  @media (max-width: 1279.98px) { .titlebar__title, .titlebar__sep { display: none; } }
-  @media (max-width: 1023.98px) { .titlebar { display: none; } }
+
+  /* ── brand ── */
+  .titlebar__brand {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    padding-inline-end: var(--s-5); text-decoration: none; color: var(--ink); white-space: nowrap;
+  }
+  .titlebar__brand :global(.titlebar__mark) { color: var(--rust); }
+  /* Newsreader 420 at 18px (§4.1) */
+  .titlebar__name { font-family: var(--font-serif); font-size: calc(var(--fs-label) * 1.5); font-weight: var(--wt-index); letter-spacing: -0.005em; line-height: 1; transform: translateY(-0.5px); }
+  .titlebar__brand:hover { color: var(--ink); }
+  .titlebar__brand:hover .titlebar__name { color: var(--rust-deep); }
+
+  /* ── the running head: a title-block cell ── */
+  .titlebar__head {
+    display: flex; align-items: center; gap: var(--s-2); min-inline-size: 0; margin: 0;
+    padding-inline: var(--s-5); border-inline-start: var(--lw-object) solid var(--line-2);
+    color: var(--ink-2); white-space: nowrap;
+  }
+  .titlebar__no {
+    flex: none; font-size: var(--fs-label-lg); letter-spacing: var(--tr-code); color: var(--rust);
+    /* the number rolls between sheets (transitions.css) */
+    view-transition-name: sheetno;
+  }
+  .titlebar__sep, .titlebar__dash { flex: none; color: var(--ink-3); }
+  .titlebar__title { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+  .titlebar__level { flex: none; display: inline-flex; gap: var(--s-2); color: var(--rust); }
+  .titlebar__level[hidden] { display: none; }
+
+  /* ── primary nav ── */
+  .titlebar__nav { display: flex; align-items: stretch; padding-inline: var(--s-4) var(--s-5); }
+  .titlebar__nav ul { display: flex; align-items: stretch; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+  .titlebar__nav li { display: flex; }
+  .titlebar__nav a {
+    position: relative; display: inline-flex; align-items: center; gap: 3px;
+    padding-inline: var(--s-2); color: var(--ink); text-decoration: none; white-space: nowrap;
+  }
+  .titlebar__nav a:hover { color: var(--rust-deep); }
+  .titlebar__nav a :global(.icon) { color: var(--ink-2); transform: translateY(-1px); }
+  .titlebar__nav a:hover :global(.icon) { color: currentColor; }
+  /* current page: a 2px rust rule on the bar's lower edge (plus aria-current for AT) */
+  .titlebar__nav a[aria-current='page']::after {
+    content: ''; position: absolute; inset-inline: var(--s-2); inset-block-end: calc(-1 * var(--lw-object));
+    block-size: var(--lw-cut); background: var(--rust);
+  }
+  .titlebar__nav a:focus-visible { outline-offset: -2px; }
+
+  /* ── the Sheet list: the last cell of the strip ── */
+  .titlebar__list {
+    display: inline-flex; align-items: center; gap: var(--s-3);
+    padding-inline: var(--s-5) var(--m); border-inline-start: var(--lw-object) solid var(--line-2);
+    color: var(--ink); transition: background-color var(--dur-1) var(--ease-ui), color var(--dur-1) var(--ease-ui);
+  }
+  .titlebar__list:hover { background: var(--paper-2); color: var(--rust-deep); }
+  .titlebar__list:focus-visible { outline-offset: -3px; }
+  .keycap {
+    display: inline-flex; align-items: center; justify-content: center; min-inline-size: 2.4em; block-size: 22px;
+    padding-inline: 5px; border: var(--lw-object) solid var(--line-3); border-block-end-width: 2px; border-radius: var(--r-1);
+    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; line-height: 1;
+  }
+  .keycap__apple { display: inline-flex; align-items: center; gap: 1px; }
+  .keycap__apple :global(.icon) { transform: translateY(0.5px); }
+  .keycap__other { display: none; }
+  .keycap[data-platform='other'] .keycap__apple { display: none; }
+  .keycap[data-platform='other'] .keycap__other { display: inline; }
+
+  @media (max-width: 1279.98px) {
+    .titlebar__title, .titlebar__sep { display: none; }
+    .titlebar__head { padding-inline: var(--s-4); }
+    .titlebar__nav { padding-inline: var(--s-2) var(--s-4); }
+  }
+  @media (max-width: 1023.98px) {
+    .titlebar { display: none; }
+  }
+  @media print {
+    .titlebar { display: none; }
+  }
 </style>

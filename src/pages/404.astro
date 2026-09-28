@@ -1,13 +1,16 @@
 ---
 /**
- * 404 · "Sheet not in set" · OWNER: WP1. P0 minimal: the label h1 "Sheet not in set." (narrative lines stay off until
- * approved), the path (3-line inline script; omitted without JS), the title block (SHEET 404 · TITLE — · REV. — ·
- * DRAWN BY S. V.), the compact Drawing index, and the way back. Served with status 404 by Cloudflare
- * (not_found_handling: "404-page").
+ * 404 · "Sheet not in set" · WP1 (SPEC §5.5). A sheet that isn't in the set gets drawn like a revision:
+ *   SHEET 404 · the h1 label "Sheet not in set." · a revision cloud (drawn once in 1.6 s; static under reduced motion)
+ *   with △1 at its corner, holding the path that was asked for (a 3-line inline script; omitted without JS) · the title
+ *   block strip under it (SHEET 404 · TITLE — · REV. — · DRAWN BY S. V.) · the compact Drawing index · the way back.
+ * Narrative lines ("This sheet is not in the set.", "REV. FINAL FINAL FINAL") render only once the owner approves them
+ * (chrome.ts narrative()). Served with status 404 by Cloudflare (wrangler.jsonc not_found_handling: "404-page").
  */
 import Base from '../layouts/Base.astro';
 import DrawingIndex from '../components/home/DrawingIndex.astro';
 import Icon from '../components/symbols/Icon.astro';
+import RevDelta from '../components/symbols/RevDelta.astro';
 import { chrome, narrative } from '../data/chrome';
 import type { PageMeta } from '../lib/page';
 
@@ -18,30 +21,170 @@ const rev = narrative(nf.revFinal);
 ---
 <Base title={`${chrome.wp1.titleBar.notInSet} — ${chrome.p0.person}`} description={nf.h1} page={page} noindex>
   <section class="nf shell" aria-labelledby="nf-h">
-    <p class="t-label-lg ink-2">{nf.sheet}</p>
-    <h1 id="nf-h" class="t-title">{nf.h1}</h1>
-    <div class="nf__cloud">
-      {cloud && <p>{cloud}</p>}
-      <p class="nf__path t-code" data-path hidden></p>
+    <div class="nf__main">
+      <div class="nf__head">
+        <p class="nf__label t-label-lg"><span class="nf__no">{nf.sheet}</span></p>
+        <h1 id="nf-h" class="nf__h">{nf.h1}</h1>
+      </div>
+
+      <div class="nf__cloud" data-revcloud id="nf-cloud">
+        <svg class="nf__svg" aria-hidden="true" focusable="false"><path class="nf__fill" /><path class="nf__line" pathLength="1" /></svg>
+        <span class="nf__delta" aria-hidden="true"><RevDelta n={1} size={26} /></span>
+        {cloud && <p class="nf__msg">{cloud}</p>}
+        <p class="nf__req" data-path-row hidden>
+          <span class="nf__req-k t-label">{nf.requested}</span>
+          <code class="nf__path" data-path></code>
+        </p>
+      </div>
     </div>
+
+    {/* the sheet's title block: one strip under the cloud (2 × 2 on phones: SHEET · REV. over TITLE · DRAWN BY) */}
     <dl class="nf__tb">
-      <div><dt class="t-label ink-2">{nf.sheetKey}</dt><dd class="t-code">{nf.sheetValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.titleKey}</dt><dd>{nf.titleValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.revKey}</dt><dd>{rev ?? nf.revValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.drawnByKey}</dt><dd>{nf.drawnByValue}</dd></div>
+      <div><dt class="t-label">{nf.sheetKey}</dt><dd class="nf__code">{nf.sheetValue}</dd></div>
+      <div><dt class="t-label">{nf.titleKey}</dt><dd>{nf.titleValue}</dd></div>
+      <div><dt class="t-label">{nf.revKey}</dt><dd>{rev ?? nf.revValue}</dd></div>
+      <div><dt class="t-label">{nf.drawnByKey}</dt><dd>{nf.drawnByValue}</dd></div>
     </dl>
   </section>
-  <DrawingIndex variant="compact" />
-  <p class="shell"><a class="t-label" href="/#index"><Icon name="arrow-left" size={14} /> {nf.back}</a></p>
+
+  <div class="nf__index">
+    <DrawingIndex variant="compact" />
+  </div>
+  <p class="nf__back shell"><a class="t-label" href="/#index"><Icon name="arrow-left" size={14} /><span>{nf.back}</span></a></p>
+
   <script is:inline>
-    (() => { const p = document.querySelector('[data-path]'); if (p) { p.textContent = location.pathname; p.hidden = false; } })();
+    (() => { const r = document.querySelector('[data-path-row]'), p = r && r.querySelector('[data-path]');
+      if (p) { let t = location.pathname; try { t = decodeURI(t); } catch (e) {} p.textContent = t; r.hidden = false; } })();
   </script>
 </Base>
+
+<script>
+  /**
+   * The revision cloud (SM6b's drawing, for the 404): walk the box inset by −10px clockwise, one outward-bulging arc per
+   * segment (n = max(2, round(len / 26)); len / 22 on phones), r = segLen · 0.62 with ±6% seeded jitter so it looks
+   * hand-drawn yet never changes between visits. Drawn once with stroke-dashoffset over --dur-6 (instant when Motion is
+   * off); the blush fill follows. Redrawn on resize.
+   */
+  const box = document.querySelector<HTMLElement>('[data-revcloud]');
+  const svg = box?.querySelector<SVGSVGElement>('svg');
+  const line = svg?.querySelector<SVGPathElement>('.nf__line');
+  const fill = svg?.querySelector<SVGPathElement>('.nf__fill');
+
+  function rng(seed: string) {
+    let h = 2166136261;
+    for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
+  }
+
+  function draw() {
+    if (!box || !svg || !line || !fill) return;
+    const out = 10;
+    const w = box.clientWidth + out * 2;
+    const h = box.clientHeight + out * 2;
+    const pad = 12; // room for the scallops outside the walk
+    svg.setAttribute('viewBox', `${-pad} ${-pad} ${w + pad * 2} ${h + pad * 2}`);
+    svg.style.left = svg.style.top = `${-out - pad}px`;
+    svg.style.width = `${w + pad * 2}px`;
+    svg.style.height = `${h + pad * 2}px`;
+    const unit = matchMedia('(max-width: 767.98px)').matches ? 22 : 26;
+    const rand = rng(box.id || 'cloud');
+    const corners: [number, number][] = [[0, 0], [w, 0], [w, h], [0, h], [0, 0]];
+    let d = `M0 0`;
+    for (let s = 0; s < 4; s++) {
+      const [x0, y0] = corners[s];
+      const [x1, y1] = corners[s + 1];
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const n = Math.max(2, Math.round(len / unit));
+      const seg = len / n;
+      for (let i = 1; i <= n; i++) {
+        const x = x0 + ((x1 - x0) * i) / n;
+        const y = y0 + ((y1 - y0) * i) / n;
+        const r = seg * 0.62 * (1 + (rand() - 0.5) * 0.12);
+        d += ` A${r.toFixed(2)} ${r.toFixed(2)} 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
+      }
+    }
+    line.setAttribute('d', `${d} Z`);
+    fill.setAttribute('d', `${d} Z`);
+  }
+
+  if (box) {
+    draw();
+    let last = box.clientWidth;
+    new ResizeObserver(() => { if (box.clientWidth !== last) { last = box.clientWidth; draw(); } }).observe(box);
+    // draw in once (the cloud is at the top of the sheet: it is in view on arrival)
+    requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('is-drawn')));
+  }
+</script>
+
 <style>
-  .nf { display: grid; gap: var(--s-4); padding-block: var(--s-7); }
-  .nf__cloud { border: var(--lw-border) solid var(--rust); padding: var(--s-4); overflow-wrap: anywhere; }
-  .nf__tb { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border: var(--lw-border) solid var(--ink); }
-  .nf__tb div { padding: var(--s-2) var(--s-3); }
+  /* the sheet, top to bottom: SHEET 404 · the h1 · the cloud · the title block (SPEC §5.5) */
+  .nf {
+    display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: var(--s-6);
+    padding-block: var(--s-8) var(--s-7);
+  }
+  .nf__main { display: grid; gap: var(--s-6); justify-items: start; min-inline-size: 0; }
+  .nf__head { display: grid; gap: var(--s-3); }
+  .nf__label { margin: 0; color: var(--ink-2); }
+  .nf__no { font-family: var(--font-mono); font-size: var(--fs-label-lg); font-weight: 500; letter-spacing: var(--tr-code); color: var(--rust); }
+  .nf__h {
+    margin: 0; font-family: var(--font-serif); font-size: var(--fs-title); font-weight: var(--wt-title);
+    line-height: var(--lh-title); letter-spacing: var(--tr-title); text-wrap: balance;
+  }
+
+  /* ── the revision cloud ── */
+  .nf__cloud {
+    position: relative; isolation: isolate; display: grid; gap: var(--s-2);
+    min-inline-size: min(100%, 24rem); max-inline-size: calc(100% - 2 * var(--s-5));
+    margin: var(--s-4) var(--s-5) var(--s-2); padding: var(--s-5) var(--s-6);
+  }
+  :global(html:not(.js)) .nf__cloud { display: none; } /* without JS there is no path to hold */
+  .nf__svg { position: absolute; max-inline-size: none; overflow: visible; pointer-events: none; z-index: -1; }
+  .nf__fill { fill: var(--blush); fill-opacity: 0.55; opacity: 0; transition: opacity var(--dur-3) var(--ease-ui) var(--dur-6); }
+  .nf__line {
+    fill: none; stroke: var(--rust); stroke-width: var(--lw-border); stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset var(--dur-6) var(--ease-draft);
+  }
+  .nf__cloud.is-drawn .nf__line { stroke-dashoffset: 0; }
+  .nf__cloud.is-drawn .nf__fill { opacity: 1; }
+  /* △1 sits on the cloud's corner; its triangle is filled with the sheet so the scallops pass behind it */
+  .nf__delta {
+    position: absolute; inset-block-start: calc(-1 * var(--s-6)); inset-inline-start: calc(-1 * var(--s-6));
+    color: var(--rust); line-height: 0;
+  }
+  .nf__delta :global(path) { fill: var(--paper); }
+  .nf__msg { margin: 0; font-family: var(--font-serif); font-size: var(--fs-lede); line-height: var(--lh-lede); }
+  .nf__req { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-4); margin: 0; }
+  .nf__req[hidden] { display: none; }
+  .nf__req-k { color: var(--ink-2); }
+  .nf__path {
+    font-family: var(--font-mono); font-size: var(--fs-lede-sm); font-weight: 500; letter-spacing: 0; color: var(--ink);
+    overflow-wrap: anywhere; word-break: break-all;
+  }
+
+  /* ── the title block: a strip of four cells sized to their contents (2 × 2 on phones) ── */
+  .nf__tb {
+    display: grid; grid-template-columns: repeat(4, minmax(8.5rem, max-content)); margin: 0; max-inline-size: 100%;
+    border: var(--lw-border) solid var(--ink); background: var(--sheet);
+  }
+  .nf__tb div { display: grid; gap: var(--s-2); align-content: start; padding: var(--s-3) var(--s-5) var(--s-4) var(--s-4); min-inline-size: 0; }
   .nf__tb div + div { border-inline-start: var(--lw-object) solid var(--line-2); }
-  .nf__tb dd { margin: 0; }
+  .nf__tb dt { color: var(--ink-2); }
+  .nf__tb dd { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body); line-height: 1.25; }
+  .nf__tb .nf__code { font-family: var(--font-mono); font-size: var(--fs-body-sm); font-weight: 500; color: var(--rust); }
+
+  .nf__index { border-block-start: var(--lw-object) solid var(--line-2); }
+  .nf__back { padding-block: var(--s-2) 0; }
+  .nf__back a { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: 44px; text-decoration: none; color: var(--ink); }
+  .nf__back a:hover { color: var(--rust-deep); }
+
+  @media (max-width: 767.98px) {
+    .nf { padding-block: var(--s-6) var(--s-5); gap: var(--s-5); justify-items: stretch; }
+    /* column flow: SHEET · REV. on the first row, TITLE · DRAWN BY on the second */
+    .nf__tb { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; grid-auto-flow: column; }
+    .nf__tb div + div { border-inline-start: 0; }
+    .nf__tb div:nth-child(n + 3) { border-inline-start: var(--lw-object) solid var(--line-2); }
+    .nf__tb div:nth-child(even) { border-block-start: var(--lw-object) solid var(--line-2); }
+    .nf__main { gap: var(--s-5); }
+    .nf__cloud { margin-inline: var(--s-4); padding: var(--s-4) var(--s-5); min-inline-size: 0; inline-size: calc(100% - 2 * var(--s-4)); max-inline-size: none; }
+  }
 </style>

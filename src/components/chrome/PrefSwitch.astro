@@ -1,0 +1,78 @@
+---
+/**
+ * PrefSwitch · WP1. One settings switch (role="switch", aria-checked) wired to core/prefs (SPEC §4.3, §4.12):
+ * Motion (full ↔ reduce), Dusk (dusk ↔ vellum), Shortcuts (on ↔ off). Used by the end sheet and the Sheet drawer; every
+ * instance on the page stays in sync (prefs `sv:prefs` + cross-tab `storage`). The visible On/Off is aria-hidden:
+ * the state is aria-checked, the name is the label (2.5.3 label-in-name holds). Hidden without JS (data-js-only).
+ */
+import { chrome } from '../../data/chrome';
+interface Props { pref: 'motion' | 'theme' | 'keys'; class?: string }
+const { pref, class: cls } = Astro.props;
+const t = chrome.wp1.endSheet;
+const spec = {
+  motion: { label: t.motion, on: 'full', off: 'reduce', initial: true },
+  theme: { label: t.dusk, on: 'dusk', off: 'vellum', initial: false },
+  keys: { label: t.shortcuts, on: 'on', off: 'off', initial: true },
+}[pref];
+---
+<button
+  type="button"
+  role="switch"
+  class:list={['pswitch', cls]}
+  aria-checked={String(spec.initial)}
+  data-pref-switch={pref}
+  data-on={spec.on}
+  data-off={spec.off}
+  data-js-only
+>
+  <span class="pswitch__label">{spec.label}</span>
+  <span class="pswitch__state" aria-hidden="true">
+    <span class="pswitch__dot"></span>
+    <span class="pswitch__on">{t.on}</span><span class="pswitch__off">{t.off}</span>
+  </span>
+</button>
+
+<script>
+  import { get, set, on, type PrefKey, type PrefValues } from '../../scripts/core/prefs';
+  const sync = (b: HTMLElement) => {
+    const key = b.dataset.prefSwitch as PrefKey;
+    b.setAttribute('aria-checked', String(get(key) === b.dataset.on));
+  };
+  const all = () => document.querySelectorAll<HTMLElement>('[data-pref-switch]');
+  all().forEach((b) => {
+    sync(b);
+    b.addEventListener('click', () => {
+      const key = b.dataset.prefSwitch as PrefKey;
+      const next = (get(key) === b.dataset.on ? b.dataset.off : b.dataset.on) as PrefValues[PrefKey];
+      set(key, next as never);
+    });
+  });
+  (['motion', 'theme', 'keys'] as PrefKey[]).forEach((k) => on(k, () => all().forEach(sync)));
+</script>
+
+<style>
+  .pswitch {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-4);
+    inline-size: 100%; min-block-size: 32px; padding-block: 2px;
+    font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
+    text-align: start;
+  }
+  .pswitch__state {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label);
+    font-variation-settings: var(--wdth-label); letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--ink-2);
+  }
+  /* the dot: a drafting "on" mark — filled rust when on, a hollow ring when off */
+  .pswitch__dot {
+    inline-size: 10px; block-size: 10px; border-radius: var(--r-dot);
+    border: var(--lw-border) solid var(--ink-2); background: transparent;
+    transition: background-color var(--dur-2) var(--ease-ui), border-color var(--dur-2) var(--ease-ui);
+  }
+  .pswitch[aria-checked='true'] .pswitch__dot { background: var(--rust); border-color: var(--rust); }
+  .pswitch[aria-checked='true'] .pswitch__state { color: var(--ink); }
+  .pswitch__on, .pswitch__off { min-inline-size: 2.2em; }
+  .pswitch[aria-checked='true'] .pswitch__off, .pswitch[aria-checked='false'] .pswitch__on { display: none; }
+  .pswitch:hover .pswitch__label { color: var(--rust-deep); }
+  .pswitch:hover .pswitch__dot { border-color: var(--rust); }
+  @media (pointer: coarse) { .pswitch { min-block-size: 44px; } }
+</style>

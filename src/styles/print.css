@@ -1,5 +1,127 @@
 /* ==========================================================================
-   print.css · OWNER: WP1 (stub created by P0 so Base.astro can import it).
-   Wrap every rule in @media print (SPEC §4.10). base.css already forces Section view
-   and expands omit-runs in print; this file hides chrome, sets @page, the running footer, etc.
+   print.css · WP1. The set prints as a set (SPEC §4.10).
+   · Hidden: the title and bottom bars, the Levels rail, the Sheet list, the drawer, the detail viewer, canvases (the
+     hero prints its fallback SVG), every script-only control ([data-js-only]), placeholders, the Viewport, the Key
+     plan's "Go ↓" links, the back link and the match line (navigation), and the end sheet's screen content.
+     Any package can opt an element out with [data-print="hide"].
+   · Content: Section view is forced and every omit run is open (base.css); the Decision schedule prints right after
+     the header; every chapter after the first starts a new page; figures never split; plates keep their stages.
+   · The running footer is a pair of @page margin boxes (so text can never run under it): the sheet line
+     "A-101 · <title> · Saumya Verma · saumya-verma.com/cloudflare" over her copyright, and the page count. The strings
+     are per page (EndSheet.astro sets --sv-print-foot / --sv-print-copy on :root for print).
+   · External CTAs print their URL after the label; buttons print as plain links.
+   Selectors reach other packages' components through their stable P0 contracts (landmarks, ids, data attributes)
+   first and their class names second.
    ========================================================================== */
+@page {
+  size: A4;
+  margin: 16mm 14mm 22mm;
+
+  @bottom-left {
+    content: var(--sv-print-foot, "") "\A" var(--sv-print-copy, "");
+    white-space: pre;
+    vertical-align: top;
+    padding-block-start: 3mm;
+    border-block-start: var(--lw-object) solid var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    line-height: 1.55;
+    letter-spacing: 0.01em;
+    color: var(--ink-2);
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    vertical-align: top;
+    padding-block-start: 3mm;
+    border-block-start: var(--lw-object) solid var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: 500;
+    color: var(--ink);
+  }
+}
+
+@media print {
+  :root {
+    --bar: 0px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* the paper is the page: no vellum tint, no texture */
+  html, body { background: none !important; }
+  body { padding: 0 !important; }
+  html { scroll-padding: 0 !important; }
+
+  /* ---------- chrome that never prints ---------- */
+  header[role='banner'], .titlebar, .bottombar, .skip, .vt-cutline,
+  dialog, .palette, .drawer, .detail,
+  nav[aria-label='Levels'], .case-body__rail, .levels,
+  .viewport, aside[inert],
+  canvas,
+  [data-js-only], [data-print='hide'],
+  .placeholder, [data-placeholder],
+  .keyplan a[href^='#'], .keyplan__go,
+  .case-head__back,
+  .matchline, section[aria-labelledby='matchline-h'],
+  .toast {
+    display: none !important;
+  }
+  /* the hero prints its static drawing */
+  .siteplan-fallback, [data-siteplan-fallback] { display: revert !important; visibility: visible !important; }
+
+  /* ---------- the case as a printed set: header → Decision schedule → Key plan → chapters ---------- */
+  article.case { display: flex !important; flex-direction: column; }
+  article.case > * { order: 3; }
+  article.case > :is(.case-head, header) { order: 0; }
+  article.case > :is(.decisions, section[aria-labelledby='decisions-h']) { order: 1; }
+  article.case > :is(.keyplan, section[aria-labelledby='keyplan-h']) { order: 2; }
+
+  /* the cover sheet fits on page 1: one column, the cover plate sized to what is left of the page */
+  .case-head { padding-block: 0 6mm !important; }
+  .case-head__grid { grid-template-columns: minmax(0, 1fr) !important; gap: 6mm !important; }
+  .case-head__plate, article.case > :is(.case-head, header) figure { inline-size: 136mm; max-inline-size: 100%; }
+  .decisions { padding-block-start: 0 !important; }
+
+  /* one column: the reading grid's rail and notes fold into the text measure */
+  .case-body, .chapter { display: block !important; }
+  .case-body .blk, .chapter .blk { display: block !important; }
+  .blk > .blk__note { margin-block-start: 3mm; }
+  .chapter {
+    content-visibility: visible !important;
+    contain-intrinsic-size: none !important;
+  }
+  .chapter ~ .chapter, section.chapter ~ section.chapter { break-before: page; }
+  .section-mark { margin-block-start: 0 !important; break-inside: avoid; break-after: avoid; }
+  h1, h2, h3, h4, .dt, .sublevel { break-after: avoid; }
+  p, li, dd, blockquote { orphans: 3; widows: 3; }
+
+  /* figures and plates never split; stages print as authored */
+  figure, .plate, [data-plate], img, video, svg,
+  .blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--insights, .blk--stories,
+  tr, .titleblock, .keyplan__stop {
+    break-inside: avoid;
+  }
+  img, video, svg { max-inline-size: 100% !important; }
+  .plate, [data-plate] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  figure { max-inline-size: 100%; }
+
+  /* tables: codes never wrap; wide tables stay on the page */
+  .decisions, .decisions__t { overflow: visible !important; inline-size: 100%; }
+  table th[scope='row'] { white-space: nowrap; }
+  [role='region'][tabindex] { overflow: visible !important; }
+
+  /* links: a printed page can't be clicked — buttons read as links and external CTAs carry their URL */
+  article.case .btn {
+    display: inline !important; min-block-size: 0 !important; padding: 0 !important; border: 0 !important;
+    background: none !important; line-height: inherit;
+  }
+  article.case .btn svg { display: inline-block; vertical-align: -0.15em; margin-inline-start: 0.2em; }
+  a.cta[href^='http']::after,
+  :is(.cta-row, .case-head__actions) a[href^='http']::after {
+    content: attr(href);
+    display: block; margin-block-start: 1mm;
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: 400; letter-spacing: 0; text-transform: none;
+    overflow-wrap: anywhere; color: var(--ink-2); text-decoration: none;
+  }
+  a { text-decoration-color: var(--line-3); }
+}
