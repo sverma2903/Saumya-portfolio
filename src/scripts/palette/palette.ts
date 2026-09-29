@@ -11,7 +11,7 @@
  *  - Passages are her sentences, cited to where they live. Nothing here is generated: every row text is verbatim
  *    from the index; the only additions are <mark class="q"> around the typed query and chrome labels.
  */
-import { Corpus, markRanges, search, textDirective, tokens, type Hit } from './search';
+import { Corpus, markRanges, search, textDirective, tokens, wordStarts, type Hit } from './search';
 import type { MainIndex, ShardIndex } from '../../lib/search-index';
 import { get, set, toggle } from '../core/prefs';
 import { copyText, toast } from '../core/copy';
@@ -121,7 +121,7 @@ function mount(dlg: HTMLDialogElement): Ui {
   const u = ui;
 
   u.input.addEventListener('input', () => {
-    dlg.dataset.mode = u.input.value.trim() ? 'results' : 'home';
+    dlg.dataset.mode = queryMode(u.input.value);
     render();
   });
   u.input.addEventListener('keydown', (e) => {
@@ -166,10 +166,14 @@ function mount(dlg: HTMLDialogElement): Ui {
 export function opened(dlg: HTMLDialogElement, opts: OpenOpts): void {
   const u = mount(dlg);
   syncActions();
-  dlg.dataset.mode = opts.mode === 'keys' ? 'keys' : u.input.value.trim() ? 'results' : 'home';
+  dlg.dataset.mode = opts.mode === 'keys' ? 'keys' : queryMode(u.input.value);
   render();
   loadMain().then(() => { if (dlg.open) render(); warm(); }).catch(() => {});
 }
+
+/** A query only counts once it has a token (≥ 2 characters): one typed letter keeps the empty state, so a search
+ *  never flashes (or announces) "Nothing in the set matches" on its first keystroke. */
+const queryMode = (q: string): 'results' | 'home' => (tokens(q).length ? 'results' : 'home');
 
 const options = (): HTMLElement[] => {
   if (!ui) return [];
@@ -218,6 +222,7 @@ function render(): void {
   u.empty.hidden = true;
   u.input.setAttribute('aria-expanded', String(mode !== 'keys'));
   if (mode === 'results') renderResults(u.input.value);
+  else { window.clearTimeout(statusTimer); if (mode === 'home') u.status.textContent = ''; }
   select(options().length ? 0 : -1);
 }
 
@@ -309,7 +314,9 @@ function renderResults(q: string): void {
       if (h.e.lead) main.push(spanMarked('pl-opt__lead', h.e.lead, toks, true));
       main.push(spanMarked('pl-opt__t', h.e.t, toks, true));
       const where = `${pg.sheet} · ${pg.lv?.[h.e.c ?? 0] ?? pg.title}`;
-      row(box, 'passage', '¶', main, where, (kb) => goPassage(g.passages, i, kb));
+      const o = row(box, 'passage', '¶', main, where, (kb) => goPassage(g.passages, i, kb));
+      // a stat or a timeline step reads as one line ("6 call center interviews"), not a numeral over a label
+      if (h.e.lead) o.classList.add('pl-opt--run');
     });
   }
   if (acts.length) {
@@ -442,7 +449,7 @@ function quickActions(): Action[] {
 
 function matchActions(toks: string[]): Action[] {
   if (!toks.length) return [];
-  return actionList().filter((a) => toks.every((t) => a.label.toLowerCase().includes(t))).slice(0, 6);
+  return actionList().filter((a) => wordStarts(a.label, toks)).slice(0, 6);
 }
 
 /** Keep the server-rendered Actions rows (empty state) in step with the current preferences. */
@@ -523,7 +530,10 @@ function goPassage(list: Hit[], i: number, keyboard: boolean): void {
   close();
   if (!isHere(e.p)) {
     const params = pg.kind === 'case' ? `?view=section${e.a ? `&cite=${encodeURIComponent(e.a)}` : ''}` : '';
-    location.href = `${pg.href}${params}#${textDirective(e.t, prev, next)}`;
+    // a passage that runs across a <br> or several elements can't be matched whole: aim at its longest run (or at
+    // nothing, and let ?cite land the block)
+    const directive = !e.nd ? textDirective(e.t, prev, next) : e.d ? textDirective(e.d) : '';
+    location.href = `${pg.href}${params}${directive ? `#${directive}` : ''}`;
     return;
   }
   cite(e.a ? document.getElementById(e.a) : findHost(e.t), e.t, keyboard);

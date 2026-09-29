@@ -17,9 +17,12 @@
   size: A4;
   margin: 16mm 14mm 22mm;
 
+  /* the page count keeps a fixed cell, so a long case title wraps inside the left box instead of pushing the count
+     off the page (A-102's title is 58 characters) */
   @bottom-left {
     content: var(--sv-print-foot, "") "\A" var(--sv-print-copy, "");
-    white-space: pre;
+    width: calc(100% - 28mm);
+    white-space: pre-wrap;
     vertical-align: top;
     padding-block-start: 3mm;
     border-block-start: var(--lw-object) solid var(--ink);
@@ -31,6 +34,9 @@
   }
   @bottom-right {
     content: counter(page) " / " counter(pages);
+    width: 28mm;
+    white-space: nowrap;
+    text-align: end;
     vertical-align: top;
     padding-block-start: 3mm;
     border-block-start: var(--lw-object) solid var(--ink);

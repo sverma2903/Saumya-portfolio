@@ -9,7 +9,7 @@ import { buildSearchIndex, indexStrings, mainIndex, shardIndex } from '@/lib/sea
 import { chapterCtxs } from '@/lib/blocks-ctx';
 import { blockTexts, isVerbatim, ref, type CaseSlug } from '@/lib/verbatim';
 import { SHEET_NO } from '@/data/sheets';
-import { Corpus, markRanges, search, textDirective, tokens } from '@/scripts/palette/search';
+import { Corpus, markRanges, search, textDirective, tokens, wordStarts } from '@/scripts/palette/search';
 
 const main = mainIndex();
 const corpus = new Corpus(main);
@@ -134,5 +134,42 @@ describe('citation helpers', () => {
     const t = 'Constraints, not in spite of them: a constraint.';
     const r = markRanges(t, ['constraint']);
     expect(r.map(([a, b]) => t.slice(a, b).toLowerCase())).toEqual(['constraint', 'constraint']);
+  });
+});
+
+describe('review round 3: sentences before fragments, word starts before substrings', () => {
+  test('"interviews": her sentences lead Passages; stats and timeline steps come after them', () => {
+    const g = search(corpus, 'interviews', 0);
+    const firstFrag = g.passages.findIndex((h) => h.e.f);
+    const lastSentence = g.passages.map((h) => !h.e.f).lastIndexOf(true);
+    expect(g.passages.filter((h) => !h.e.f).length).toBeGreaterThanOrEqual(4);
+    if (firstFrag >= 0) expect(firstFrag).toBeGreaterThan(lastSentence);
+    // stats and timeline steps are fragments (they carry a lead)
+    expect(corpus.entries.filter((e) => e.lead && !e.f)).toEqual([]);
+  });
+
+  test('"ai" never matches inside a word, and whole-word hits rank above substring-only hits', () => {
+    const cf = pageOf('cloudflare');
+    const g = search(corpus, 'ai', cf);
+    for (const h of [...g.sheets, ...g.levels, ...g.details, ...g.passages]) {
+      expect(h.wb).toBe(true);
+      expect(/(^|[^\p{L}\p{N}])ai/iu.test(`${h.e.lead ?? ''} ${h.e.t} ${h.why ?? ''} ${(h.e.x ?? []).join(' ')}`)).toBe(true);
+    }
+    expect(markRanges('Detailed Analytics, AI-generated', ['ai'])).toEqual([[20, 22]]);
+    expect(wordStarts('Copy email', ['ai'])).toBe(false);
+    expect(wordStarts('Copy email', ['em'])).toBe(true);
+    // a 3+ letter token may still match inside a word, but ranks below whole-word hits
+    const r = search(corpus, 'straint', cf);
+    expect(r.passages.length).toBeGreaterThan(0);
+    const tiers = r.passages.map((h) => h.wb);
+    expect(tiers).toEqual([...tiers].sort((a, b) => Number(b) - Number(a)));
+  });
+
+  test('passages split by <br> or elements carry nd (no whole-sentence directive) and a single-run d', () => {
+    const nd = corpus.entries.filter((e) => e.nd);
+    expect(nd.length).toBeGreaterThan(0);
+    const pUp = pageOf('u-up');
+    expect(nd.some((e) => e.p === pUp && e.t.startsWith('80% are interested'))).toBe(true);
+    for (const e of nd) if (e.d) expect(e.t.includes(e.d)).toBe(true);
   });
 });

@@ -57,6 +57,14 @@ export interface IndexItem {
   lead?: string;
   /** 1 when this passage directly follows the previous item inside the same element text */
   j?: 1;
+  /** 1 when the passage is a fragment, not a sentence: a stat or timeline step (it has a lead), a caption, or a short
+   *  label with no end stop. The Sheet list ranks fragments after her sentences and sets them on one line. */
+  f?: 1;
+  /** 1 when no text directive can match it: the passage runs across a <br> or across block elements. A cross-page
+   *  citation then aims its #:~:text= at `d` (the longest single run of the passage) and lands the block by ?cite. */
+  nd?: 1;
+  /** with nd: the longest part of `t` that sits in one text run (a verbatim substring of t) */
+  d?: string;
 }
 
 export interface SearchIndex {
@@ -82,8 +90,9 @@ export interface ShardIndex {
   items: Omit<IndexItem, 'p'>[];
 }
 
-/** One text field of a block (rendered as one element): its stripped text and an optional verbatim lead. */
-interface Field { text: string; lead?: string }
+/** One text field of a block (rendered as one element): its stripped text, an optional verbatim lead, its source
+ *  HTML (to find where the rendered text breaks) and whether it is a caption. */
+interface Field { text: string; lead?: string; html?: string; cap?: boolean }
 
 const s = (html: string | undefined | null) => stripHtml(html);
 const wordCount = (t: string) => (t.match(/\S+/g) ?? []).length;
@@ -91,14 +100,18 @@ const wordCount = (t: string) => (t.match(/\S+/g) ?? []).length;
 /** The searchable text fields of one block, in DOM order (split handled by the caller). */
 export function blockFields(b: Block): Field[] {
   const out: Field[] = [];
-  const add = (html: string | undefined | null, lead?: string) => {
+  const add = (html: string | undefined | null, lead?: string, cap?: boolean) => {
     const text = s(html);
-    if (text) out.push(lead ? { text, lead } : { text });
+    if (!text) return;
+    const f: Field = { text, html: html ?? undefined };
+    if (lead) f.lead = lead;
+    if (cap) f.cap = true;
+    out.push(f);
   };
   switch (b.t) {
     case 'h3': case 'lede': case 'p': case 'small': add(b.html); break;
     case 'list': b.items.forEach((x) => add(x)); break;
-    case 'media': add(b.caption); break;
+    case 'media': add(b.caption, undefined, true); break;
     case 'stats': b.items.forEach((x) => add(x.html, s(x.v))); break;
     case 'callout': add(b.lede); add(b.html); break;
     case 'cards': b.items.forEach((x) => { add(x.title); add(x.html); }); break;
@@ -106,21 +119,54 @@ export function blockFields(b: Block): Field[] {
     case 'stories': b.items.forEach((x) => { add(x.title); x.rows.forEach(([, v]) => add(v)); }); break;
     case 'timeline': b.items.forEach((x) => add(x.v, s(x.k))); break;
     case 'insights': b.items.forEach((x) => { add(x.title); add(x.sub); x.items.forEach((y) => add(y)); }); break;
-    case 'concept': add(b.title); b.captions.forEach((x) => add(x)); (b.analysis ?? []).forEach((x) => add(x)); break;
+    case 'concept': add(b.title); b.captions.forEach((x) => add(x, undefined, true)); (b.analysis ?? []).forEach((x) => add(x)); break;
     default: break; // h → details; cta, tabs, spacer, split (children handled by the caller)
   }
   return out;
 }
 
+type Piece = { t: string; lead?: string; j?: 1; f?: 1; nd?: 1; d?: string };
+
+/** The longest part of `t` inside one run of `runs` (runs joined by one space make up the field text). */
+function longestRun(t: string, runs: string[]): string | undefined {
+  const joined = runs.join(' ');
+  const at = joined.indexOf(t);
+  if (at < 0) return undefined;
+  let best = '';
+  let pos = 0;
+  for (const r of runs) {
+    const a = Math.max(pos, at);
+    const b = Math.min(pos + r.length, at + t.length);
+    if (b > a && b - a > best.length) best = joined.slice(a, b).trim();
+    pos += r.length + 1;
+  }
+  return best && t.includes(best) ? best : undefined;
+}
+
+/** A sentence ends with a stop (optionally inside a closing quote or bracket). */
+const END_STOP = /[.!?:;…]["'”’)\]]*$/;
+/** An unpunctuated run this short reads as a label, not a sentence. */
+const LABEL_WORDS = 6;
+/** Where the rendered text of one field breaks: a <br> or a block element boundary. */
+const TEXT_BREAK = /<br\s*\/?>|<\/?(?:p|li|ul|ol|div|h[1-6]|blockquote|figcaption|dt|dd)\b[^>]*>/gi;
+
 /** Passages of one field: its sentences (≥ 2 words), the first carrying the lead, the rest marked `j`. */
-function fieldPassages(f: Field): { t: string; lead?: string; j?: 1 }[] {
-  const out: { t: string; lead?: string; j?: 1 }[] = [];
+function fieldPassages(f: Field): Piece[] {
+  const out: Piece[] = [];
   let prevKept = false;
+  const runs = f.html && TEXT_BREAK.test(f.html) ? f.html.split(TEXT_BREAK).map((x) => s(x)).filter(Boolean) : null;
+  TEXT_BREAK.lastIndex = 0;
   sentences(f.text).forEach((t, i) => {
     if (wordCount(t) < 2 && !(i === 0 && f.lead)) { prevKept = false; return; }
-    const item: { t: string; lead?: string; j?: 1 } = { t };
+    const item: Piece = { t };
     if (i === 0 && f.lead) item.lead = f.lead;
     if (i > 0 && prevKept) item.j = 1;
+    if (item.lead || f.cap || (!END_STOP.test(t) && wordCount(t) <= LABEL_WORDS)) item.f = 1;
+    if (runs && !runs.some((r) => r.includes(t))) {
+      item.nd = 1;
+      const d = longestRun(t, runs);
+      if (d && wordCount(d) >= 2) item.d = d;
+    }
     out.push(item);
     prevKept = true;
   });
@@ -199,7 +245,7 @@ function build(): SearchIndex {
 
   // ── items ──
   const seen = new Map<number, Set<string>>();
-  const push = (p: number, c: number, a: string | undefined, pieces: { t: string; lead?: string; j?: 1 }[]) => {
+  const push = (p: number, c: number, a: string | undefined, pieces: Piece[]) => {
     let set = seen.get(p);
     if (!set) seen.set(p, (set = new Set()));
     let prevPushed = false;
@@ -210,6 +256,9 @@ function build(): SearchIndex {
       if (a) it.a = a;
       if (piece.lead) it.lead = piece.lead;
       if (piece.j && prevPushed) it.j = 1;
+      if (piece.f) it.f = 1;
+      if (piece.nd) it.nd = 1;
+      if (piece.d) it.d = piece.d;
       items.push(it);
       prevPushed = true;
     }
@@ -217,20 +266,20 @@ function build(): SearchIndex {
   const fieldsOf = (fields: Field[]) => fields.map(fieldPassages);
 
   // site pages (no anchors: the client finds the sentence in the DOM, or cites by text fragment)
-  push(HOME, 0, undefined, fieldPassages({ text: s(home.headline) }));
-  push(HOME, 0, undefined, fieldPassages({ text: s(home.sub) }));
-  selected.forEach((c) => push(HOME, 1, undefined, fieldPassages({ text: s(c.text) })));
-  push(ABOUT, 0, undefined, fieldPassages({ text: s(about.headline) }));
-  about.story.forEach((x) => push(ABOUT, 0, undefined, fieldPassages({ text: s(x) })));
-  push(ABOUT, 1, undefined, fieldPassages({ text: s(fiction.text) }));
-  push(ABOUT, 2, undefined, fieldPassages({ text: s(writing.text) }));
-  push(ABOUT, 2, undefined, fieldPassages({ text: s(writing.published) }));
-  writing.posts.forEach((x) => push(ABOUT, 2, undefined, fieldPassages({ text: s(x.title) })));
-  push(ABOUT, 3, undefined, fieldPassages({ text: s(meditation.text) }));
-  push(ABOUT, 4, undefined, fieldPassages({ text: s(sketching.text) }));
-  push(PLAY, 0, undefined, fieldPassages({ text: s(play.headline) }));
-  push(PLAY, 0, undefined, fieldPassages({ text: s(play.sub) }));
-  play.items.forEach((x) => push(PLAY, 0, undefined, [...fieldPassages({ text: s(x.title) }), ...fieldPassages({ text: s(x.tag) })]));
+  push(HOME, 0, undefined, fieldPassages({ text: s(home.headline), html: home.headline }));
+  push(HOME, 0, undefined, fieldPassages({ text: s(home.sub), html: home.sub }));
+  selected.forEach((c) => push(HOME, 1, undefined, fieldPassages({ text: s(c.text), html: c.text })));
+  push(ABOUT, 0, undefined, fieldPassages({ text: s(about.headline), html: about.headline }));
+  about.story.forEach((x) => push(ABOUT, 0, undefined, fieldPassages({ text: s(x), html: x })));
+  push(ABOUT, 1, undefined, fieldPassages({ text: s(fiction.text), html: fiction.text }));
+  push(ABOUT, 2, undefined, fieldPassages({ text: s(writing.text), html: writing.text }));
+  push(ABOUT, 2, undefined, fieldPassages({ text: s(writing.published), html: writing.published }));
+  writing.posts.forEach((x) => push(ABOUT, 2, undefined, fieldPassages({ text: s(x.title), html: x.title })));
+  push(ABOUT, 3, undefined, fieldPassages({ text: s(meditation.text), html: meditation.text }));
+  push(ABOUT, 4, undefined, fieldPassages({ text: s(sketching.text), html: sketching.text }));
+  push(PLAY, 0, undefined, fieldPassages({ text: s(play.headline), html: play.headline }));
+  push(PLAY, 0, undefined, fieldPassages({ text: s(play.sub), html: play.sub }));
+  play.items.forEach((x) => push(PLAY, 0, undefined, [...fieldPassages({ text: s(x.title), html: x.title }), ...fieldPassages({ text: s(x.tag), html: x.tag })]));
 
   // cases: details (block h → heading id) and passages (block id)
   for (const cs of cases) {

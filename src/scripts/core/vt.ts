@@ -37,6 +37,25 @@ const unname = (el: HTMLElement) => { unnamed.push([el, el.style.viewTransitionN
 const rename = () => { for (const [el, n] of unnamed.splice(0)) el.style.viewTransitionName = n; };
 addEventListener('pageshow', rename);
 
+/* ---------- the sheet number rolls when the cut line crosses it ---------- */
+/** --ease-draft, cubic-bezier(.65,.05,.25,1): the time fraction at which the cut has covered `p` of the width. */
+function draftTimeAt(p: number): number {
+  const b = (a: number, c: number, s: number) => 3 * (1 - s) ** 2 * s * a + 3 * (1 - s) * s * s * c + s ** 3;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (b(0.05, 1, m) < p) lo = m; else hi = m; }
+  return b(0.65, 0.25, (lo + hi) / 2);
+}
+/** The fraction of --dur-4 at which the line reaches the (rendered) sheet number's leading edge, or null. */
+function sheetnoAt(back: boolean): number | null {
+  const el = Array.from(document.querySelectorAll<HTMLElement>('.titlebar .sheetno, .bottombar__sheet'))
+    .find((x) => getComputedStyle(x).viewTransitionName === 'sheetno' && x.getClientRects().length > 0);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  const edge = (back ? innerWidth - r.right : r.left) / innerWidth;
+  return draftTimeAt(Math.min(1, Math.max(0, edge)));
+}
+
 addEventListener('pageswap', (e) => {
   const vt = (e as WithVT).viewTransition;
   if (!vt) return;
@@ -83,7 +102,9 @@ addEventListener('pagereveal', (e) => {
   }
   root.dataset.vt = 'cut';
   root.dataset.vtDir = back ? 'back' : 'forward';
-  const done = () => { delete root.dataset.vt; delete root.dataset.vtDir; sheet?.remove(); rename(); };
+  const at = sheetnoAt(back);
+  if (at != null) root.style.setProperty('--vt-sheetno-at', at.toFixed(3));
+  const done = () => { delete root.dataset.vt; delete root.dataset.vtDir; root.style.removeProperty('--vt-sheetno-at'); sheet?.remove(); rename(); };
   vt.finished.then(done, done);
 });
 

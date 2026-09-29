@@ -25,8 +25,11 @@ const colophon = narrative(t.colophon);
 const isHome = page.kind === 'home';
 // the running footer (print): A-101 · Cloudflare R2 Object Storage Redesign · Saumya Verma · saumya-verma.com/cloudflare
 const path = page.kind === 'home' ? '' : page.kind === 'about' ? '/about' : page.kind === 'play' ? '/fun' : page.slug ? `/${page.slug}` : '';
+// A long title wraps the line (print.css gives the page count a fixed cell); the name and the address never split:
+// no-break spaces in the name, a word joiner after each hyphen of the address (both invisible on paper).
 const printFoot = fill(chrome.wp1.print.foot, {
-  sheet: page.kind === '404' ? '—' : page.sheet, title: page.sheetTitle, person: chrome.p0.person, url: `${chrome.wp1.print.domain}${path}`,
+  sheet: page.kind === '404' ? '—' : page.sheet, title: page.sheetTitle,
+  person: chrome.p0.person.replace(/ /g, '\u00a0'), url: `${chrome.wp1.print.domain}${path}`.replace(/-/g, '-\u2060'),
 });
 const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy:${cssString(home.copyright)}}`;
@@ -90,7 +93,15 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   document.querySelectorAll<HTMLTimeElement>('time[data-clock]').forEach((el) => startClock(el));
 
   // print (§4.10): a lazy image that was never scrolled to would print as an empty frame — fetch them all first
+  // Print is always ink on paper: Dusk's grounds and light ink never reach the page. The attribute alone is lifted for
+  // the print (prefs are untouched) and put back afterwards.
+  let duskForPrint = false;
+  addEventListener('afterprint', () => {
+    if (duskForPrint) { document.documentElement.dataset.theme = 'dusk'; duskForPrint = false; }
+  });
   addEventListener('beforeprint', () => {
+    const root = document.documentElement;
+    if (root.dataset.theme === 'dusk') { duskForPrint = true; delete root.dataset.theme; }
     document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = 'eager'; });
     // external CTAs print their address without the query string (print.css: attr(data-print-url))
     document.querySelectorAll<HTMLAnchorElement>('a.cta[href^="http"], :is(.cta-row, .case-head__actions) a[href^="http"]').forEach((a) => {
@@ -118,10 +129,13 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
 
   /* her line: Newsreader 300, 40 → 72 */
   .endsheet__h {
-    max-inline-size: 18ch; margin: 0;
+    max-inline-size: 18ch; margin: 0; /* ≥ 1024 her line takes the band (below) */
     font-family: var(--font-serif); font-size: var(--fs-cover); font-weight: var(--wt-chapter);
     line-height: var(--lh-cover); letter-spacing: var(--tr-cover); color: var(--ink); text-wrap: balance;
   }
+
+  /* desktop: room for her line on one line at 72px (the §4.3 wireframe); it still balances if it must break */
+  @media (min-width: 1024px) { .endsheet__h { max-inline-size: 36ch; } }
 
   /* contact */
   .endsheet__contact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-6); }

@@ -144,19 +144,19 @@ const subParts = t.keys.sub.split('{mod}');
         <h2 id="pl-keys-h" class="pl-keys__h t-label">{t.keys.title}</h2>
         <div class="pl-keys__switch"><PrefSwitch pref="keys" /></div>
       </div>
-      <table class="pl-keys__t">
-        <tbody>
+      <table class="pl-keys__t" role="table">
+        <tbody role="rowgroup">
           {t.keys.rows.map((row) => (
-            <tr>
-              <th scope="row" class="pl-keys__k">
+            <tr role="row">
+              <th scope="row" role="rowheader" class="pl-keys__k">
                 {row.keys.map((k, i) => (
                   <>{i > 0 && <span class="pl-keys__or" aria-hidden="true">/</span>}{keyCap(k)
                     ? <kbd class="kbd">{k}</kbd>
                     : <kbd class="kbd kbd--mod" data-keycap><span class="keycap__apple"><Icon name="keycap-cmd" size={12} />K</span><span class="keycap__other">{w1.titleBar.keycapOther}</span></kbd>}</>
                 ))}
               </th>
-              <td class="pl-keys__label">{row.label}</td>
-              <td class="pl-keys__where t-label">{row.where}</td>
+              <td role="cell" class="pl-keys__label">{row.label}</td>
+              <td role="cell" class="pl-keys__where t-label">{row.where}</td>
             </tr>
           ))}
         </tbody>
@@ -196,7 +196,9 @@ const subParts = t.keys.sub.split('{mod}');
   /* ── the dialog: a title-block card over a vellum wash ── */
   .palette {
     inline-size: min(46rem, calc(100vw - 2 * var(--m))); max-inline-size: none;
-    block-size: min(40rem, calc(100svh - 2 * var(--s-9))); max-block-size: none; margin: 12svh auto auto;
+    /* as tall as a full result set needs (46rem) while it fits under the 12svh top margin with --s-8 to spare, so the
+       list scrolls only when it must and the foot line never hides a group under the fold */
+    block-size: min(46rem, calc(88svh - var(--s-8))); max-block-size: none; margin: 12svh auto auto;
     padding: 0; border: var(--lw-border) solid var(--ink); border-radius: var(--r-0);
     background: var(--sheet); color: var(--ink); box-shadow: var(--shadow-dialog); overflow: hidden;
   }
@@ -257,7 +259,10 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-chip:hover { border-color: var(--rust); color: var(--rust-deep); }
 
   /* ── the list ── */
-  .pl-list { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-block: var(--s-1) var(--s-3); scroll-padding-block: var(--s-7) var(--s-2); }
+  /* no top padding on the scrollport: a stuck group head sits flush with its edge, so no row can peek above it; the
+     first group carries that space instead */
+  .pl-list { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-block: 0 var(--s-3); scroll-padding-block: var(--s-7) var(--s-2); }
+  :is(.pl-home, .pl-results) > .pl-grp:first-child { padding-block-start: var(--s-1); }
   .pl-list[hidden] { display: none; }
   .pl-grp + .pl-grp { margin-block-start: var(--s-2); }
   .pl-g {
@@ -291,11 +296,19 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-opt--level .pl-opt__main { display: flex; align-items: baseline; gap: var(--s-3); }
   .pl-opt__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .pl-opt__why { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: var(--lh-ui); }
-  .pl-opt__lead { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: var(--wt-body); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pl-opt__lead { font-family: var(--font-serif); font-size: var(--fs-body-sm); font-weight: var(--wt-h); color: var(--ink); font-variant-numeric: tabular-nums; }
+  /* a fragment (stat value + label, timeline step + task) runs on one line: the lead, a gap, the label */
+  .pl-opt--run .pl-opt__main { display: block; }
+  .pl-opt--run .pl-opt__lead { margin-inline-end: var(--s-2); }
+  .pl-opt--run .pl-opt__lead, .pl-opt--run .pl-opt__t { display: inline; line-height: var(--lh-ui); }
   .pl-opt__side { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--ink-3); white-space: nowrap; text-align: end; }
   .pl-opt--passage .pl-opt__side { color: var(--ink-2); }
   .pl-opt.is-here .pl-opt__side { color: var(--rust); }
   .pl-opt mark.q { background: var(--blush); color: var(--ink); padding: 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  /* on the selected row the fill is close to blush: the hit also takes a rust underline so it still reads */
+  .pl-opt[aria-selected='true'] mark.q {
+    text-decoration: underline var(--lw-cut) var(--rust); text-underline-offset: var(--lw-cut); text-decoration-skip-ink: none;
+  }
 
   /* the standing actions: one quiet line at the foot of the results, "Copy email · Open Resume ↗ · …". Each chip's
      separator hangs in the gap before it; the tray clips the one that would open a line. */
@@ -339,6 +352,17 @@ const subParts = t.keys.sub.split('{mod}');
   .palette .pl-keys__switch .pswitch { grid-template-columns: auto auto; gap: var(--s-3); inline-size: auto; }
   .pl-keys__note { margin: 0; padding: var(--s-3) var(--s-5) 0; font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); color: var(--ink-2); }
   .pl-keys__note .kbd { margin-inline: var(--s-1); }
+  /* narrow: the where-label drops under the action (as a passage's citation does), so the action takes the width */
+  @media (max-width: 599.98px) {
+    .pl-keys__t, .pl-keys__t tbody { display: block; }
+    .pl-keys__t tr {
+      display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); column-gap: var(--s-3); row-gap: var(--s-1);
+      padding: var(--s-2) var(--m); border-block-start: var(--lw-object) solid var(--line-1);
+    }
+    .pl-keys__t th, .pl-keys__t td { padding: 0 !important; border: 0; }
+    .pl-keys__k { inline-size: auto; }
+    .pl-keys__where { grid-column: 2; text-align: start !important; }
+  }
 
   /* ── footer: the promise ── */
   .pl-foot {

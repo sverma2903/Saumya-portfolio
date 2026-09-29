@@ -3,8 +3,10 @@
 
    · The new sheet is revealed by a section cut: a clip-path wipe (--dur-4, --ease-draft) with a rust long–short
      dash line riding its leading edge. Back to the index (the new page is A-000) cuts the other way.
-   · The plate you chose morphs into the case cover (plate-<slug>, same 16:10 box both sides; WP3/WP5 name them).
-   · The sheet number rolls like a ticker (sheetno: the title bar's / bottom bar's number, never both rendered).
+   · The plate you chose morphs into the case cover (plate-<slug>, same 16:10 box both sides; WP3/WP5 name them),
+     on the cut's curve.
+   · The sheet number rolls like a ticker (sheetno: the title bar's / bottom bar's number, never both rendered), at
+     the moment the cut line crosses it.
    · Direction and the cut line are CSS-only (html[data-page], :active-view-transition), so they work even when the
      deferred vt.ts misses `pagereveal`; vt.ts adds html[data-vt] as a belt-and-braces hook and skips the whole
      transition when Motion is off. Firefox (no cross-document VT) simply navigates.
@@ -83,8 +85,19 @@
 }
 ::view-transition-old(sheetno) { animation: vt-roll-out var(--dur-3) var(--ease-ui) both; }
 ::view-transition-new(sheetno) { animation: vt-roll-in var(--dur-3) var(--ease-ui) both; }
-:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-old(sheetno) { animation-name: vt-roll-out-down; }
-:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(sheetno) { animation-name: vt-roll-in-down; }
+/* the number changes as the cut line reaches it: the roll starts the moment the line meets the number's leading edge
+   (its left edge going forward, its right edge going back), so the new number never shows on the old sheet's side.
+   vt.ts measures that moment (--vt-sheetno-at, a fraction of --dur-4, from the number's position and the --ease-draft
+   curve); until it has, the fallbacks are the title bar's head cell (left edge ≈ 0.17 of the width) and, below 1024,
+   the bottom bar's number at the right edge. */
+:root { --vt-sheetno-fwd: 0.32; --vt-sheetno-back: 0.58; }
+@media (max-width: 1023.98px) { :root { --vt-sheetno-fwd: 0.61; --vt-sheetno-back: 0; } }
+::view-transition-old(sheetno),
+::view-transition-new(sheetno) { animation-delay: calc(var(--dur-4) * var(--vt-sheetno-at, var(--vt-sheetno-fwd))); }
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-old(sheetno),
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(sheetno) {
+  animation-delay: calc(var(--dur-4) * var(--vt-sheetno-at, var(--vt-sheetno-back)));
+}
 @keyframes vt-roll-out      { to   { transform: translateY(-100%); opacity: 0; } }
 @keyframes vt-roll-in       { from { transform: translateY(100%);  opacity: 0; } }
 @keyframes vt-roll-out-down { to   { transform: translateY(100%);  opacity: 0; } }
@@ -94,9 +107,11 @@
 /* Plate.astro writes view-transition-name inline; the class lets one rule style every plate-<slug> group. */
 [style*="view-transition-name: plate-"],
 [style*="view-transition-name:plate-"] { view-transition-class: plate; }
+/* the plate rides the cut's own curve, so it lands as the line passes it instead of arriving before the cut has
+   begun (the pen curve front-loads the move) */
 ::view-transition-group(.plate) {
   animation-duration: var(--dur-4);
-  animation-timing-function: var(--ease-pen);
+  animation-timing-function: var(--ease-draft);
 }
 ::view-transition-old(.plate),
 ::view-transition-new(.plate) {

@@ -120,6 +120,11 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
     font-size: calc(var(--fs-code) * 1.5); letter-spacing: calc(var(--tr-code) / 2); color: var(--ink); /* Plex Mono 18 (§4.2) */
     view-transition-name: sheetno;
   }
+  /* 320 (WCAG reflow): the level label takes the elevation's room (the drawer still lists every elevation) */
+  @media (max-width: 339.98px) {
+    .bottombar__elev { display: none; }
+    .bottombar__centre { padding-inline: var(--s-3); gap: var(--s-2); }
+  }
   @media (min-width: 1024px) { .bottombar { display: none; } }
   @media print { .bottombar { display: none; } }
 </style>

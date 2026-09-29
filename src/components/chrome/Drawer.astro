@@ -42,7 +42,8 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
   <div class="drawer__sheet" data-drawer-sheet>
     <div class="drawer__top">
       <div class="drawer__grip" data-drawer-grip aria-hidden="true" title={t.handle}><span></span></div>
-      <p id="sv-drawer-t" class="drawer__title t-label"><span class="drawer__sheetno t-code">{page.kind === '404' ? '—' : page.sheet}</span><span>{t.title}</span></p>
+      {/* on a case the drawer opens on its Levels: the head names the sheet only ("Sheets" heads its own section below) */}
+      <p id="sv-drawer-t" class="drawer__title t-label"><span class="drawer__sheetno t-code">{page.kind === '404' ? '—' : page.sheet}</span><span class:list={{ 'sr-only': isCase }}>{t.title}</span></p>
       <form method="dialog" class="drawer__closef">
         <button class="drawer__close t-label" value="close"><Icon name="close" size={14} />{t.close}</button>
       </form>
@@ -272,7 +273,8 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
     display: grid; place-items: center; cursor: grab; touch-action: none;
   }
   .drawer__grip span { inline-size: var(--s-8); block-size: var(--lw-cut); background: var(--line-3); }
-  .drawer__title { display: flex; align-items: baseline; gap: var(--s-3); margin: 0; padding-block-start: var(--s-2); color: var(--ink-2); }
+  /* centred on the Close button's box (the grip sits between them, so the title needs no clearance of its own) */
+  .drawer__title { display: flex; align-items: center; align-self: center; gap: var(--s-3); margin: 0; line-height: 1; color: var(--ink-2); }
   .drawer__sheetno { color: var(--rust); font-size: var(--fs-label-lg); }
   .drawer__close {
     display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: calc(var(--s-7) - var(--s-1)); padding-inline: var(--s-3);
