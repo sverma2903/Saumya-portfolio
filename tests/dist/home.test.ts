@@ -15,6 +15,8 @@ beforeAll(() => {
 });
 
 const text = (html: string) => stripHtml(html);
+/** the card readout figure per case (-1: her outcome line already states every figure) */
+const CARD_FIG: Record<string, number> = { cloudflare: -1, pff: 0, csbs: 1, 'u-up': -1, orbit: 0, educademy: 0 };
 
 describe('home · Drawing index (SM2)', () => {
   test('rows: every entry is one link, in sheet order, grouped under h3s inside #index', () => {
@@ -53,8 +55,11 @@ describe('home · Drawing index (SM2)', () => {
           if (l.joined) expect(figs[i].hasAttribute('data-v'), `${key} joined figure is one data-v element`).toBe(true);
         });
       }
-      // the card's one-line readout (< 1024) is her first figure on every card (SM2 mobile wireframe)
-      expect(row.querySelectorAll('.rdr__line')[0].classList.contains('rdr__line--more'), `${key} card readout`).toBe(false);
+      // the card's one-line readout (< 1024): her first figure whose numeral the outcome line above it does not already
+      // state; none where the line states them all (it stays sr-only) — see IndexRow
+      const shown = row.querySelectorAll('.rdr__line').findIndex((l) => !l.classList.contains('rdr__line--more'));
+      expect(shown, `${key} card readout`).toBe(CARD_FIG[key]);
+      expect(row.classList.contains('ix--nofig'), `${key} no-figure card`).toBe(CARD_FIG[key] < 0);
       if (s.readout!.bars) expect(text(panel.querySelector('.rd__cap')!.innerHTML)).toBe(s.readout!.bars.caption.text);
       if (s.readout!.sub) expect(text(panel.querySelector('.rd__sub')!.innerHTML)).toBe(s.readout!.sub.text);
     }
@@ -84,6 +89,22 @@ describe('home · Drawing index (SM2)', () => {
     const video = vp.querySelector('[data-vp-plate="play"] video')!;
     expect(video.hasAttribute('src')).toBe(false);
     expect(video.getAttribute('preload')).toBe('none');
+  });
+
+  test('card plates: no src in the HTML (initCards gives it on screen); the no-JS twin fetches nothing at ≥ 1024', () => {
+    const { root } = load('index');
+    const cards = root.querySelectorAll('[data-card-plate]');
+    expect(cards).toHaveLength(sheets.filter((s) => s.kind === 'case').length);
+    for (const c of cards) {
+      for (const img of c.querySelectorAll('img[data-card-media]')) expect(img.hasAttribute('src'), img.outerHTML.slice(0, 90)).toBe(false);
+      // node-html-parser keeps <noscript> content as text; every twin picture has an empty-pixel ≥ 1024 source
+      const ns = c.querySelector('noscript')?.innerHTML ?? '';
+      const pics = ns.match(/<picture\b/g)?.length ?? 0;
+      expect(pics, 'no-JS twins').toBe((ns.match(/<source media="\(min-width: 1024px\)" srcset="data:image\/gif/g) ?? []).length);
+      expect(ns).not.toMatch(/\.gif"/); // the GIF card shows the drafting X without JS, never the 5 MB original
+    }
+    const logos = root.querySelectorAll('.icard__logo picture source[media="(min-width: 1024px)"]');
+    expect(logos.length).toBe(root.querySelectorAll('.icard__logo img').length);
   });
 
   test('view transitions: one inline plate name (the Viewport A-101); cards carry theirs via --_vt below 1024', () => {

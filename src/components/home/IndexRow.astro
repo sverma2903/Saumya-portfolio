@@ -33,14 +33,23 @@ const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play'
 const ext = sheet.external ? externalAttrs(sheet.href) : {};
 /** her title with each hyphenated word kept whole ("E-learning", "COVID-era"): wrapping spans only, text unchanged */
 const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span class="ix__nb">$1</span>');
+/**
+ * The card's one-line readout (< 1024): her first figure whose numeral her outcome line, just above it on the card,
+ * does not already state (A-103's line opens with its 50% figure, so the card shows "~ 600 K …"). When every
+ * figure's numeral is already in the line (A-101 "Two", A-104 "1st"), the card shows none (-1): the readout stays
+ * for screen readers only. Chrome logic only; her words are untouched.
+ */
+const said = (sheet.line?.text ?? '').replace(/\s+/g, ' ');
+const inLine = (v: string) => new RegExp(`(^|[^\\w~])${v.replace(/\s+/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'i').test(said);
+const cardFig = sheet.readout ? sheet.readout.lines.findIndex((l) => !inLine(l.value.text)) : -1;
 const SEP = '\u00a0· ';
 const DASH = '\u00a0— ';
 ---
-<li class:list={['ix', compact ? 'ix--compact' : isCase ? 'ix--case' : 'ix--also', { 'is-active': active && !compact }]} data-ix={compact ? undefined : key}>
+<li class:list={['ix', compact ? 'ix--compact' : isCase ? 'ix--case' : 'ix--also', { 'is-active': active && !compact, 'ix--nofig': isCase && cardFig < 0 }]} data-ix={compact ? undefined : key}>
   <a class="ix__a" href={sheet.href} {...ext} data-sheet={key}>
     <span class="ix__no t-code">
-      {sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} class="ix__ext" /> : <span>{sheet.no}</span>}
-      {!compact && sheet.no !== '↗' && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
+      {sheet.no === '↗' ? <><Icon name="arrow-up-right" size={14} class="ix__ext" /><span class="sr-only">{chrome.wp3.index.external}</span></> : <span>{sheet.no}</span>}
+      {!compact && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
       <span class="sr-only">, </span>
     </span>
     {!compact && isCase && <IndexCard sheet={sheet} part="plate" />}
@@ -57,7 +66,7 @@ const DASH = '\u00a0— ';
     {!compact && sheet.tags.length > 0 && (
       <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <span class="ix__tg">{i > 0 && <span class="sr-only">, </span>}<span class="ix__tag" data-v>{t.text}</span></span>)}</span>
     )}
-    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" /></span>}
+    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={cardFig} /></span>}
     {!compact && minutes != null && <span class="ix__min t-label"><span class="sr-only">, </span><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
     {!compact && isCase && <span class="ix__open t-label" aria-hidden="true">{chrome.wp3.index.open}<Icon name="arrow-right" size={14} /></span>}
   </a>
@@ -108,9 +117,10 @@ const DASH = '\u00a0— ';
   .ix__open { grid-area: open; display: none; }
 
   /* also rows: her label, then her line run in after a dash (B-100, C-100) or the domain (external) */
-  .ix__run { grid-area: title; text-wrap: pretty; }
-  .ix__run .ix__title { font-size: var(--fs-body-md); line-height: var(--lh-body-sm); }
-  .ix__run .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
+  /* the run's own strut sets the leading, so a wrapped line keeps the outcome lines' rhythm (not the body's) */
+  .ix__run { grid-area: title; text-wrap: pretty; font-size: var(--fs-body-md); line-height: var(--lh-lede); }
+  .ix__run .ix__title { font-size: var(--fs-body-md); line-height: inherit; }
+  .ix__run .ix__line { font-size: var(--fs-body); line-height: inherit; }
   .ix__rs { color: var(--ink-3); }
   .ix__domain { color: var(--ink-2); }
 
@@ -142,7 +152,7 @@ const DASH = '\u00a0— ';
     .ix__a:hover { background-color: var(--sheet); }
     /* a row that slid under a resting pointer (scroll, #index, J / K) is not hovered until the pointer moves */
     :global(.dix__list[data-rest]) .ix__a:hover { background-color: transparent; }
-    /* the Viewport's sheet: rust sheet number + ▸ (never colour alone); an external row's ↗ turns rust instead */
+    /* the Viewport's sheet: rust sheet number (or ↗) + ▸, so the state never rests on colour alone */
     .ix.is-active .ix__no { color: var(--rust); }
     .ix.is-active .ix__mark { opacity: 1; transform: none; }
   }
@@ -169,13 +179,17 @@ const DASH = '\u00a0— ';
     .ix--case .ix__title { margin-block-start: var(--s-1); }
     .ix--case .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
     .ix--case .ix__rd { align-self: start; }
+    /* no figure the card has not already said (A-101, A-104): no readout row, so no empty gap either */
+    .ix--case.ix--nofig .ix__a { grid-template-areas: 'no tags' 'plate plate' 'logo logo' 'title title' 'line line' 'foot foot'; }
+    .ix--case.ix--nofig .ix__rd { position: absolute; }
     .ix--case .ix__min {
       grid-area: foot; align-self: end; padding-block-start: var(--s-3); margin-block-start: var(--s-1);
       border-block-start: var(--lw-object) solid var(--line-2);
     }
     .ix__open { grid-area: foot; justify-self: end; align-self: end; display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
     .ix--also { border-block-start: var(--lw-object) solid var(--line-2); }
-    .ix--also .ix__a { grid-template-columns: var(--_no) minmax(0, 1fr); grid-template-areas: 'no title'; padding-block: var(--s-3); }
+    /* the also rows hang their titles on the group labels' edge (past the bubble): one indent, not a third edge */
+    .ix--also .ix__a { grid-template-columns: calc(var(--_bub) + var(--s-1)) minmax(0, 1fr); column-gap: var(--s-3); grid-template-areas: 'no title'; padding-block: var(--s-3); }
     .ix--also .ix__no, .ix--also .ix__run { align-self: first baseline; }
     .ix__mark { display: none; }
   }
@@ -184,6 +198,11 @@ const DASH = '\u00a0— ';
   @media (min-width: 768px) and (max-width: 1023.98px) {
     .ix--case { display: grid; grid-row: span 7; grid-template-rows: subgrid; }
     .ix--case .ix__a { grid-row: 1 / -1; grid-template-rows: subgrid; }
+    /* a one-line title stands at the foot of a track sized for its partner's two lines: the title-to-outcome distance
+       is the same on both cards, and the slack falls between the logo chip and the title */
+    .ix--case .ix__title { align-self: end; }
+    /* a card without a figure keeps its pair's readout track (empty) */
+    .ix--case.ix--nofig .ix__a { grid-template-areas: 'no tags' 'plate plate' 'logo logo' 'title title' 'line line' 'readout readout' 'foot foot'; }
   }
 
   /* ── compact (404): sheet no. + her title, 44px targets ── */

@@ -30,7 +30,7 @@
  */
 import { emit } from '../core/bus';
 import { registerShortcut } from '../core/keys';
-import { observe } from '../core/io';
+import { observe, onVisibility } from '../core/io';
 import { on as onPref, get as getPref } from '../core/prefs';
 
 type Mode = 'anim' | 'instant';
@@ -45,8 +45,60 @@ const $$ = <T extends Element>(sel: string, root: ParentNode) => Array.from(root
 const wait = (t: number) => new Promise<void>((r) => setTimeout(r, t));
 const cssVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const toMs = (v: string) => (v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000) || 0;
-type Decoder = { decode(o: { frameIndex: number }): Promise<{ image: VideoFrame }>; close(): void };
+type Decoder = { decode(o: { frameIndex: number }): Promise<{ image: VideoFrame }>; close(): void; completed?: Promise<void> };
 type DecoderCtor = new (init: { data: ReadableStream<Uint8Array>; type: string }) => Decoder;
+
+/** A still of a GIF: its staging poster frame (ImageDecoder), drawn on a canvas in the GIF's own box. */
+const poster = async (img: HTMLImageElement): Promise<boolean> => {
+  const prev = img.nextElementSibling as HTMLElement | null;
+  if (prev?.dataset.poster != null) { prev.hidden = false; return true; }
+  const ID = (window as unknown as { ImageDecoder?: DecoderCtor }).ImageDecoder;
+  if (!ID || !img.dataset.src) return false;
+  try {
+    const stop = new AbortController();
+    const res = await fetch(img.dataset.src, { signal: stop.signal });
+    const dec = new ID({ data: res.body!, type: 'image/gif' });
+    dec.completed?.catch(() => undefined);
+    const { image } = await dec.decode({ frameIndex: +(img.dataset.frame ?? 0) });
+    const c = document.createElement('canvas');
+    c.width = image.displayWidth;
+    c.height = image.displayHeight;
+    c.getContext('2d')!.drawImage(image as unknown as CanvasImageSource, 0, 0);
+    image.close();
+    dec.close();
+    stop.abort(); // the frame is drawn: the rest of the file is not needed
+    c.className = img.className;
+    c.style.cssText = img.style.cssText;
+    c.dataset.poster = '';
+    img.after(c);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const isGif = (el: Element): el is HTMLImageElement => el.hasAttribute('data-gif-layer');
+
+/**
+ * Card plates (< 1024; SM2 "Loading"): a card's stills get their src only once the card itself is on screen (not the
+ * browser's lazy margin, which would fetch every cover on a tablet). A card is a link, so it can carry no pause
+ * control: the CSBS GIF is never mounted there. Once its card is on screen it shows the GIF's staging poster frame
+ * (ImageDecoder, the download stopped once that frame is decoded), with the drafting X and its file facts meanwhile,
+ * or for good where ImageDecoder is missing. The moving original lives on the Viewport (≥ 1024) and the case page.
+ * At ≥ 1024 the card plates are display:none and never intersect.
+ */
+export function initCards(): void {
+  for (const card of $$<HTMLElement>('[data-card-plate]', document)) {
+    const ph = card.querySelector<HTMLElement>('[data-card-ph]');
+    const off = onVisibility(card, (on) => {
+      if (!on) return;
+      off();
+      for (const img of $$<HTMLImageElement>('[data-card-media]', card)) {
+        if (img.hasAttribute('data-gif-layer')) poster(img).then((ok) => { if (ph) ph.hidden = ok; });
+        else img.src = img.dataset.src!;
+      }
+    });
+  }
+}
 
 export function initViewport(): void {
   const vp = document.querySelector<HTMLElement>('[data-vp]');
@@ -101,7 +153,6 @@ export function initViewport(): void {
     ...$$<Media>('[data-vp-media]', plates.get(key) ?? document.createDocumentFragment()),
     ...$$<Media>('[data-vp-media]', panels.get(key) ?? document.createDocumentFragment()),
   ];
-  const isGif = (el: Element): el is HTMLImageElement => el.hasAttribute('data-gif-layer');
   const isVideo = (el: Element): el is HTMLVideoElement => el instanceof HTMLVideoElement;
   const still = (el: Media) => !isGif(el) && !isVideo(el);
   const mount = (el: Media) => {
@@ -132,32 +183,6 @@ export function initViewport(): void {
       }
       return el.decode().catch(() => undefined);
     })).then(() => undefined);
-
-  /** A still of a GIF: its staging poster frame (ImageDecoder), drawn on a canvas in the GIF's own box. */
-  const poster = async (img: HTMLImageElement): Promise<boolean> => {
-    const prev = img.nextElementSibling as HTMLElement | null;
-    if (prev?.dataset.poster != null) { prev.hidden = false; return true; }
-    const ID = (window as unknown as { ImageDecoder?: DecoderCtor }).ImageDecoder;
-    if (!ID || !img.dataset.src) return false;
-    try {
-      const res = await fetch(img.dataset.src);
-      const dec = new ID({ data: res.body!, type: 'image/gif' });
-      const { image } = await dec.decode({ frameIndex: +(img.dataset.frame ?? 0) });
-      const c = document.createElement('canvas');
-      c.width = image.displayWidth;
-      c.height = image.displayHeight;
-      c.getContext('2d')!.drawImage(image as unknown as CanvasImageSource, 0, 0);
-      image.close();
-      dec.close();
-      c.className = img.className;
-      c.style.cssText = img.style.cssText;
-      c.dataset.poster = '';
-      img.after(c);
-      return true;
-    } catch {
-      return false;
-    }
-  };
 
   /** Play / pause what moves on the active plate; park what stopped being active (10 s). */
   const sync = () => {
@@ -282,13 +307,23 @@ export function initViewport(): void {
       ph.hidden = false;
       await loaded;
       if (me !== run) return;
+      // decoded: the placeholder covered the wait only; the cut runs from the outgoing plate to the incoming one
+      ph.hidden = true;
     }
     const duration = toMs(cssVar('--dur-3'));
     const easing = cssVar('--ease-pen') || 'ease-out';
-    const w = stage.clientWidth;
+    // one edge sweeps the whole column (w): the panel spans it; the plate may be narrower (height budget) and
+    // centred, so its clip is keyed to the same edge — hidden until the edge reaches it (o), whole once past (o + s)
+    const w = vp.clientWidth;
+    const o = stage.getBoundingClientRect().left - vp.getBoundingClientRect().left;
+    const sw = stage.clientWidth;
     const timing: KeyframeAnimationOptions = { duration, easing, fill: 'forwards' };
     const reveal: Keyframe[] = [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }];
-    const wipe = plate.animate(reveal, timing);
+    const wipe = plate.animate([
+      { clipPath: `inset(0 ${o + sw}px 0 0)`, offset: 0 },
+      { clipPath: 'inset(0 0px 0 0)', offset: Math.min(1, (o + sw) / w) },
+      { clipPath: 'inset(0 0px 0 0)', offset: 1 },
+    ], timing);
     const line = cut.animate(
       [{ transform: 'translateX(0)', opacity: 1 }, { transform: `translateX(${w}px)`, opacity: 1, offset: 0.9 }, { transform: `translateX(${w}px)`, opacity: 0 }],
       { duration, easing },
@@ -419,31 +454,28 @@ export function initViewport(): void {
   registerShortcut('k', 'home', step(-1), { preventDefault: false });
 
   // ⤢ → Enlarged detail (WP4b opens it on sv:fig-open)
+  // The control layer lives in the aria-hidden Viewport: a press never moves focus into it, and ⤢ hands focus to
+  // the active row's link first, so the Enlarged detail returns focus there (not to an aria-hidden button) on close.
+  for (const b of [enlarge, pauseBtn]) b.addEventListener('mousedown', (e) => e.preventDefault());
   enlarge.addEventListener('click', () => {
     const box = plates.get(active)?.querySelector('[data-vp-box]');
+    const row = rows.find((r) => keyOf(r) === active);
+    if (row) linkOf(row).focus({ preventScroll: true });
     if (box) emit('sv:fig-open', { el: box });
   });
   pauseBtn.addEventListener('click', () => { userPaused = !userPaused; sync(); });
   // clicking the preview mid-wipe: land the wipe first, so the view transition morphs from the plate being opened
   hit.addEventListener('pointerdown', () => { if (wiping || shown !== active) commit(active); });
 
-  // Height budget: the sticky Viewport must fit under the index header, where it sticks. CSS sizes it from --_head
-  // (that header) and --_rest (everything that is not the plate); measure both — the rest on the TALLEST panel, so
-  // switching sheets never resizes the plate. A narrower Viewport wraps its text more (a larger rest), so settle from
-  // the widest the column allows downwards: the first width whose rest no longer grows is the largest that fits.
+  // Height budget: the sticky Viewport must fit under the index header, where it sticks. CSS sizes the plate from
+  // --_head (that header) and --_rest (everything that is not the plate); measure both — the rest on the TALLEST
+  // panel (every panel is in flow in one cell), so switching sheets never resizes the plate. The Viewport always
+  // fills its column, so the rest does not depend on the plate's width: one measurement settles it.
   const head = section.querySelector<HTMLElement>('.dix__head');
   const fit = () => {
     if (!desktop.matches) return;
     if (head) vp.style.setProperty('--_head', `${Math.ceil(head.offsetHeight)}px`);
-    let prev = 0;
-    vp.style.setProperty('--_rest', '0px');
-    for (let i = 0; i < 5; i++) {
-      // every panel is in flow in one cell, so the panels' box is already the tallest panel's height
-      const r = Math.ceil(vp.offsetHeight - stage.offsetHeight);
-      if (r <= prev) break;
-      vp.style.setProperty('--_rest', `${r}px`);
-      prev = r;
-    }
+    vp.style.setProperty('--_rest', `${Math.ceil(vp.offsetHeight - stage.offsetHeight)}px`);
     // the runway under the list: the Viewport stays stuck (whole) until the last row has crossed the 45% line
     const last = rows[rows.length - 1];
     const need = parseFloat(getComputedStyle(vp).top) + vp.offsetHeight - innerHeight * BAND - last.offsetHeight / 2;

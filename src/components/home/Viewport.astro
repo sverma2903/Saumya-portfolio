@@ -29,6 +29,7 @@ import { facts, dimsLabel, stagingOf } from '../../lib/staging';
 import Icon from '../symbols/Icon.astro';
 import Readout from './Readout.astro';
 import { logoK } from './logo-optics';
+import { layerBox, boxStyle } from './plate-box';
 
 interface Props {
   sheets: Sheet[];
@@ -40,19 +41,6 @@ const v = chrome.wp3.viewport;
 const keyOf = (s: Sheet) => s.slug ?? (s.kind === 'external' ? (s.href.includes('issuu') ? 'architecture' : 'resume') : s.kind);
 const initial = Astro.props.initial ?? keyOf(sheets[0]);
 
-/** The exact box of a contained layer inside a 16:10 (A) plate with `pad`% stage margin, in % of the plate. */
-function rect(aspect: number, A: number, pad: number) {
-  const inner = 100 - 2 * pad;
-  if (aspect >= A) {
-    const h = (inner * A) / aspect;
-    return { l: pad, t: (100 - h) / 2, w: inner, h };
-  }
-  const w = (inner * aspect) / A;
-  return { l: (100 - w) / 2, t: pad, w, h: inner };
-}
-const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
-
-
 const items = sheets.map((s) => {
   const key = keyOf(s);
   const cs = s.slug ? cases.find((c) => c.slug === s.slug) : undefined;
@@ -63,7 +51,7 @@ const items = sheets.map((s) => {
     return {
       f,
       top: i === all.length - 1,
-      box: rect(f.aspect, A, l.pad ?? 0),
+      box: layerBox(f.aspect, A, l.pad ?? 0),
       phoneVideo: st.frame === 'phone-video',
       gif: f.gif,
       poster: st.gif?.poster ?? 0,
@@ -116,7 +104,7 @@ const first = items.find((i) => i.active) ?? items[0];
         >
           <span class:list={['vp__box', { 'vp__box--edge': it.edge }]} data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
             {it.layers.map((l) => {
-              const style = `left: ${r4(l.box.l)}%; top: ${r4(l.box.t)}%; inline-size: ${r4(l.box.w)}%; block-size: ${r4(l.box.h)}%`;
+              const style = boxStyle(l.box);
               const eager = it.active && !l.gif && !l.video;
               return l.video ? (
                 <video
@@ -157,7 +145,7 @@ const first = items.find((i) => i.active) ?? items[0];
 
   <div class="vp__panels">
     {items.map((it) => (
-      <div class:list={['vp__panel', { 'is-active': it.active }]} data-vp-panel={it.key}>
+      <div class:list={['vp__panel', { 'is-active': it.active, 'vp__panel--also': !it.cs }]} data-vp-panel={it.key}>
         {it.cs && (
           <div class:list={['vp__tb', { 'vp__tb--logo': !!it.logo }]}>
             <dl class="vp__dl">
@@ -166,17 +154,23 @@ const first = items.find((i) => i.active) ?? items[0];
               ))}
             </dl>
             {it.logo && (
-              <div class="vp__logo">
+              <div class="vp__logo"><span class="vp__chip">
                 {it.active
                   ? <img src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" loading="lazy" decoding="async" style={`--_k: ${logoK(it.logo.file)}`} />
                   : <img data-src={it.logo.src} width={it.logo.w} height={it.logo.h} alt="" decoding="async" data-vp-media style={`--_k: ${logoK(it.logo.file)}`} />}
-              </div>
+              </span></div>
             )}
           </div>
         )}
         {it.s.readout && <Readout readout={it.s.readout} variant="viewport" />}
+        {it.s.external && (
+          <div class="vp__mid vp__ext">
+            <p class="vp__xt" data-v>{it.s.title.text}</p>
+            <div class="vp__tb"><dl class="vp__dl"><div class="vp__row"><dt class="t-label">{v.external}</dt><dd class="vp__xd t-code">{it.s.domain}<Icon name="arrow-up-right" size={12} /></dd></div></dl></div>
+          </div>
+        )}
         {it.quote && (
-          <div class="vp__quote">
+          <div class="vp__mid vp__quote">
             <p class="vp__q" data-v set:html={it.quote} />
             {it.quoteSub && <p class="vp__qs" data-v set:html={it.quoteSub} />}
           </div>
@@ -204,9 +198,10 @@ const first = items.find((i) => i.active) ?? items[0];
      Position: it sticks where it stands when the index is scrolled into place (#index: the header's rule just under
      the title bar), so landing on the index and browsing it show the same, whole Viewport (short windows let it rise
      8px more, see the end of this sheet).
-     Height budget: it must fit under that line. Its width — and with it the 16:10 plate — is the smaller of its
-     column and what the window's height allows: (100svh − bar − top − header − the rest) × 1.6, where "the rest" is
-     everything that is not the plate (strip, gaps, title block, readout, foot; measured on the tallest panel). */
+     Width: the Viewport always fills cols 7–12, so its strip, title block, readout and foot end on the page margin
+     under the header rule. Only the 16:10 plate gives up width to the height budget: it is the smaller of the column
+     and (100svh − bar − top − header − the rest − --s-3) × 1.6, where "the rest" is everything that is not the plate
+     (strip, gaps, title block, readout, foot; measured on the tallest panel), and it is centred in its row. */
   .vp { display: none; }
   @media (min-width: 1024px) {
     .vp {
@@ -217,10 +212,11 @@ const first = items.find((i) => i.active) ?? items[0];
       display: grid;
       position: sticky; inset-block-start: calc(var(--bar) + var(--_top) + var(--_head));
       z-index: var(--z-sticky);
-      /* never below 480px (or the column, if narrower): past that the foot may run under the window's edge instead.
-         It stands on column 7's line; whatever the height takes off falls at the page margin. */
-      inline-size: clamp(min(100%, calc(var(--s-11) * 2.5)), calc((100svh - var(--bar) - var(--_top) - var(--_head) - var(--_rest) - var(--s-3)) * 1.6), 100%);
-      justify-self: start;
+      /* the plate's width: never below 384px (or the column, if narrower); past that the foot may run under the
+         window's edge instead. The budget is taken where the Viewport stands at landing (--_land, the page's
+         scroll-padding), so the foot keeps --s-3 above the window's edge there, and more once it has risen. */
+      --_land: var(--s-4);
+      --_pw: clamp(min(100%, calc(var(--s-11) * 2)), calc((100svh - var(--bar) - var(--_land) - var(--_head) - var(--_rest) - var(--s-3)) * 1.6), 100%);
       container: vp / inline-size;
     }
   }
@@ -234,7 +230,7 @@ const first = items.find((i) => i.active) ?? items[0];
     pointer-events: none;
   }
   .vp__hit { grid-area: 1 / 1 / -1 / -1; pointer-events: auto; }
-  .vp__cplate { grid-area: 2 / 1; display: grid; aspect-ratio: 1.6; }
+  .vp__cplate { grid-area: 2 / 1; display: grid; aspect-ratio: 1.6; inline-size: var(--_pw, 100%); justify-self: center; }
 
   /* header strip — shares its baseline with the list's first strip */
   .vp__head {
@@ -259,7 +255,7 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__enl:hover { color: var(--rust); background: var(--paper-2); }
 
   /* the stage: every plate sits in the same 16:10 cell */
-  .vp__stage { position: relative; display: grid; aspect-ratio: 1.6; isolation: isolate; }
+  .vp__stage { position: relative; display: grid; aspect-ratio: 1.6; isolation: isolate; inline-size: var(--_pw, 100%); justify-self: center; }
   .vp__stage > * { grid-area: 1 / 1; }
   .vp__plate { display: block; position: relative; }
   .vp__box { position: absolute; inset: 0; display: block; overflow: hidden; }
@@ -271,13 +267,14 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__box--edge { box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
 
   /* drafting X: external sheets, and the loading placeholder (dims · format · size) */
-  .vp__box--x, .vp__ph { display: grid; place-items: center; background: var(--plate); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
+  /* our drawing, not her print: on --sheet (dark in Dusk), not the always-light --plate */
+  .vp__box--x, .vp__ph { display: grid; place-items: center; background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
   .vp__ph { position: relative; z-index: var(--z-raised); }
   .vp__x { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
   .vp__x path { fill: none; stroke: var(--line-2); stroke-width: var(--lw-object); vector-effect: non-scaling-stroke; }
   .vp__xl {
     position: relative; display: inline-flex; align-items: center; gap: var(--s-1);
-    padding: var(--s-1) var(--s-2); background: var(--plate); color: var(--ink-3); text-transform: uppercase;
+    padding: var(--s-1) var(--s-2); background: var(--sheet); color: var(--ink-3); text-transform: uppercase;
   }
 
   /* the section cut that rides the wipe's leading edge (2px rust, long–short dash): the plate and the panel wipe
@@ -321,16 +318,30 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__row dt, .vp__row dd { padding: calc(var(--s-1) * 1.5) var(--s-3); }
   .vp__row dt { color: var(--ink-2); }
   .vp__row dd { margin: 0; font-size: var(--fs-body-sm); line-height: var(--lh-lede-sm); color: var(--ink); text-wrap: pretty; }
-  /* the logo cell: her logo optically sized in a --s-7 cell (logo-optics.ts) */
+  /* the logo cell: her logo optically sized (logo-optics.ts) on a light chip, as on the cards: the cell itself is the
+     title block's own paper, so in Dusk only the small chip is light (prints pinned on a dark wall), not the cell.
+     The cell grows past its --s-10 + --s-5 minimum for a very wide wordmark (CMU, 9.6 : 1), so the optical ratio,
+     not the cell's width, sets its height. */
   .vp__logo {
-    --_cell: var(--s-7);
-    display: grid; place-items: center; inline-size: calc(var(--s-10) + var(--s-5)); padding: var(--s-3);
-    background: var(--plate); border-inline-start: var(--lw-object) solid var(--line-2);
+    --_cell: calc(var(--s-6) + var(--s-2));
+    display: grid; place-items: center; min-inline-size: calc(var(--s-10) + var(--s-5)); padding: var(--s-2) var(--s-3);
+    border-inline-start: var(--lw-object) solid var(--line-2);
   }
-  .vp__logo img { block-size: calc(var(--_cell) * var(--_k)); inline-size: auto; max-inline-size: 100%; object-fit: contain; }
+  .vp__chip {
+    display: inline-grid; place-items: center; padding: var(--s-2) var(--s-3); background: var(--plate);
+    box-shadow: inset 0 0 0 var(--lw-object) var(--line-1);
+  }
+  .vp__logo img { block-size: calc(var(--_cell) * var(--_k)); inline-size: auto; max-inline-size: var(--s-11); object-fit: contain; }
 
-  .vp__quote { display: grid; row-gap: var(--s-3); }
-  .vp__q { font-size: var(--fs-lede); font-weight: var(--wt-lede); line-height: var(--lh-lede); letter-spacing: var(--tr-lede); text-wrap: balance; }
+  /* the "also" sheets (B-100, C-100, the externals) share the case panels' height; their content stands centred in
+     the room above the foot, set large enough to hold it (her line at display size; an external's label + domain) */
+  .vp__mid { margin-block: auto; }
+  .vp__panel--also .vp__foot { margin-block-start: 0; }
+  .vp__quote { display: grid; row-gap: var(--s-4); }
+  .vp__q { font-size: var(--fs-lede-lg); font-weight: var(--wt-lede-lg); line-height: var(--lh-lede-lg); letter-spacing: var(--tr-lede-lg); text-wrap: balance; }
+  .vp__ext { display: grid; row-gap: var(--s-4); }
+  .vp__xt { font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index); line-height: var(--lh-index); letter-spacing: var(--tr-index); }
+  .vp__xd { display: inline-flex; align-items: center; gap: var(--s-1); text-transform: none; }
   .vp__qs { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); max-inline-size: calc(var(--measure) * 0.6); }
 
   /* foot: where the numbers come from, and the way in */
@@ -366,6 +377,7 @@ const first = items.find((i) => i.active) ?? items[0];
   @container vp (max-width: 540px) {
     .vp__logo { display: none; }
     .vp__tb--logo { grid-template-columns: minmax(0, 1fr); }
+    .vp__q { font-size: var(--fs-lede); line-height: var(--lh-lede); letter-spacing: var(--tr-lede); }
   }
 
   @media (forced-colors: active) {
@@ -377,12 +389,13 @@ const first = items.find((i) => i.active) ?? items[0];
     .vp { --_top: var(--s-2); --_rest: calc(var(--s-10) * 2.5); --_gap: var(--s-2); }
     .vp__panel { gap: var(--s-2); }
     .vp__row--skills { display: none; }
-    .vp__logo { inline-size: var(--s-10); padding: var(--s-2); }
+    .vp__logo { min-inline-size: var(--s-10); padding: var(--s-2); }
     .vp :global(.rd__sub) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   }
 </style>
 
 <script>
-  import { initViewport } from '../../scripts/home/viewport';
+  import { initViewport, initCards } from '../../scripts/home/viewport';
   initViewport();
+  initCards();
 </script>
