@@ -37,8 +37,8 @@ const rid = `${ctx.id}-rev`;
   /* the cloud runs --_out + its scallops (≈ 17px) outside the box: give that back to the rhythm around it */
   .revcloud { margin-block: var(--s-4); }
   .rev {
-    --_out: 10px;                       /* SPEC SM6b: the cloud runs this far outside the box (revcloud.ts) */
-    --_dh: 13px;                        /* half the △1 delta (26px): centres it on the cloud's corner */
+    --_out: calc(var(--s-2) + var(--s-1) / 2);                       /* SPEC SM6b: the cloud runs this far outside the box (revcloud.ts) */
+    --_dh: calc(var(--s-3) + var(--lw-object));                        /* half the △1 delta (26px): centres it on the cloud's corner */
     position: relative;
     padding: var(--s-4) var(--s-5) var(--s-5);
   }
@@ -114,7 +114,7 @@ const rid = `${ctx.id}-rev`;
   @media (max-width: 767.98px) {
     /* phones: the callout is inset by --s-2 and the cloud runs 2px out, so its outermost scallop (≈ 2 + 6 + stroke)
        stays ≈ 15px from the screen edge instead of crowding it */
-    .rev { --_out: 2px; margin-inline: var(--s-2); padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5); }
+    .rev { --_out: calc(var(--s-1) / 2); margin-inline: var(--s-2); padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5); }
     .rev__delta { inset-block-start: calc(-1 * var(--_out) - var(--_dh)); inset-inline-start: calc(-1 * var(--_out) - var(--s-1)); }   /* stays on-screen */
   }
   @media print {

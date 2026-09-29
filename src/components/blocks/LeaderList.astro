@@ -29,10 +29,10 @@ const { items, pieces, hang = true, size = 'body', class: cls } = Astro.props;
 </ul>
 <style>
   .leaders {
-    --_pad: 14px;          /* item padding (SPEC: 14px) */
+    --_pad: calc(var(--s-3) + var(--s-1) / 2);   /* item padding (SPEC: 14px) */
     --_line: calc(var(--s-5) + var(--s-1));   /* the 28px leader (inset, < 1024) */
     --_gap: var(--s-3);    /* leader dot → text */
-    --_dot: 3px;           /* dot radius (6px dot) */
+    --_dot: calc(var(--s-3) / 4);                /* dot radius (SPEC: a 6px dot) */
     list-style: none;
     margin: 0;
     padding: 0;
@@ -64,7 +64,7 @@ const { items, pieces, hang = true, size = 'body', class: cls } = Astro.props;
     content: '';
     position: absolute;
     inset-inline-start: calc(var(--_line) - var(--_dot));
-    inset-block-start: calc(var(--_pad) + 0.5lh + 0.5px - var(--_dot));
+    inset-block-start: calc(var(--_pad) + 0.5lh + var(--lw-object) / 2 - var(--_dot));
     border: var(--_dot) solid var(--clay);
     border-radius: var(--r-dot);
   }

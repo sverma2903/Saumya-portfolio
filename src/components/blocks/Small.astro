@@ -16,7 +16,7 @@ const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
   <div class="blk__note">
     <p class:list={['small', { full: !!skim }]} data-v set:html={rich(block.html)} />
     {skim && (
-      <p class="small skim">{skim.map((s, i) => (
+      <p class="small skim" data-v>{skim.map((s, i) => (
         <>{i > 0 && <span class="small__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
       ))}</p>
     )}

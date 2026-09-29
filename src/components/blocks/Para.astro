@@ -3,8 +3,9 @@
  * Para (`p`) · WP4a. <p class="p full" data-v> (SPEC §6.2 `p`); sizes: default --fs-body ink-2 · md --fs-body-md ink
  * ("thesis" paragraphs) · sm --fs-body-sm ink-2. Her <strong> 620 ink, <em> italic, links underlined (base.css), her
  * <br><br> preserved.
- * Plan view (SM5c): when ctx.plan.mode === 'skim', a sibling <p class="skim"> holds ONLY her bold clauses, each a
- * <strong data-v> (her inner HTML, verbatim), joined by a clay ⋯ (chrome, aria-hidden, data-join). The pair is
+ * Plan view (SM5c): when ctx.plan.mode === 'skim', a sibling <p class="skim" data-v> (SPEC §6.2) holds ONLY her bold
+ * clauses, each a <strong data-v> (her inner HTML, verbatim; the P0 planview contract), joined by a clay ⋯ (chrome,
+ * aria-hidden, data-join: the verbatim guard reads the <p> as her pieces, in order, from one paragraph). The pair is
  * swapped by html[data-view] (base.css). A paragraph with no qualifying bold is omitted by the Chapter (omit run).
  */
 import Icon from '../symbols/Icon.astro';
@@ -20,7 +21,7 @@ const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
   <div class="blk__main">
     <p class:list={['p', `p--${size}`, { full: !!skim }]} data-v set:html={rich(block.html)} />
     {skim && (
-      <p class={`p p--${size} p--skim skim`}>
+      <p class={`p p--${size} p--skim skim`} data-v>
         {skim.map((s, i) => (
           <>{i > 0 && <span class="skim__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
         ))}

@@ -49,7 +49,7 @@ const items = block.items.map((it) => {
    (measured in the browser, tracking included); the 0.6em prefix is scaled; +3% margin. The result is a CSS min()
    over the row's values, in container units of the text column, one for the multi-column row and one for 1-up. */
 const NUM: Record<string, number> = { ',': 0.171, '.': 0.183, ' ': 0.212, '%': 0.755, K: 0.685, M: 0.947, P: 0.566, B: 0.586 };
-const PRE: Record<string, number> = { '~': 0.52, '>': 0.52, '≈': 0.53, ' ': 0.23 };
+const PRE: Record<string, number> = { '~': 0.52, '>': 0.52, '≈': 0.53, ' ': 0.08 };   // ' ': 0.23 closed up by word-spacing
 const emOf = (pre: string, num: string, glued: boolean) => {
   let e = glued ? 0.06 : 0;
   for (const c of pre) e += (PRE[c] ?? 0.6) * 0.6;
@@ -101,7 +101,7 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
   )}
 </div>
 <style>
-  .stats-c { container-type: inline-size; --_dimh: 10px; }   /* SPEC: the dimension line is 10px tall */
+  .stats-c { container-type: inline-size; --_dimh: calc(var(--s-2) + var(--s-1) / 2); }   /* SPEC: the dimension line is 10px tall */
   .stats {
     list-style: none;
     margin: 0;
@@ -163,6 +163,9 @@ const fitStyle = fitN.length ? `; --_fitn: min(var(--fs-stat), ${fitN.join(', ')
     vertical-align: 0.35em;
     color: var(--rust);
     letter-spacing: 0;
+    /* her optional space after the prefix ("~ 73%") stays in the text but closes up optically, so every prefix in a
+       row sits as close to its numeral as a glued one ("~61%", ::first-letter below): 0.212em → ≈ 0.06em */
+    word-spacing: -0.15em;
   }
   /* "~60%": the glued prefix is the first letter of one text node (see header). ::first-letter takes font, colour,
      margin and vertical-align, which is all the prefix needs. */

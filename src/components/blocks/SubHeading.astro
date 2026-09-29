@@ -31,7 +31,7 @@ const Tag = `h${ctx.hl}` as 'h3' | 'h4';
     color: var(--ink);
     text-wrap: balance;
   }
-  .sublevel__datum { display: inline-flex; flex: none; color: var(--rust); transform: translateY(-0.5px); }
+  .sublevel__datum { display: inline-flex; flex: none; color: var(--rust); transform: translateY(calc(var(--lw-object) / -2)); }
   .sublevel__t { flex: 0 1 auto; min-inline-size: 0; }
   .sublevel__line {
     flex: 1 1 var(--s-5);

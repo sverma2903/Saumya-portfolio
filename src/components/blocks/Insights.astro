@@ -1,9 +1,11 @@
 ---
 /**
  * Insights · WP4a (SPEC §6.2 `insights`, PFF Test): one row per insight within the wide area — her text in 7/12
- * (a keynote tag 01 hanging in the gutter, her title in Newsreader 440, her sub in italic ink-2, her items as a leader
- * list) beside her evidence crop in 5/12, on a plate capped at 420px (staging caps). The crops are ONE figure
- * (FIG. c.n), lettered a b c; each opens in Enlarged detail. Rows are ruled; phones stack text, then the crop.
+ * (a keynote tag 01 — hanging in the gutter at ≥ 1600px, where it clears the Levels rail by ≥ 16px, inset beside her
+ * title below that —, her title in Newsreader 440, her sub in italic ink-2, her items as a leader list) beside her
+ * evidence crop in 5/12, on a plate (staging caps). The crops are ONE figure (FIG. c.n), lettered a b c; each opens in
+ * Enlarged detail. Rows are ruled. Below 1024 a row stacks: her text, then the crop at full width (capped), because a
+ * 5/12 crop of a UI screenshot is an unreadable thumbnail on a tablet.
  * Plan view: title + sub only (items and crops are .plan-hide).
  */
 import LeaderList from './LeaderList.astro';
@@ -107,13 +109,18 @@ const rows = block.items.map((it, i) => {
     letter-spacing: var(--tr-code);
     color: var(--ink-3);
   }
-  /* ≥ 1280: the keynote tag hangs in the gutter, so her title aligns with the text above */
-  @media (min-width: 1280px) {
-    .insight__no { inset-inline-start: calc(-1 * min(var(--s-5) + var(--s-1) + var(--s-2), var(--gap, var(--s-7)) - var(--s-1))); }
+  /* ≥ 1600: the keynote tag hangs in the gutter (as the keynotes in List.astro: 4–8px from her title, ≥ 16px clear of
+     the sticky Levels rail), so her title aligns with the text above. Below that it sits inset, beside her title. */
+  @media (min-width: 1600px) {
+    .insight__no { inset-inline-start: calc(-1 * min(var(--s-5) + var(--s-1) + var(--s-2), var(--gap, var(--s-7)) - var(--s-4))); }
     .insight__t, .insight__sub, .insight__text :global(.insight__items) { margin-inline-start: 0; }
   }
-  @media (max-width: 767.98px) {
+  /* < 1024: a row stacks — her text, then the evidence crop across the column (capped, so a tall crop stays a crop) */
+  @media (max-width: 1023.98px) {
     .insight { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-5); padding-block: var(--s-5); }
+    .insight__fig { max-inline-size: calc(var(--s-10) * 3 + var(--s-6) + var(--s-1)); }   /* 420px, the staging cap */
+  }
+  @media (max-width: 767.98px) {
     /* phones: the tag stands above the title, so her text keeps the full measure */
     .insight__no { position: static; margin-block-end: var(--s-3); }
     .insight__t, .insight__sub, .insight__text :global(.insight__items) { margin-inline-start: 0; }

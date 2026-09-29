@@ -61,7 +61,7 @@ const { block, ctx } = Astro.props;
   .btn:hover { background-position: 0 0; color: var(--rust-deep); }
   .btn:active { background-position: 0 0; }
   .btn :global(.icon) { transition: transform var(--dur-3) var(--ease-pen); }
-  .btn:hover :global(.icon--arrow-up-right) { transform: translate(1px, -1px); }
-  .btn:hover :global(.icon--arrow-down) { transform: translateY(2px); }
+  .btn:hover :global(.icon--arrow-up-right) { transform: translate(calc(var(--s-1) / 4), calc(var(--s-1) / -4)); }
+  .btn:hover :global(.icon--arrow-down) { transform: translateY(calc(var(--s-1) / 2)); }
   @media (forced-colors: active) { .btn { background: ButtonFace; border-color: ButtonText; } }
 </style>

@@ -73,20 +73,34 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
   </div>
   <script>
     // inside the block root: a script rendered between blocks would break the .blk + .blk rhythm (base.css)
-    // The strip is a focusable region only while it scrolls (phones); otherwise it is a plain wrapper.
+    // The strip is a focusable region only while it scrolls (phones: the strip layout exists only below 768px);
+    // otherwise it is a plain wrapper. Decided at once, before first paint — not only when a ResizeObserver first
+    // reports, which never happens while the chapter is skipped by content-visibility:auto (a jump into the chapter
+    // could otherwise Tab onto the empty strip, then lose focus to <body> when the observer strips its tabindex).
     const ATTRS = ['tabindex', 'role', 'aria-label'] as const;
+    const phone = matchMedia('(max-width: 767.98px)');
     document.querySelectorAll<HTMLElement>('[data-concept-strip]').forEach((el) => {
       const saved = ATTRS.map((a) => el.getAttribute(a));
       const sync = () => {
-        const scrolls = el.scrollWidth > el.clientWidth + 1;
+        // under the phone query a strip whose layout is still skipped (0 × 0) stays a region until it is measured
+        const scrolls = phone.matches && (el.clientWidth === 0 || el.scrollWidth > el.clientWidth + 1);
+        if (scrolls === el.hasAttribute('tabindex')) return;
+        // never pull the focus out from under the reader: hand it to the strip's first control (Enlarge)
+        const hadFocus = !scrolls && document.activeElement === el;
         ATTRS.forEach((a, i) => (scrolls && saved[i] !== null ? el.setAttribute(a, saved[i]!) : el.removeAttribute(a)));
+        if (hadFocus) el.querySelector<HTMLElement>('button, a[href]')?.focus({ preventScroll: true });
       };
+      sync();
+      phone.addEventListener('change', sync);
       new ResizeObserver(sync).observe(el);
     });
   </script>
 </div>
 <style>
-  .concept { --_gap: var(--s-5); --_maxh: 420px; }   /* a row is never taller than 420px (the staging caps' scale) */
+  .concept {
+    --_gap: var(--s-5);
+    --_maxh: calc(var(--s-10) * 3 + var(--s-6) + var(--s-1));   /* 420px: a row is never taller (the staging caps' scale) */
+  }
   .concept__head {
     display: flex;
     align-items: baseline;
@@ -124,7 +138,7 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
     grid-template-columns: var(--_tracks);
     column-gap: var(--_gap);
     align-items: start;
-    max-inline-size: calc(var(--_sum) * min(var(--_maxh), var(--_caph, 9999px)) + (var(--_n) - 1) * var(--_gap));
+    max-inline-size: calc(var(--_sum) * min(var(--_maxh), var(--_caph, var(--_maxh))) + (var(--_n) - 1) * var(--_gap));
   }
   .concept__item { min-inline-size: 0; display: flex; flex-direction: column; gap: var(--s-2); }
   .concept__item :global(.plate) { inline-size: 100%; }
@@ -162,7 +176,7 @@ const analysis = block.analysis && block.analysis.length > 0 ? block.analysis : 
       scrollbar-width: thin;
     }
     .concept__row {
-      --_h: 300px;
+      --_h: calc(var(--s-11) + var(--s-9) + var(--s-3));   /* 300px: the strip's common height */
       display: flex;
       inline-size: max-content;
       max-inline-size: none;

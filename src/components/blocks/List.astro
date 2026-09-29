@@ -3,7 +3,8 @@
  * List · WP4a (SPEC §6.2 `list`).
  *  - Unnumbered → a leader list (LeaderList: hairline rows, her Issuu leader + dot hanging in the gutter).
  *  - Numbered → keynotes <ol class="keynotes">: each item carries a boxed tag `01` (28×24, 1px ink, Plex Mono 12,
- *    chrome + aria-hidden: the <ol> already numbers it for assistive tech) hanging in the gutter at ≥ 1280px.
+ *    chrome + aria-hidden: the <ol> already numbers it for assistive tech), centred on her first line, hanging in the
+ *    gutter at ≥ 1600px (where the gutter leaves it ≥ 16px clear of the sticky Levels rail), inset below that.
  *    Used by her Reflection lessons and Cloudflare's decision questions.
  *  - Plan view skim: only the items that carry her bold, as her <strong> pieces (data-v) joined by a clay ⋯; keynotes
  *    keep their ORIGINAL numbers (01, 03…). Then "+ N items omitted" (chrome, ink-3). A list without her bold is
@@ -58,7 +59,7 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
 </div>
 <style>
   .keynotes {
-    --_pad: 14px;                                    /* SPEC: 14px rows (as the leader list) */
+    --_pad: calc(var(--s-3) + var(--s-1) / 2);       /* SPEC: 14px rows (as the leader list) */
     --_tag-w: calc(var(--s-5) + var(--s-1));         /* the 28 × 24 keynote tag */
     --_tag-h: var(--s-5);
     --_gap: var(--s-4);
@@ -81,7 +82,8 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
   .keynotes__tag {
     position: absolute;
     inset-inline-start: 0;
-    inset-block-start: calc(var(--_pad) + 0.5lh - var(--_tag-h) / 2);
+    /* centred on her first line: the li's line box, spelled out (an `lh` here would resolve on the tag's own 12px) */
+    inset-block-start: calc(var(--_pad) + (var(--fs-body) * var(--lh-body) - var(--_tag-h)) / 2);
     display: grid;
     place-items: center;
     inline-size: var(--_tag-w);
@@ -96,11 +98,12 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
     font-variant-numeric: tabular-nums;
     color: var(--ink);
   }
-  /* ≥ 1280: the tag hangs in the gutter, ≥ 4px clear of the sticky Levels rail (--gap is set by .case-body). Below
-     1280 the lg gutter (32px) cannot hold a 28px tag plus clearance, so the tag stays inset. */
-  @media (min-width: 1280px) {
+  /* ≥ 1600: the tag hangs in the gutter (--gap, set by .case-body: 48–56px here), 4–8px from her text and always
+     ≥ 16px clear of the sticky Levels rail's View toggle, so it reads as a mark on the text, not part of the rail.
+     Below 1600 the gutter (32–47px) cannot hold a 28px boxed tag with that clearance: the tag stays inset. */
+  @media (min-width: 1600px) {
     .keynotes__i { padding-inline-start: 0; }
-    .keynotes__tag { inset-inline-start: calc(-1 * min(var(--_tag-w) + var(--s-2), var(--gap, var(--s-7)) - var(--s-1))); }
+    .keynotes__tag { inset-inline-start: calc(-1 * min(var(--_tag-w) + var(--s-2), var(--gap, var(--s-7)) - var(--s-4))); }
   }
   .keynotes__join { display: inline-block; margin-inline: 0.3em; color: var(--clay); vertical-align: -0.06em; }
   .keynotes__join :global(.icon) { inline-size: 1em; block-size: 1em; }
