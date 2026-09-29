@@ -26,11 +26,13 @@ const SPINE: Record<string, string> = {
   'uWV8s87snrPxhjrBBSr2Y3boI.jpeg': '#a07c5a',
 };
 const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, no: fill(chrome.wp6.about.fig, { d: 1, n: i + 1 }).toUpperCase() }));
+/** Σ of the covers' aspects: the height at which the row exactly fills a narrow column (see --_fit below) */
+const sumA = Math.round(books.reduce((t, { a }) => t + a, 0) * 1e5) / 1e5;
 ---
 <article class="love" id={id} aria-labelledby={`${id}-h`}>
   <LoveTitle n={1} id={id} title={f.title} />
   <p class="love__p" data-v set:html={f.text} />
-  <div class="shelf">
+  <div class="shelf" style={`--_sa: ${sumA}; --_gn: ${books.length - 1}`}>
     <ul class="shelf__row" role="list">
       {books.map(({ b, file, a, no }) => (
         <li class="book" style={`--a: ${a}; --_spine: ${SPINE[file] ?? 'var(--clay)'}`}>
@@ -59,19 +61,25 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
     grid-column: text-start / notes-end;
     margin-block-start: var(--s-7);
     padding-inline-start: var(--_spine-w);
+    container-type: inline-size;
   }
   .shelf__row {
+    /* the gap between two books: the next spine, this one's page block and air */
+    --_gap: calc(var(--_spine-w) + var(--_edge) + var(--s-6));
+    /* the covers' height: --_h, or less when the column is narrower than the row (a 320px phone): then the covers,
+       the gaps between them and the last page block exactly fill the column (WCAG 1.4.10: no sideways scroll) */
+    --_bh: min(var(--_h), (100cqi - var(--_gn) * var(--_gap) - var(--_edge)) / var(--_sa));
     display: flex;
     align-items: flex-end;
-    gap: calc(var(--_spine-w) + var(--_edge) + var(--s-6));
+    gap: var(--_gap);
     list-style: none;
     padding: 0;
   }
   .book {
     position: relative;
     flex: none;
-    inline-size: calc(var(--_h) * var(--a));
-    block-size: var(--_h);
+    inline-size: calc(var(--_bh) * var(--a));
+    block-size: var(--_bh);
     box-shadow: var(--shadow-plate);
     transition: translate var(--dur-3) var(--ease-pen), box-shadow var(--dur-3) var(--ease-pen);
   }
@@ -103,6 +111,8 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
   .book :global(.book__cover) { inline-size: 100%; block-size: 100%; }
   .book :global(.plate__open) { cursor: zoom-in; }
   .book:hover, .book:focus-within { translate: 0 calc(-1 * var(--s-1)); box-shadow: var(--shadow-lift); }
+  /* while the keyboard is on the shelf, a book lifts and settles at once (motion law 1: keyboard actions never animate) */
+  .shelf__row:has(:focus-visible) .book { transition-duration: 0s; }
 
   /* the shelf board, cut: an ink line under the books' feet, a hatched section below; it runs to the sheet's edge */
   .shelf__board {
@@ -114,7 +124,7 @@ const books = f.books.map((b, i) => ({ b, file: fileOf(b), a: facts(b).aspect, n
 
   @media (max-width: 767.98px) {
     .shelf { --_h: var(--s-10); --_spine-w: var(--s-2); margin-block-start: var(--s-6); }
-    .shelf__row { gap: calc(var(--_spine-w) + var(--_edge) + var(--s-4)); }
+    .shelf__row { --_gap: calc(var(--_spine-w) + var(--_edge) + var(--s-4)); }
   }
   /* on the dark wall the page block is paper in shade, not a lit strip */
   :global(html[data-theme='dusk']) .shelf { --_pages: color-mix(in oklab, var(--plate) 62%, var(--paper)); }

@@ -41,6 +41,8 @@ function init(root: HTMLElement): void {
 
   // ---------- upgrade: role=img → role=grid ----------
   grid.setAttribute('role', 'grid');
+  // the keyboard hint is true only now that there are tiles to walk and materials to change
+  if (root.querySelector('#legend-hint')) grid.setAttribute('aria-describedby', 'legend-hint');
   const rows = [...grid.querySelectorAll<HTMLElement>('[data-xw-row]')];
   const focusables: HTMLElement[][] = rows.map((row) => {
     row.setAttribute('role', 'row');
@@ -203,13 +205,29 @@ function init(root: HTMLElement): void {
     const a = document.activeElement;
     point(a && grid.contains(a) ? a : null);
   });
+  // a key row points at its tiles: they are lit (their cells too, so the grid can step every other tile back)
+  const cellOf = (el: HTMLElement) => el.closest<HTMLElement>('[data-xw-cell]');
+  const unpoint = () => {
+    delete grid.dataset.pointing;
+    for (const el of grid.querySelectorAll('.is-lit')) el.classList.remove('is-lit');
+  };
   for (const [id, li] of keyRows) {
-    li.addEventListener('pointerenter', () => { for (const b of buttons) b.classList.toggle('is-lit', swatchOf(b)?.dataset.mat === id); });
-    li.addEventListener('pointerleave', () => { for (const b of buttons) b.classList.remove('is-lit'); });
+    li.addEventListener('pointerenter', () => {
+      grid.dataset.pointing = '';
+      for (const b of buttons) {
+        const on = swatchOf(b)?.dataset.mat === id;
+        b.classList.toggle('is-lit', on);
+        cellOf(b)?.classList.toggle('is-lit', on);
+      }
+    });
+    li.addEventListener('pointerleave', unpoint);
   }
   for (const w of wordRows) {
-    w.li.addEventListener('pointerenter', () => { for (const a of w.at) letters.get(a)?.classList.add('is-lit'); });
-    w.li.addEventListener('pointerleave', () => { for (const a of w.at) letters.get(a)?.classList.remove('is-lit'); });
+    w.li.addEventListener('pointerenter', () => {
+      grid.dataset.pointing = '';
+      for (const a of w.at) letters.get(a)?.classList.add('is-lit');
+    });
+    w.li.addEventListener('pointerleave', unpoint);
   }
 }
 

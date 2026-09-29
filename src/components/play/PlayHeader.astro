@@ -29,6 +29,8 @@ const p = chrome.wp6.play;
     max-inline-size: 18em;
     text-wrap: balance;
   }
+  /* her italic phrase is one unit: the line breaks before or after it, never inside it */
+  .play-head__h :global(em) { white-space: nowrap; }
   .play-head__sub {
     margin-block-start: var(--s-6);
     max-inline-size: var(--measure);

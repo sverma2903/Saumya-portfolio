@@ -42,14 +42,15 @@ const id = slugify(w.title); // 'blog-writing'
     align-content: start;
   }
   .love__body { grid-column: text; max-inline-size: var(--measure); margin-block-start: var(--s-5); display: grid; gap: 1.1em; }
-  .love__p { color: var(--ink-2); }
+  /* her explicit hyphens (ideas-in-progress) stay hers; `pretty` keeps a word from standing alone on the last line */
+  .love__p { color: var(--ink-2); text-wrap: pretty; hyphens: manual; }
 
   /* ---------- the reference list ---------- */
-  /* the list keeps to her text's measure, so each post's domain stands at the paragraphs' right edge, one gutter from
-     the longest title (the section has one right edge; only the shelf board runs on to the sheet's edge) */
+  /* a drafting schedule: its rules run from the text axis to the drawing's right edge (notes-end) — the same right edge
+     as the shelf board and the salon, so the whole Things-I-love band has one — with each post's domain set flush
+     right against it */
   .refs {
     grid-column: text-start / notes-end;
-    max-inline-size: var(--measure);
     margin-block-start: var(--s-7);
     padding: 0;
     list-style: none;

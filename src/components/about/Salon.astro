@@ -3,10 +3,12 @@
  * Salon · WP6 (SPEC §5.3). Sketching: her title (detail 4 / B-100), her line, and her seven sketches hung as a salon.
  *
  *   · never cropped: every piece renders at its native aspect (the image box is width = (H − 2·pad) · aspect)
- *   · hung from the text axis (text-start → notes-end, the shelf's edges), left-aligned: every row is solved for that
- *     one width, so both edges of the salon land on the page's lines. Rows may differ in height; widths never do.
+ *   · hung from the text axis (text-start → notes-end, the shelf's edges), left-aligned: each row is solved for that
+ *     one width, so the salon's edges land on the page's lines — but no row is ever taller than a row above it: a
+ *     later row that would solve taller (3 photos after 4 drawings) is held at the height above and ends short,
+ *     left-aligned, as a justified paragraph's last line does (the intent of the spec's `::after { flex: 100000 }`)
  *       ≥ 768px  two rows, 4 + 3 (the order and grouping of her original page)
- *       < 768px  2 + 2 + 3 (no lone piece)
+ *       < 768px  2 + 2 + 2 + 1 (the 7th is exactly a 2-up piece, not a stretched or shrunken one)
  *   · the row height H is solved on the FRAME box, not the drawing, so the mounts (16px) and the prints (8px) of a row
  *     share their top and bottom edges: Σ((H − 2pᵢ)·aᵢ + 2pᵢ) + gaps = width
  *       ⇒ H = (width − gaps − Σ 2pᵢ(1 − aᵢ)) / Σ aᵢ
@@ -36,8 +38,8 @@ const pieces = s.sketches.map((m, i) => {
 });
 type Piece = (typeof pieces)[number];
 
-/** the hangs: rows 4 + 3 (≥ 768), each made of groups that are the phone rows: [2, 2] + [3] */
-const groups: Piece[][] = [pieces.slice(0, 2), pieces.slice(2, 4), pieces.slice(4)];
+/** the hangs: rows 4 + 3 (≥ 768), each made of groups that are the phone rows: [2, 2] + [2, 1] */
+const groups: Piece[][] = [pieces.slice(0, 2), pieces.slice(2, 4), pieces.slice(4, 6), pieces.slice(6)];
 const rows: Piece[][][] = [groups.slice(0, 2), groups.slice(2)];
 
 const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
@@ -52,16 +54,21 @@ const fit = (ps: Piece[]) => {
   const caps = ps.filter((p) => p.cap).map((p) => `calc(${p.cap}px / ${r5(p.a)} + 2 * var(${p.mount ? '--s-4' : '--s-2'}))`);
   return caps.length ? `min(${[w, ...caps].join(', ')})` : w;
 };
+/** a row's height: its own solved height, but never taller than any row above it — the hang reads large to small, and
+ *  a short last row stays at the height of the one above and ends short, as a justified paragraph's last line does */
+const hang = (list: Piece[][]) => list.map((_, i) => (i === 0 ? fit(list[0]) : `min(${list.slice(0, i + 1).map(fit).join(', ')})`));
+const rowH = hang(rows.map((r) => r.flat()));
+const grpH = hang(groups);
 ---
 <article class="love" id={id} aria-labelledby={`${id}-h`}>
   <LoveTitle n={4} id={id} title={s.title} />
   <p class="love__p" data-v set:html={s.text} />
   <div class="salon">
     <div class="salon__hang">
-      {rows.map((row) => (
-        <div class="salon__row" style={`--hw: ${fit(row.flat())}`}>
+      {rows.map((row, ri) => (
+        <div class="salon__row" style={`--hw: ${rowH[ri]}`}>
           {row.map((g) => (
-            <div class="salon__grp" style={`--hn: ${fit(g)}`}>
+            <div class="salon__grp" style={`--hn: ${grpH[groups.indexOf(g)]}`}>
               {g.map((p) => (
                 <figure class:list={['sk', p.mount ? 'sk--mount' : 'sk--print']} style={`--a: ${r5(p.a)}`}>
                   <Plate layers={[p.m]} alt={alt(p.file)} frame="bare" fig={{ no: p.no }} class="sk__plate" />
@@ -95,8 +102,10 @@ const fit = (ps: Piece[]) => {
     flex-direction: column;
     gap: var(--_g);
   }
-  /* each row is solved to the full width; space-between only absorbs sub-pixel rounding */
-  .salon__row { --H: var(--hw); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--_g); }
+  /* each row is solved to the full width (space-between on the first only absorbs sub-pixel rounding); a later row that
+     is held to the height of the row above ends short, from the text axis */
+  .salon__row { --H: var(--hw); display: flex; justify-content: flex-start; align-items: flex-start; gap: var(--_g); }
+  .salon__row:first-child { justify-content: space-between; }
   .salon__grp { display: contents; }
 
   .sk {
@@ -115,6 +124,8 @@ const fit = (ps: Piece[]) => {
   .sk { box-shadow: var(--_sh); transition: translate var(--dur-3) var(--ease-pen), box-shadow var(--dur-3) var(--ease-pen); }
   /* picked up to be looked at: the mount lifts a little (it is our frame that moves, never her drawing) */
   .sk:is(:hover, :focus-within) { translate: 0 calc(-1 * var(--s-1) / 2); box-shadow: var(--_sh), var(--shadow-lift); }
+  /* while the keyboard walks the salon, pieces lift and settle at once (motion law 1) */
+  .salon__hang:has(:focus-visible) .sk { transition-duration: 0s; }
   .sk :global(.sk__plate) { inline-size: 100%; }
   .sk :global(.plate__open) { cursor: zoom-in; }
 
@@ -124,7 +135,8 @@ const fit = (ps: Piece[]) => {
     .salon { margin-block-start: var(--s-6); }
     .salon__hang { --_g: var(--s-3); }
     .salon__row { display: contents; }
-    .salon__grp { --H: var(--hn); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--_g); }
+    .salon__grp { --H: var(--hn); display: flex; justify-content: flex-start; align-items: flex-start; gap: var(--_g); }
+    .salon__row:first-child > .salon__grp:first-child { justify-content: space-between; }
   }
   @media (forced-colors: active) {
     .sk { outline: 1px solid CanvasText; }

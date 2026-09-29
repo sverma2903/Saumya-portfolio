@@ -1,7 +1,7 @@
 ---
 /**
  * Meditation · WP6 (SPEC §5.3). The stillest block on the site: her title (detail 3 / B-100), then a quiet field
- * (≥ 60vh) holding only her 512px image at 200px (its staging cap) and her one line beneath it, centred on the sheet.
+ * (≥ 60vh) holding only her 512px image at 200px (its staging cap) and her one line beneath it, hung from the text axis (the page's one vertical line).
  * `data-still`: no hover effect, no motion, no enlarge affordance — nothing here moves or asks for anything.
  */
 import { about } from '../../content/site';
@@ -28,12 +28,14 @@ const w = stagingOf(md.img).cap ?? facts(md.img).w; // 200 (media-staging cap fo
     grid-template-columns: subgrid;
     align-content: start;
   }
+  /* the quiet field is the band's full height; what it holds hangs from the text axis, as every other love does */
   .still {
-    grid-column: rail-start / notes-end;
+    grid-column: text;
     min-block-size: 60svh;
     display: grid;
-    place-content: center;
-    justify-items: center;
+    align-content: center;
+    justify-content: start;
+    justify-items: start;
     gap: var(--s-6);
     padding-block: var(--s-8);
   }
@@ -42,7 +44,6 @@ const w = stagingOf(md.img).cap ?? facts(md.img).w; // 200 (media-staging cap fo
     font-size: var(--fs-body-md);
     line-height: var(--lh-body-md);
     color: var(--ink-2);
-    text-align: center;
     text-wrap: balance;
   }
   @media (max-width: 767.98px) {

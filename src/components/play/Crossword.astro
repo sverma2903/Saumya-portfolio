@@ -4,7 +4,10 @@
  * as the sheet's legend: her letters on outline / solid tiles, every other tile a drafting material in her colours,
  * and beside it the two keys the grid reads by (tiles.ts): WORDS (what her letters spell, → across / ↓ down, as a
  * crossword's) and MATERIALS (what the other tiles are drawn in).
- *   ≥ 1280px   grid │ words │ materials          768–1279px   grid │ words over materials          < 768px   stacked
+ *   ≥ 1280px   grid │ words │ materials on the board's 12 columns
+ *   768–1279   the panel still runs the sheet's width: grid │ words │ materials when they fit (panel ≥ 760px),
+ *              else grid │ words over materials
+ *   < 768px    stacked; the tiles take the panel's width (5 tiles + 4 gaps = the measure), between 44 and 64px
  *
  * Interaction (scripts/play/crossword.ts):
  *   · Re-lay tiles   shuffles the materials of the non-letter tiles — "re-laying the roof" of her kavelu tiles:
@@ -17,7 +20,8 @@
  *   · the keys and the grid point at each other: hovering / focusing a tile lights its key rows (its words, or its
  *     material), and hovering a key row lights its tiles
  *   · no drag; tiles are 64px (52px on phones): ≥ 48 / 44px targets
- * Without JS the grid is one labelled image (role=img) and the Re-lay button is hidden (data-js-only).
+ * Without JS the grid is one labelled image (role=img, with no keyboard hint: there is nothing to operate) and the
+ * Re-lay button is hidden (data-js-only). crossword.ts adds aria-describedby="legend-hint" when it makes it a grid.
  */
 import { chrome, fill } from '../../data/chrome';
 import Icon from '../symbols/Icon.astro';
@@ -47,7 +51,7 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
       </button>
     </div>
     <div class="legend__body">
-      <div class="xw" role="img" aria-label={p.gridLabel} data-xw aria-describedby="legend-hint" style={`--_ink: ${HER.rust}; --_solid: ${HER.oxblood}`}>
+      <div class="xw" role="img" aria-label={p.gridLabel} data-xw style={`--_ink: ${HER.rust}; --_solid: ${HER.oxblood}`}>
         {cells.map((row, r) => (
           <div class="xw__row" data-xw-row>
             {row.map((t, c) =>
@@ -104,9 +108,10 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     padding-block: var(--s-6) var(--s-10);
   }
   /* the legend is a panel on the sheet, as a drawing's legend is: an ink frame, a label strip, the grid and its key */
+  /* it runs the sheet's width at every size, so its right edge shares the pin board's column line; it is the container
+     the tiles (phones) and the keys' layout (768–1279) are sized from */
   .legend__panel {
-    inline-size: fit-content;
-    max-inline-size: 100%;
+    container: legend / inline-size;
     border: var(--lw-border) solid var(--ink);
     background: var(--sheet);
   }
@@ -116,7 +121,7 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     justify-content: space-between;
     flex-wrap: wrap;
     gap: var(--s-3) var(--s-7);
-    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+    padding: var(--s-3) var(--s-5);
     border-block-end: var(--lw-object) solid var(--line-2);
   }
   .legend__h { color: var(--ink-2); }
@@ -165,31 +170,35 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
 
   /* material tiles: a --plate sample with the material drawn in her colour */
   .xw__m {
+    /* --_c is her colour (inline, and set again when a tile is re-laid); --_cl is the ink the material is drawn in and
+       --_bed the ground it is drawn on (both themed below) */
+    --_cl: var(--_c);
+    --_bed: var(--plate);
     position: absolute;
     inset: 0;
     border-radius: var(--r-1);
-    background-color: var(--plate);
-    box-shadow: inset 0 0 0 var(--lw-object) color-mix(in srgb, var(--_c) 70%, transparent);
+    background-color: var(--_bed);
+    box-shadow: inset 0 0 0 var(--lw-object) color-mix(in srgb, var(--_cl) 70%, transparent);
   }
   /* in the grid a swatch sits one --s-1 inside its bed */
   .xw .xw__m { inset: var(--s-1); border-radius: 0; }
-  .xw__m[data-p='solid'] { background-color: var(--_c); box-shadow: none; }
+  .xw__m[data-p='solid'] { background-color: var(--_cl); box-shadow: none; }
   /* poché is grained, not flat: a fine 45° hatch of its own colour let down toward the plate */
   .xw__m[data-p='poche'] {
     background-color: var(--_c);
     background-image: repeating-linear-gradient(45deg, color-mix(in oklab, var(--_c) 72%, var(--plate)) 0 var(--lw-object), transparent var(--lw-object) var(--s-1));
     box-shadow: none;
   }
-  .xw__m[data-p='hatch'] { background-image: repeating-linear-gradient(-45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
-  .xw__m[data-p='hatch2'] { background-image: repeating-linear-gradient(45deg, var(--_c) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='hatch'] { background-image: repeating-linear-gradient(-45deg, var(--_cl) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='hatch2'] { background-image: repeating-linear-gradient(45deg, var(--_cl) 0 var(--lw-border), transparent var(--lw-border) calc(var(--s-1) * 1.5)); }
   .xw__m[data-p='cross'] {
     background-image:
-      repeating-linear-gradient(-45deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) var(--s-2)),
-      repeating-linear-gradient(45deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) var(--s-2));
+      repeating-linear-gradient(-45deg, var(--_cl) 0 var(--lw-object), transparent var(--lw-object) var(--s-2)),
+      repeating-linear-gradient(45deg, var(--_cl) 0 var(--lw-object), transparent var(--lw-object) var(--s-2));
   }
-  .xw__m[data-p='rows'] { background-image: repeating-linear-gradient(180deg, var(--_c) 0 var(--lw-object), transparent var(--lw-object) calc(var(--s-1) * 1.5)); }
+  .xw__m[data-p='rows'] { background-image: repeating-linear-gradient(180deg, var(--_cl) 0 var(--lw-object), transparent var(--lw-object) calc(var(--s-1) * 1.5)); }
   .xw__m[data-p='dots'] {
-    background-image: radial-gradient(circle, var(--_c) 0 var(--lw-border), transparent calc(var(--lw-border) * 1.4));
+    background-image: radial-gradient(circle, var(--_cl) 0 var(--lw-border), transparent calc(var(--lw-border) * 1.4));
     background-size: calc(var(--s-1) * 1.5) calc(var(--s-1) * 1.5);
   }
   /* the void is an absence: a dashed hidden line on the sheet, not the letters' rust outline and not a lit plate */
@@ -203,6 +212,9 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
 
   /* the letter tiles a word key row points at */
   .xw__cell--letter.is-lit { outline: var(--lw-cut) solid var(--rust); outline-offset: calc(var(--s-1) / 2); }
+  /* while a key row points at the grid, the tiles it names stay and every other tile steps back (lit by subtraction) */
+  .xw__cell { transition: opacity var(--dur-1) var(--ease-ui); }
+  .xw[data-pointing] .xw__cell:not(.is-lit) { opacity: 0.35; }
 
   /* ---------- the keys ---------- */
   .legend__key { min-inline-size: var(--s-11); }
@@ -219,16 +231,19 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
   }
   .legend__list { list-style: none; padding: 0; display: grid; }
   .legend__row {
+    --_band: var(--paper-2);        /* a lit row: a band of the sheet's well colour behind it */
     display: flex;
     align-items: center;
     gap: var(--s-3);
     min-block-size: var(--_pitch);
     padding-block: 0;
+    padding-inline: var(--s-1);
+    margin-inline: calc(-1 * var(--s-1));
     font-family: var(--font-sans);
     font-size: var(--fs-ui);
     font-variation-settings: var(--wdth-ui);
     color: var(--ink-2);
-    transition: color var(--dur-1) var(--ease-ui);
+    transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
   }
   .legend__sw { position: relative; flex: none; inline-size: var(--s-5); block-size: var(--s-5); }
   /* a word's swatch: a small blank tile carrying its direction */
@@ -242,28 +257,35 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
   .legend__word { font-family: var(--font-serif); font-size: var(--fs-body-sm); font-weight: 500; letter-spacing: var(--tr-code); color: var(--ink); translate: 0 0.13em; }
   .legend__how {
     margin-inline-start: auto;
-    padding-inline-start: var(--s-4);
+    padding-inline-start: var(--s-3);
     font-family: var(--font-mono);
     font-size: var(--fs-code-sm);
     letter-spacing: var(--tr-code-sm);
     text-transform: uppercase;
     color: var(--ink-3);
   }
-  .legend__row.is-lit { color: var(--ink); }
+  .legend__row.is-lit { color: var(--ink); background: var(--_band); }
   .legend__row.is-lit :is(.legend__name, .legend__word) { text-decoration: underline; text-decoration-color: var(--rust); text-underline-offset: var(--s-1); text-decoration-thickness: var(--lw-border); }
   /* with JS a key row points at its tiles on hover, so it answers the pointer too */
   @media (hover: hover) {
-    :global(html.js) .legend__row:hover { color: var(--ink); }
+    :global(html.js) .legend__row:hover { color: var(--ink); background: var(--_band); }
     :global(html.js) .legend__row:hover :is(.legend__name, .legend__word) { text-decoration: underline; text-decoration-color: var(--rust); text-underline-offset: var(--s-1); text-decoration-thickness: var(--lw-border); }
   }
 
   @media (min-width: 768px) and (max-width: 1279.98px) {
-    .legend__keys { flex-direction: column; flex-wrap: nowrap; }
+    /* the grid, then the keys in the rest of the panel: one over the other while the panel is narrow ... */
+    .legend__body { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: var(--s-5); }
+    .legend__keys { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .legend__key { min-inline-size: 0; }
+    /* ... side by side as soon as they fit, so the WORDS column fills the space under the grid's first rows */
+    @container legend (min-width: 760px) {
+      .legend__body { grid-template-columns: max-content minmax(max-content, 1fr) minmax(max-content, 1fr); }
+      .legend__keys { grid-column: 2 / -1; display: grid; grid-template-columns: subgrid; column-gap: var(--s-5); }
+    }
   }
   @media (min-width: 1280px) {
     /* the whole sheet width, on the pin board's twelve columns: the grid in 1–4, WORDS in 5–8, MATERIALS in 9–12
        (the panel's padding is taken out of the first and last columns, so the inner column lines are the board's) */
-    .legend__panel { inline-size: auto; }
     .legend__body {
       display: grid;
       grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -278,13 +300,28 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
   }
 
   @media (max-width: 767.98px) {
-    .legend { --_t: calc(var(--s-7) + var(--s-1)); --_gap: var(--s-1); padding-block: var(--s-5) var(--s-9); }
-    .legend__panel { inline-size: auto; }
-    .legend__head { padding-inline-start: var(--s-4); }
+    /* the tiles take the panel's measure: 5 tiles and 4 gaps fill it (61px at 390), never under a 44px target (47px at
+       320) nor over the desktop 64px */
+    .legend {
+      --_gap: var(--s-1);
+      --_t: clamp(calc(var(--s-6) + var(--s-3)), (100cqi - 2 * var(--s-4) - 4 * var(--_gap)) / 5, var(--s-8));
+      padding-block: var(--s-5) var(--s-9);
+    }
+    .legend__head { padding-inline: var(--s-4); }
     .legend__body { padding: var(--s-5) var(--s-4); }
     .legend__keys { column-gap: var(--s-5); }
     .legend__key { min-inline-size: 0; flex: 1 1 auto; }
   }
+  /* Dusk: the materials are drawn on the panel's own dark ground in a lifted ink (a cream bed under every hatch made
+     the grid a glaring checkerboard); poché keeps its oxblood with a lifted edge so it still reads; blush is a wash.
+     Only the outline letter tiles stay plates (lit prints, as everywhere on the dark wall). */
+  :global(html[data-theme='dusk']) .xw__m { --_bed: var(--sheet); --_cl: color-mix(in oklab, var(--_c) 70%, var(--plate)); }
+  :global(html[data-theme='dusk']) .xw__m[data-p='solid'] {
+    background-color: color-mix(in oklab, var(--_c) 22%, var(--sheet));
+    box-shadow: inset 0 0 0 var(--lw-object) color-mix(in oklab, var(--_c) 60%, var(--sheet));
+  }
+  :global(html[data-theme='dusk']) .xw__m[data-p='poche'] { box-shadow: inset 0 0 0 var(--lw-object) color-mix(in oklab, var(--_c) 55%, var(--plate)); }
+  :global(html[data-theme='dusk']) .legend__row { --_band: color-mix(in oklab, var(--ink) 8%, var(--sheet)); }
   @media (forced-colors: active) {
     .xw__cell, .xw__m { forced-color-adjust: none; }
     .xw__cell { outline: 1px solid CanvasText; }

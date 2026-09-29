@@ -42,9 +42,9 @@ const gap = 4 * U; // extension lines start this far below the portrait's foot (
     <circle cx={C} cy={C} r={r} fill="none" stroke="currentColor" stroke-width={sw} stroke-dasharray={dash} />
     <path d={`M0 ${C}H1340M${C} 0V1340`} fill="none" stroke="currentColor" stroke-width={sw} stroke-dasharray={center} />
     <g class="portrait__dim" fill="none" stroke="currentColor" stroke-width={sw}>
-      <path d={`M${C - P} ${C + P + gap}V${yDim + 8 * U}M${C + P} ${C + P + gap}V${yDim + 8 * U}`} />
-      <path d={`M${C - P} ${yDim}H${C + P}`} />
-      <path d={`M${C - P - tick} ${yDim + tick}L${C - P + tick} ${yDim - tick}M${C + P - tick} ${yDim + tick}L${C + P + tick} ${yDim - tick}`} />
+      {[C - P, C + P].map((x) => <path class="portrait__ext" pathLength="1" d={`M${x} ${C + P + gap}V${yDim + 8 * U}`} />)}
+      <path class="portrait__line" pathLength="1" d={`M${C - P} ${yDim}H${C + P}`} />
+      {[C - P, C + P].map((x) => <path class="portrait__ticks" pathLength="1" d={`M${x - tick} ${yDim + tick}L${x + tick} ${yDim - tick}`} />)}
     </g>
   </svg>
   <span class="portrait__label t-code-sm" aria-hidden="true" style={`--_y: ${((yDim - C) / 10 + 50).toFixed(2)}%`}>{dia}</span>
@@ -71,10 +71,17 @@ const gap = 4 * U; // extension lines start this far below the portrait's foot (
     overflow: visible;
     pointer-events: none;
   }
-  .portrait__dim, .portrait__label {
-    opacity: 0;
-    transition: opacity var(--dur-3) var(--ease-draft);
+  /* the dimension is drawn as a pen draws it (§2.7: dimension strings draw over --dur-3, on --ease-draft): the two
+     extension lines drop from the portrait's edges, then the dimension line runs between them, its ticks struck and
+     the figure written at the end. Leaving, it fades as one (--dur-1) and is wound back unseen. Reduced motion: the
+     duration tokens are ~0, so it simply appears. */
+  .portrait__dim { opacity: 0; transition: opacity var(--dur-1) var(--ease-ui); }
+  .portrait__dim path {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 0s linear var(--dur-1);
   }
+  .portrait__label { opacity: 0; transition: opacity var(--dur-1) var(--ease-ui); }
   .portrait__label {
     position: absolute;
     inset-block-start: var(--_y);
@@ -88,7 +95,11 @@ const gap = 4 * U; // extension lines start this far below the portrait's foot (
     pointer-events: none;
   }
   @media (hover: hover) and (pointer: fine) {
-    .portrait:hover .portrait__dim, .portrait:hover .portrait__label { opacity: 1; }
+    .portrait:hover .portrait__dim { opacity: 1; transition-duration: 0s; }
+    .portrait:hover .portrait__dim path { stroke-dashoffset: 0; transition: stroke-dashoffset calc(var(--dur-3) / 2) var(--ease-draft) 0s; }
+    .portrait:hover .portrait__dim .portrait__line { transition-delay: calc(var(--dur-3) / 2); }
+    .portrait:hover .portrait__dim .portrait__ticks { transition-duration: var(--dur-1); transition-delay: var(--dur-3); }
+    .portrait:hover .portrait__label { opacity: 1; transition-delay: var(--dur-3); }
   }
   @media (max-width: 1023.98px) {
     /* under the button: the construction's top centre line stops short of it instead of touching it */

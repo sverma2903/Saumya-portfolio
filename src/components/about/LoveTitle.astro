@@ -32,7 +32,7 @@ const label = fill(a.permalink, { n, sheet: a.sheet, title: stripHtml(title) });
 </div>
 <style>
   .lt {
-    --_d: 44px;                                   /* the Bubble's diameter (36px below 768) */
+    --_d: var(--s-7);                             /* the Bubble's diameter here: 48px (36px below 768), see below */
     /* the line runs through the middle of her title's line box: Newsreader's (ascent .735 − descent .265) / 2 above
        the baseline — which is also where the bubble's diameter sits, since the bubble is centred on that line box */
     --_mid: 0.235em;
@@ -96,6 +96,13 @@ const label = fill(a.permalink, { n, sheet: a.sheet, title: stripHtml(title) });
     border-radius: var(--r-dot);
     color: var(--ink);
     text-decoration: none;
+  }
+  /* the P0 Bubble is 44px, and at 44px a five-character sheet id ("B-100") meets the circle's stroke (0.9px clear).
+     Here it is drawn at 48px with the id set a hair tighter, so the id stands ≥ 3px clear of the stroke (handed to P0
+     to adopt for every sheet-id bubble; see the WP6 notes) */
+  @media (min-width: 768px) {
+    .lt__b :global(.bubble) { --_d: var(--s-7); }
+    .lt__b :global(.bubble__s) { letter-spacing: -0.04em; }
   }
   .lt__b :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
   .lt__b:hover :global(.bubble), .lt__b:focus-visible :global(.bubble) { color: var(--rust); }
