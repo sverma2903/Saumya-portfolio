@@ -6,16 +6,21 @@
  * no JS / no WebGL2 / reduced motion / Motion off / Save-Data / low memory, print and forced colours.
  *
  * Layout (SPEC SM1 "Layout per breakpoint"): ≥ 1024 the cover is clamp(620px, 100svh − bar − 140px, 820px) tall, text in
- * cols 1–5 (vertically centred), plan in cols 6–12 from 8% to 64% of the height, section from 70% to 86%; the GL frame
+ * cols 1–5 (set low, its CTA row centred on the section legend row: one line shared across the sheet), plan in cols 6–12 from 8% to 64% of the height, section from 70% to 86%; the GL frame
  * covers the whole cover (contours at 28% under the headline). Below 1024 the text comes first and the frame covers the
  * drawing block only (plan 1.6 : 1 on tablets, 1 : 1 up to 420px on phones; section 130 / 120px).
- * The headline sets in five lines at ≥ 1024: font-size = min(--fs-cover, 11.4cqi of the text column). At 1440 × 900 the
+ * The headline sets in five lines at ≥ 1024: font-size = min(--fs-cover, --_fs-fit = 11.4cqi of the text column). At 1440 × 900 the
  * token's 76px would need six lines in cols 1–5 and push the index below the fold; 11.4cqi is the measure at which her
  * 87-character headline balances into five (measured), ≈ 61px at 1440, 67px at ≥ 1600.
  *
  * No flash: the head script sets html[data-gl=maybe] only when WebGL2 exists, motion is on and Save-Data is off; the
  * fallback is hidden under maybe/live, the canvases under anything else. siteplan.ts sets 'live' after its first
- * frame, 'no' on failure. The inline guard below shows the fallback if the hero module never ran.
+ * frame, 'no' on failure. The head script only knows the interface exists (WebGL can still be disabled or blocklisted),
+ * so the tiny inline probe right after the GL canvas asks for the context during parse — before first paint — and
+ * resolves 'maybe' → 'no' at once when there is none (the static drawing is then the first thing painted, however late
+ * the module arrives). Trade-off: the context is created during parse, after the h1, instead of when the module runs
+ * (the same work, moved earlier; siteplan.ts gets the same context back). The inline guard at the end shows the
+ * fallback if the hero module never ran.
  */
 import { home, labels, links } from '../../content/site';
 import { chrome, narrative } from '../../data/chrome';
@@ -37,9 +42,10 @@ const ht = parts(h.planHintTouch);
 /** the plan's accessible name: the owner-gated sentence (N) once approved; until then two shipped labels, no pointer talk */
 const planName = narrative(h.planLabel) ?? `${hp.site} · ${h.section}`;
 /** Her headline and sub, verbatim. The only change is typographic: her compounds "AI-assisted" and "front-end" may not
- *  break at their hyphens (a nowrap span around the word; the text — and every test's view of it — is unchanged). */
+ *  break at their hyphens, and her italic "product designer" is never split across lines (text-wrap: balance did so at
+ *  768–1023) — a nowrap span around the run; the text — and every test's view of it — is unchanged. */
 const nb = (html: string, word: string) => html.replace(word, `<span class="cover__nb">${word}</span>`);
-const headline = nb(home.headline, 'AI-assisted');
+const headline = nb(nb(home.headline, 'AI-assisted'), '<em>product designer</em>');
 const sub = nb(home.sub, 'front-end');
 ---
 <section class="cover" id="cover" aria-labelledby="cover-h" data-cover data-el={h.el} data-north={h.north}>
@@ -68,6 +74,7 @@ const sub = nb(home.sub, 'front-end');
 
   <div class="cover__gl" aria-hidden="true" data-frame>
     <canvas class="cover__cv" data-gl-canvas></canvas>
+    <script is:inline>(function(c,d){if(d.dataset.gl==='maybe'&&!c.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'low-power'})){d.dataset.gl='no';c.closest('[data-cover]').dataset.heroFail='no WebGL2 context'}})(document.currentScript.previousElementSibling,document.documentElement)</script>
     <canvas class="cover__cv" data-ov-canvas></canvas>
   </div>
 </section>
@@ -161,18 +168,29 @@ const sub = nb(home.sub, 'front-end');
       padding-inline: calc(max(0px, (100% - var(--maxw)) / 2) + var(--m));
       min-block-size: var(--_h);
     }
-    .cover__text { grid-column: 1 / span 5; grid-row: 1; align-self: center; padding-block: var(--s-7); container-type: inline-size; }
-    .cover__h { font-size: min(var(--fs-cover), 11.4cqi); }
+    /* One shared line across the two columns: the CTA row's centre sits on the section legend row's centre (the
+       bubble's). The legend row is --s-7 tall from 86% + --s-2 of the cover; the CTA row is --s-7 tall and centred,
+       and it ends the text column, so the column ends --s-2 + --s-7 below 86%: padding-end = 14% of the cover − both.
+       (The cover is --_h tall whenever its text fits, which is every ≥ 1024 layout; % padding would be of the width.) */
+    .cover__text {
+      --_fs-fit: 11.4cqi; /* the measure at which her 87-character headline balances into five lines (Deviation 1) */
+      grid-column: 1 / span 5; grid-row: 1; align-self: end;
+      padding-block: var(--s-7) calc(var(--_h) * 0.14 - var(--s-2) - var(--s-7));
+      container-type: inline-size;
+    }
+    .cover__h { font-size: min(var(--fs-cover), var(--_fs-fit)); }
+    .cover__ctas { min-block-size: var(--s-7); }
     .cover__drawing { grid-column: 6 / span 7; grid-row: 1; display: block; }
     .cover__hint { position: absolute; inset-inline-end: 0; inset-block-start: max(var(--s-3), calc(8% - var(--s-6))); margin: 0; }
     .cover__plan { position: absolute; inset-inline: 0; inset-block: 8% 36%; aspect-ratio: auto; max-block-size: none; }
     .cover__sect { position: absolute; inset-inline: 0; inset-block: 70% 14%; block-size: auto; margin: 0; }
     .cover__legend { position: absolute; inset-inline-start: 0; inset-block-start: calc(86% + var(--s-2)); margin: 0; }
     .cover__gl { position: absolute; inset: 0; margin: 0; grid-row: auto; grid-column: auto; }
-    /* the static drawing at the live scale: its plan's top edge (30 canonical px below the drawing's top) on the live
-       plan's (8%); the column is a container so 30px scales with it (30 / 764.67 of the canonical column width) */
-    .cover__drawing { container-type: inline-size; }
-    .cover__fallback { position: absolute; inset-inline: 0; inset-block-start: calc(8% - 3.923cqi); }
+    /* the static drawing at the live scale: its plan's top edge (30 canonical px below the drawing's top — the room
+       tools/siteplan-svg.mjs leaves for the dome's top rings) on the live plan's (8%); the column is a container, so
+       the 30px scales with it as a share of the canonical 764.67px column */
+    .cover__drawing { container-type: inline-size; --_spf-top: calc(100cqi * 30 / 764.67); }
+    .cover__fallback { position: absolute; inset-inline: 0; inset-block-start: calc(8% - var(--_spf-top)); }
   }
 
   /* ── live vs static: the fallback shows unless the head script (or the hero) says WebGL is on ── */

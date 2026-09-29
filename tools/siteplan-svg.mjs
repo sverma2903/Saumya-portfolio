@@ -23,7 +23,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
   Hpx, landform, layoutPrimitives, landforms, restPose, sectionScale, sunDir, formatLevel, intervalFor,
-  INDEX_EVERY, REST_FOCUS,
+  INDEX_EVERY, INDEX_FLOOR, REST_FOCUS,
 } from '../src/lib/terrain.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -196,17 +196,44 @@ function variant(V) {
     return Math.hypot(Hh(x + e, y) - Hh(x - e, y), Hh(x, y + e) - Hh(x, y - e)) / (2 * e);
   };
   const minor = [], index = [];
+  const lenOf = (pts) => { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; };
+  /** drop the last `d` px of a polyline (from its end): an open end left by a crowded run stops short of the landform's
+   *  contours instead of butting into them with a kink */
+  const trimEnd = (pts, d) => {
+    let left = d;
+    while (pts.length > 1 && left > 0) {
+      const a = pts[pts.length - 2], b = pts[pts.length - 1], s = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (s > left) { const t = (s - left) / s; pts[pts.length - 1] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; break; }
+      pts.pop(); left -= s;
+    }
+    return pts;
+  };
+  const TRIM = 6, MIN_RUN = 40; // px
   for (let k = Math.ceil(lo / I); k <= Math.floor(hi / I); k++) {
     const level = k * I;
+    const heavy = k % INDEX_EVERY === 0 && level >= INDEX_FLOOR;
     for (const line of marching(g.f, g.nx, g.ny, g.x0, g.y0, g.dx, g.dy, level)) {
-      // break the line where contours crowd (spacing < 3 px), as the shader fades them
-      let run = [];
-      const flush = () => { if (run.length > 1) (k % INDEX_EVERY === 0 ? index : minor).push(simplify(run, 0.6)); run = []; };
-      for (const p of line) {
-        if (I / Math.max(grad(p[0], p[1]), 1e-6) < 3) flush();
+      // break the line where contours crowd (spacing < 3 px), as the shader fades them; each broken end is trimmed
+      // back, and what is left shorter than MIN_RUN (a stub in mid-air) is dropped
+      const crowded = (p) => I / Math.max(grad(p[0], p[1]), 1e-6) < 3;
+      let pts = line;
+      const closed = pts.length > 2 && pts[0] === pts[pts.length - 1];
+      if (closed) { const i = pts.findIndex(crowded); if (i > 0) pts = [...pts.slice(i, -1), ...pts.slice(0, i + 1)]; }
+      let run = [], startCut = false;
+      const flush = (endCut) => {
+        let r = run;
+        run = [];
+        if (r.length < 2) return;
+        if (endCut) r = trimEnd(r, TRIM);
+        if (startCut) r = trimEnd(r.reverse(), TRIM).reverse();
+        const whole = !startCut && !endCut; // an uncut contour (a closed ring, or one that leaves the drawing)
+        if (r.length > 1 && (whole || lenOf(r) >= MIN_RUN)) (heavy ? index : minor).push(simplify(r, 0.6));
+      };
+      for (const p of pts) {
+        if (crowded(p)) { flush(true); startCut = true; }
         else run.push(p);
       }
-      flush();
+      flush(false);
     }
   }
   const fadeId = `spf-${V.id}-f`;
@@ -272,14 +299,13 @@ function variant(V) {
   }
 
   // ── north arrow (N drawn as a path), never inside the plan box (as live): on the wide sheet in the legend row, left
-  //    of the graphic scale; on the narrow one at the top right, above the plan, N beside the needle ──
+  //    of the graphic scale; on the narrow one at the top right, above the plan ──
   const scaleBw = 50 * sc.pxPerM, scaleBx = sect.x + sect.w - scaleBw - 26;
   const wideN = V.id === 'w';
   const nr = wideN ? 13 : 8, k = nr / 13;
   const nx0 = wideN ? scaleBx - 28 - nr : plan.x + plan.w - nr - 1, ny0 = wideN ? sect.y + sect.h + 30 : plan.y - 15;
-  const nGlyph = wideN
-    ? `M${f1(nx0 - 3.2)} ${f1(ny0 - nr - 4)}v-8.4l6.4 8.4v-8.4`
-    : `M${f1(nx0 - nr - 5 - 6.4)} ${f1(ny0 + 4.2)}v-8.4l6.4 8.4v-8.4`;
+  // one symbol everywhere (as live): N beside the needle, on the legend row's centre line (the bubble's, 30 below the band)
+  const nGlyph = `M${f1(nx0 - nr - 5 - 6.4)} ${f1(ny0 + 4.2)}v-8.4l6.4 8.4v-8.4`;
   out.push(`<circle class="spf__line" cx="${f1(nx0)}" cy="${f1(ny0)}" r="${nr}"/>`
     + `<path class="spf__ink" d="M${f1(nx0)} ${f1(ny0 - nr + 2 * k)}L${f1(nx0 + 5 * k)} ${f1(ny0 + nr - 3 * k)}L${f1(nx0)} ${f1(ny0 + nr - 7 * k)}z"/>`
     + `<path class="spf__line" d="M${f1(nx0)} ${f1(ny0 - nr + 2 * k)}L${f1(nx0 - 5 * k)} ${f1(ny0 + nr - 3 * k)}L${f1(nx0)} ${f1(ny0 + nr - 7 * k)}z"/>`
@@ -301,7 +327,7 @@ function variant(V) {
     for (const f of forms) {
       const first = f.kind === 'tri' ? -1 : 1;
       const dirs = [];
-      for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
+      for (const deg of [45, 30, 60, 75, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
       const text = formatLevel(f.top);
       const w = 14 + text.length * charW;
       for (const [dx, dy] of dirs) {
@@ -313,7 +339,7 @@ function variant(V) {
         const side = dx >= 0 ? 1 : -1;
         const endX = elbow[0] + side * 16;
         const box = { x: side > 0 ? endX + 3 : endX - 3 - w, y: elbow[1] - 9, w, h: 18 };
-        const inside = box.x >= plan.x + 6 && box.x + box.w <= plan.x + plan.w - 6 && box.y >= plan.y - 18 && box.y + box.h <= plan.y + plan.h - 6;
+        const inside = box.x >= plan.x + 2 * R + 3 && box.x + box.w <= plan.x + plan.w - 2 * R - 3 && box.y >= plan.y - 18 && box.y + box.h <= plan.y + plan.h - 6;
         if (!inside || taken.some((q) => hit(box, q)) || onAnyForm(box)) continue;
         if (crosses(dot, elbow) || crosses(elbow, [endX, elbow[1]])) continue;
         taken.push(box);
@@ -351,7 +377,7 @@ function variant(V) {
   out.push(`<path d="${profD}V${f1(floor)}H${f1(x0)}z" fill="url(#spf-${V.id}-e)"/>`);
   out.push(`<path class="spf__datum" d="M${f1(x0)} ${f1(sc.Y(0) - 0.5)}H${f1(x1)}"/>`);
   out.push(`<path class="spf__prof" d="${profD}"/>`);
-  label(formatLevel(0), x0 + 3, sc.Y(0) + 10, 'start', 'spf__l--sm spf__l--ink2');
+  label(formatLevel(0), x0 + 3, sc.Y(0) + 10, 'start', 'spf__l--sm spf__l--ink2 spf__l--ko');
 
   // the projector: from the survey point on the cut (the +12.00 crossing) to the ▼ on the section
   const sx = rest.surveyX, lv = Hh(sx, cy), py = sc.Y(lv);
@@ -436,19 +462,19 @@ ${blocks}
     .spf__v--n { display: block; }
   }
   .spf :global(.spf__svg) { display: block; inline-size: 100%; block-size: 100%; overflow: visible; fill: none; stroke-linejoin: round; }
-  .spf :global(.spf__c) { stroke: currentColor; stroke-width: 0.9; stroke-opacity: 0.24; }
-  .spf :global(.spf__c--i) { stroke-width: 1.5; stroke-opacity: 0.42; }
-  .spf :global(.spf__hl) { stroke: currentColor; stroke-width: 0.9; stroke-opacity: 0.34; }
-  .spf :global(.spf__pr) { stroke: var(--rust); stroke-width: 1; stroke-opacity: 0.4; }
-  .spf :global(.spf__el) { stroke: currentColor; stroke-width: 1; stroke-opacity: 0.3; }
+  .spf :global(.spf__c) { stroke: currentColor; stroke-width: var(--lw-object); stroke-opacity: 0.22; }
+  .spf :global(.spf__c--i) { stroke-width: var(--lw-border); stroke-opacity: 0.42; }
+  .spf :global(.spf__hl) { stroke: currentColor; stroke-width: var(--lw-object); stroke-opacity: 0.31; }
+  .spf :global(.spf__pr) { stroke: var(--rust); stroke-width: var(--lw-object); stroke-opacity: 0.4; }
+  .spf :global(.spf__el) { stroke: currentColor; stroke-width: var(--lw-object); stroke-opacity: 0.3; }
   .spf :global(.spf__sv) { stroke: currentColor; stroke-opacity: 0.16; stroke-width: var(--lw-object); }
-  .spf :global(.spf__iso) { stroke: var(--rust); stroke-width: 2.2; stroke-opacity: 0.9; }
+  .spf :global(.spf__iso) { stroke: var(--rust); stroke-width: var(--lw-cut); stroke-opacity: 0.9; }
   .spf :global(.spf__cl) { stroke: var(--clay); stroke-opacity: 0.6; stroke-width: var(--lw-object); stroke-dasharray: var(--dash-center); }
   .spf :global(.spf__cut) { stroke: currentColor; stroke-opacity: 0.85; stroke-width: var(--lw-object); stroke-dasharray: var(--dash-center); }
   .spf :global(.spf__ink) { fill: currentColor; stroke: currentColor; stroke-width: var(--lw-object); }
   .spf :global(.spf__line) { stroke: currentColor; stroke-width: var(--lw-object); }
   .spf :global(.spf__bub) { fill: var(--sheet); stroke: currentColor; stroke-width: var(--lw-border); }
-  .spf :global(.spf__glyph) { stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; }
+  .spf :global(.spf__glyph) { stroke: currentColor; stroke-width: var(--lw-border); stroke-linecap: round; }
   .spf :global(.spf__dot) { fill: var(--clay); }
   .spf :global(.spf__ld) { stroke: var(--clay); stroke-opacity: 0.72; stroke-width: var(--lw-object); }
   .spf :global(.spf__sym) { stroke: var(--ink-2); stroke-width: var(--lw-object); fill: var(--paper); }
@@ -456,28 +482,33 @@ ${blocks}
   .spf :global(.spf__b1) { stroke: currentColor; stroke-opacity: 0.6; stroke-width: var(--lw-object); }
   .spf :global(.spf__b2) { stroke: currentColor; stroke-opacity: 0.42; stroke-width: var(--lw-object); }
   .spf :global(.spf__b3) { stroke: currentColor; stroke-opacity: 0.28; stroke-width: var(--lw-object); }
-  .spf :global(.spf__datum) { stroke: currentColor; stroke-opacity: 0.45; stroke-width: var(--lw-dim); stroke-dasharray: 2 4; }
+  .spf :global(.spf__datum) { stroke: currentColor; stroke-opacity: 0.45; stroke-width: var(--lw-dim); stroke-dasharray: var(--dash-hidden); }
   .spf :global(.spf__prof) { stroke: currentColor; stroke-width: var(--lw-cut); stroke-linecap: round; }
-  .spf :global(.spf__proj) { stroke: var(--rust); stroke-opacity: 0.8; stroke-width: var(--lw-dim); stroke-dasharray: 3 3; }
+  .spf :global(.spf__proj) { stroke: var(--rust); stroke-opacity: 0.8; stroke-width: var(--lw-dim); stroke-dasharray: var(--dash-hidden); }
   .spf :global(.spf__rust) { fill: var(--rust); }
   .spf :global(.spf__rl) { stroke: var(--rust); stroke-width: var(--lw-object); }
+  /* the paper halo round the figures: half a spacing step (a blur, so no line-weight token applies) */
   .spf__l {
+    --_halo: calc(var(--s-1) / 2);
     position: absolute; translate: 0 -50%; white-space: nowrap;
     font-family: var(--font-mono); font-size: var(--fs-code); font-weight: 500; line-height: 1;
     font-variant-numeric: tabular-nums; letter-spacing: var(--tr-code); color: var(--ink);
-    text-shadow: 0 0 2px var(--paper), 0 0 2px var(--paper), 0 0 3px var(--paper);
+    text-shadow: 0 0 var(--_halo) var(--paper), 0 0 var(--_halo) var(--paper), 0 0 calc(var(--_halo) * 1.5) var(--paper);
   }
+  /* a knockout (±0.00 sits in the earth poché: the hatch must not run through the figures) */
+  .spf__l--ko { background: var(--paper); box-shadow: 0 0 0 var(--_halo) var(--paper); }
   .spf__l--middle { translate: -50% -50%; }
   .spf__l--end { translate: -100% -50%; }
   .spf__l--sm { font-size: var(--fs-code-sm); font-weight: 400; }
   .spf__l--ink2 { color: var(--ink-2); }
   .spf__l--rust { color: var(--rust); }
-  .spf__legend { position: absolute; display: flex; align-items: center; gap: var(--s-3); }
+  .spf__legend { position: absolute; display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--s-7); }
   .spf__legend p { display: grid; row-gap: calc(var(--s-1) / 2); }
   .spf__legend p > :last-child { color: var(--ink-2); }
   @media print {
     .spf :global(.spf__earth) { fill-opacity: 0; }
     .spf__l { text-shadow: none; }
+    .spf__l--ko { background: none; box-shadow: none; }
   }
   @media (forced-colors: active) {
     .spf { color: CanvasText; }
@@ -485,6 +516,7 @@ ${blocks}
     .spf :global(:is(.spf__rust, .spf__dot)) { fill: CanvasText; }
     .spf :global(:is(.spf__bub, .spf__earth, .spf__sym)) { fill: Canvas; }
     .spf__l { color: CanvasText; text-shadow: none; }
+    .spf__l--ko { background: Canvas; box-shadow: 0 0 0 var(--_halo) Canvas; }
   }
 </style>
 `;

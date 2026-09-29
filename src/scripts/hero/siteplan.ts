@@ -16,7 +16,7 @@
  * Debug params (QA): ?hour=9 (sun hour 0–24) · ?tier=hi|lo (pin the adaptive tier) · ?at=900 (render the timeline's
  * frame at 900 ms, then stop).
  */
-import { Hpx, crossingX, intervalFor, landforms, layoutPrimitives, restPose, sunDir, sunHour, REST_CUT, REST_FOCUS, SURVEY_X } from '../../lib/terrain.js';
+import { Hpx, crossingX, intervalFor, landforms, layoutPrimitives, restPose, sunDir, sunHour, REST_CUT, REST_FOCUS } from '../../lib/terrain.js';
 import type { Site } from '../../lib/terrain.js';
 import { createOverlay, CUT_INSET_BOTTOM, CUT_INSET_TOP, CUT_INSET_X, type Landform, type Palette, type RGB, type Rect, type Scene, type Type } from './section2d';
 import { on as onPref } from '../core/prefs';
@@ -84,6 +84,8 @@ function keyed(k: [number, number][], t: number, ease: (x: number) => number): n
 //      it is smooth from pixel to pixel, so lines do not stair-step along a crease. Metres per device px, × 4/π so the
 //      lines keep fwidth's average weight (fwidth is |∂x| + |∂y|, 4/π × the gradient on average over directions).
 //    · graphite contours: distance (device px) to the nearest level, index contour every 5th, faded where they crowd.
+//      Index weight only from +6.00 (INDEX_FLOOR in terrain.js) up: below it the ground dominates, and a heavy ground
+//      contour read as a fourth mark between her △○□ — the only heavy graphite lines are her three forms'.
 //      A level can coincide with a dead-flat surface (the mesa's plateau is exactly +15.00, a contour level), and a
 //      "line" there would fill the plateau: lines — and the rust isoline — need a slope (`sloped`).
 //    · drafted in: the lowest levels ink first, rising to the summits. Quiet zones: under the headline (28%), under
@@ -128,7 +130,7 @@ void main(){
   float fh = max(fh0, 1e-4);
   float f = h / uInterval, fw = fh / uInterval;
   float dist = abs(fract(f + .5) - .5) / max(fw, 1e-4);
-  float idx = step(abs(mod(floor(f + .5), 5.)), .01);
+  float idx = step(abs(mod(floor(f + .5), 5.)), .01) * step(5.99, floor(f + .5) * uInterval);
   float wpx = mix(.55, 1.05, idx) * uDpr;
   float sloped = smoothstep(1e-6, 1e-5, fh0);
   float line = (1. - smoothstep(wpx - .6, wpx + .6, dist)) * (1. - smoothstep(.28, .55, fw / uDpr)) * sloped;
@@ -267,11 +269,12 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   const eDraft = ease('--ease-draft', [0.65, 0.05, 0.25, 1]);
   const eUi = ease('--ease-ui', [0.2, 0.8, 0.2, 1]);
   let pal!: Palette, ink!: RGB, rust!: RGB, gain = 1;
-  const dash = rootCss.getPropertyValue('--dash-center').trim().split(/[\s,]+/).map(Number).filter((n) => n > 0);
+  const dashOf = (token: string) => rootCss.getPropertyValue(token).trim().split(/[\s,]+/).map(Number).filter((n) => n > 0);
+  const dash = dashOf('--dash-center'), hidden = dashOf('--dash-hidden');
   const len = (token: string, dflt: number) => parseFloat(rootCss.getPropertyValue(token)) || dflt;
   const type: Type = {
     mono: rootCss.getPropertyValue('--font-mono').trim() || 'monospace', code: px('--fs-code'), codeSm: px('--fs-code-sm'),
-    dash: dash.length ? dash : [14, 3, 2, 3], lw: { cut: len('--lw-cut', 2), border: len('--lw-border', 1.25), object: len('--lw-object', 1) },
+    dash: dash.length ? dash : [14, 3, 2, 3], hidden: hidden.length ? hidden : [4, 3], lw: { cut: len('--lw-cut', 2), border: len('--lw-border', 1.25), object: len('--lw-object', 1) },
   };
   const readPalette = () => {
     pal = { ink: color('--ink'), ink2: color('--ink-2'), rust: color('--rust'), clay: color('--clay'), sheet: color('--sheet'), paper: color('--paper') };
@@ -317,7 +320,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   let rest = { cutY: 0, surveyX: 0, focus: REST_FOCUS };
   let textQ = [-1e4, -1e4, -1e4, -1e4], quiet = [-1e4, -1e4, -1e4, -1e4], fadeE = [0, 40, 0, 0];
   let pc = { x: 0, y: 0 };
-  let legend: { y1: number; y2: number; right: number } | null = null;
+  let legend: { y1: number; y2: number; yc: number; right: number } | null = null;
   let hint: Rect | null = null;
   const hintEl = root.querySelector<HTMLElement>('.cover__hint');
   let laidOut = false;
@@ -361,13 +364,17 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
         if (t.x < W && t.x + t.w > 0 && a.y < Hh && b.y + b.h > 0) { textQ = [t.x - 10, a.y - 10, t.x + t.w + 10, b.y + b.h + 10]; fadeE = [0, 40, 0, 0]; }
       }
     }
-    quiet = [sect.x - 8, sect.y - 10, sect.x + sect.w + 8, sect.y + sect.h + 44];
+    // …down to the frame's bottom edge: a quiet band that ended between the legend row and the bottom fade let a
+    // contour surface for a few px there and read as a tapered smudge
+    quiet = [sect.x - 8, sect.y - 10, sect.x + sect.w + 8, Hh + 20];
     // the section title's two lines (HTML), for the graphic scale
     const lines = legendEl ? Array.from(legendEl.querySelectorAll('p > span')) : [];
     legend = null;
     if (lines.length >= 2) {
       const a = rel(lines[0]), b = rel(lines[1]), t = rel(lines[0].parentElement!);
-      if (a.h && b.h) legend = { y1: a.y + a.h / 2, y2: b.y + b.h / 2, right: t.x + Math.max(a.w, b.w) };
+      const bub = legendEl!.querySelector('.bubble');
+      const bb = bub ? rel(bub) : null;
+      if (a.h && b.h) legend = { y1: a.y + a.h / 2, y2: b.y + b.h / 2, yc: bb?.h ? bb.y + bb.h / 2 : (a.y + b.y + b.h) / 2, right: t.x + Math.max(a.w, b.w) };
     }
     // the hint row's words (its first and last visible spans)
     hint = null;
@@ -460,13 +467,14 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   }
 
   // ── controllers ──
-  /** the survey point: the cut line follows y (within its travel), the isoline takes the level at (x, y); the keyboard's
-   *  virtual point always sits on the cut line */
-  function survey(x: number, y: number, instant: boolean, onCut = instant) {
+  /** the survey point: the cut line follows y and the projector x (each within its travel), and the isoline takes the
+   *  level AT the survey point — (sx, cut), not the raw pointer — so plan isoline, cut line, projector, ▼ and EL tag
+   *  always read one level, also when the pointer is in a clamp band at the plan's edge (and when it leaves there) */
+  function survey(x: number, y: number, instant: boolean) {
     x = Math.max(plan.x, Math.min(plan.x + plan.w, x));
-    y = onCut ? clampCut(y) : Math.max(plan.y, Math.min(plan.y + plan.h, y));
-    const v = { cut: clampCut(y), sx: clampSx(x), focus: Hpx(x, y, U), ang: Math.atan2(y - pc.y, x - pc.x) };
-    if (onCut) v.focus = Hpx(v.sx, v.cut, U);
+    y = Math.max(plan.y, Math.min(plan.y + plan.h, y));
+    const cut = clampCut(y), sx = clampSx(x);
+    const v = { cut, sx, focus: Hpx(sx, cut, U), ang: Math.atan2(y - pc.y, x - pc.x) };
     if (instant) setNow(v);
     else { st.cutT = v.cut; st.sxT = v.sx; st.focusT = v.focus; st.angT = v.ang; }
     return v;
@@ -485,20 +493,21 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     ptr = null;
     ret = null;
     if (Math.hypot(x - pc.x, y - pc.y) > 1) st.angT = Math.atan2(y - pc.y, x - pc.x);
-    if (inside(plan, x, y)) { survey(x, y, false); st.tag = { x, y }; } else st.tag = null;
+    if (inside(plan, x, y)) { const v = survey(x, y, false); st.tag = { x: v.sx, y: v.cut }; } else st.tag = null;
   }
   /**
    * Touch (SPEC SM1 interaction map): the scroll drives the cut — progress = clamp((vh·.5 − planTop) / planH) — and with
-   * it the section; the survey x (.62w, or where you tapped) drops the projector. Nothing points at an elevation on a
-   * touch screen, so the rust isoline holds at +12.00 (her mark) until a tap sets it to the tapped point's elevation.
+   * it the section; the survey x (the rest pose's, on the +12.00 contour nearest .62w — or where you tapped) drops the
+   * projector. The rust isoline is the survey point's level, Hpx(sx, cut), eased as the scroll moves: plan isoline,
+   * projector and ▼ always agree, and at the rest cut (55%) they read +12.00.
    */
-  let tapX: number | null = null, tapFocus: number | null = null, scrolled = false;
+  let tapX: number | null = null, scrolled = false;
   function scrollCut(instant: boolean) {
     const pr = planEl!.getBoundingClientRect();
     const prog = clamp01((innerHeight * 0.5 - pr.top) / Math.max(1, pr.height));
     const cut = clampCut(plan.y + prog * plan.h);
-    const sx = tapX ?? plan.x + plan.w * SURVEY_X;
-    const v = { cut, sx, focus: tapFocus ?? REST_FOCUS, ang: sunAng };
+    const sx = tapX ?? rest.surveyX;
+    const v = { cut, sx, focus: Hpx(sx, cut, U), ang: sunAng };
     if (instant) setNow(v); else { st.cutT = v.cut; st.sxT = v.sx; st.focusT = v.focus; st.angT = v.ang; }
   }
   function stepEase(dt: number, now: number): boolean {
@@ -625,7 +634,6 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     if (!coarse) { ptr = { x: e.clientX, y: e.clientY }; if (st.ctl !== 'pointer') takeOver('pointer', e.timeStamp); kick(); return; }
     const fr = frameEl!.getBoundingClientRect();
     tapX = clampSx(e.clientX - fr.left);
-    tapFocus = Hpx(e.clientX - fr.left, e.clientY - fr.top, U);
     if (st.ctl !== 'touch') takeOver('touch');
     scrolled = true;
     kick();

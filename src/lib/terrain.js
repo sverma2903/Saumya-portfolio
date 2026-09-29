@@ -19,6 +19,9 @@ export const S3 = Math.sqrt(3);
 /** Contour interval (m) of the canonical drawing, and the index-contour period (every 5th is heavier). */
 export const INTERVAL = 1.25;
 export const INDEX_EVERY = 5;
+/** Index contours are drawn heavier only from this level (m) up: below it the ground dominates, and a heavy ground
+ *  contour read as an extra mark between her △○□. The shader in scripts/hero/siteplan.ts mirrors it (5.99). */
+export const INDEX_FLOOR = 6;
 /** The rest pose: the plan is cut at 55% of its height, the rust isoline sits at +12.00 (as in the static fallback). */
 export const REST_CUT = 0.55;
 export const REST_FOCUS = 12;

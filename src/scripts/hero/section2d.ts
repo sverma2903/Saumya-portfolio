@@ -16,9 +16,9 @@ import type { Site } from '../../lib/terrain.js';
 export type RGB = [number, number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Palette { ink: RGB; ink2: RGB; rust: RGB; clay: RGB; sheet: RGB; paper: RGB }
-/** type and line tokens: the mono stack, --fs-code / --fs-code-sm (px), --dash-center (long–short dash),
- *  and the drafting line weights --lw-cut / --lw-border / --lw-object (px) */
-export interface Type { mono: string; code: number; codeSm: number; dash: number[]; lw: { cut: number; border: number; object: number } }
+/** type and line tokens: the mono stack, --fs-code / --fs-code-sm (px), --dash-center (long–short dash), --dash-hidden
+ *  (the datum and the projector), and the drafting line weights --lw-cut / --lw-border / --lw-object (px) */
+export interface Type { mono: string; code: number; codeSm: number; dash: number[]; hidden: number[]; lw: { cut: number; border: number; object: number } }
 export interface Landform { kind: 'tri' | 'circ' | 'sq'; x: number; y: number; r: number; top: number; extent: number }
 
 /** Everything one overlay frame needs. Geometry in frame css px (y down). */
@@ -40,9 +40,10 @@ export interface Scene {
   time: string; night: boolean;
   /** chrome codes: 'EL', 'N' */
   el: string; north: string;
-  /** the section title (HTML legend): the centres of its two lines, so the graphic scale sits on the same lines,
-   *  and its right edge, so the north arrow and the scale keep clear of it */
-  legend: { y1: number; y2: number; right: number } | null;
+  /** the section title (HTML legend): the centres of its two lines, so the graphic scale sits on the same lines, the
+   *  bubble's centre (the row's centre line: the north arrow and the time sit on it), and its right edge, so the north
+   *  arrow and the scale keep clear of it */
+  legend: { y1: number; y2: number; yc: number; right: number } | null;
   /** the hint row's words (HTML, "Site plan · move to cut A–A"), kept clear by the north arrow and the leaders */
   hint: Rect | null;
 }
@@ -60,7 +61,8 @@ const SCALE_M = [50, 40, 25, 20, 10];   // graphic scale lengths (m), the longes
 const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${Math.max(0, Math.min(1, a))})`;
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-interface Leader { form: Landform; dot: [number, number]; elbow: [number, number]; end: [number, number]; dir: 1 | -1; text: string; w: number; box: Rect }
+/** a landform leader: dot → elbow along `u` (unit vector) → shoulder to `end` (dir ±1) → the label in `box` */
+interface Leader { form: Landform; dot: [number, number]; u: [number, number]; elbow: [number, number]; end: [number, number]; dir: 1 | -1; text: string; w: number; box: Rect }
 const hit = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });
 
@@ -69,6 +71,8 @@ export function createOverlay(canvas: HTMLCanvasElement) {
   let dpr = 1;
   let leaders: Leader[] = [];
   let leaderKey = '';
+  /** may a label box stand here? (inside the plan box, off every landform) — set by placeLeaders for this layout */
+  let boxFits: (r: Rect) => boolean = () => false;
   let profile = new Float32Array(0);
   let run = new Float32Array(0);
 
@@ -107,11 +111,11 @@ export function createOverlay(canvas: HTMLCanvasElement) {
 
   /**
    * Leader placement: from each spot point a straight leader that leaves the footprint (found by marching out until
-   * the landform term vanishes), a short shoulder, then the label. Directions are tried in order (45° up, 30°, 60°,
+   * the landform term vanishes), a short shoulder, then the label. Directions are tried in order (45° up, 30°, 60°, 75°,
    * level, then down; the pyramid's leader leaves by its west side first, away from the survey point, the others by
-   * the east); the first whose label box stays inside the plan box and clear of every landform, the other labels, the
+   * the east); the first whose label box stays inside the plan box (out of its end columns, where the section heads ride) and clear of every landform, the other labels, the
    * hint row and the rest pose's cut line — and whose leader stays clear of the rest pose's projector — wins.
-   * No room (phones): no leaders.
+   * Plans narrower than 480px (phones, where the static drawing has none either) get no leaders.
    */
   function placeLeaders(s: Scene, ty: Type) {
     const key = `${s.W}|${s.H}|${s.plan.x}|${s.plan.y}|${s.plan.w}|${s.plan.h}|${s.restCut}|${s.restSx}|${ty.code}|${ty.mono}`;
@@ -133,12 +137,15 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       for (let i = 0; i <= 3; i++) for (let j = 0; j <= 2; j++) if (form(r.x + (r.w * i) / 3, r.y + (r.h * j) / 2)) return true;
       return false;
     };
+    // labels keep out of the plan's two end columns, where the section heads ride with the cut line wherever it is
+    const endCol = 2 * HEAD_R + 3;
+    boxFits = (r) => r.x >= p.x + endCol && r.x + r.w <= p.x + p.w - endCol && r.y >= p.y - 18 && r.y + r.h <= p.y + p.h - inset && !onAnyForm(r);
     leaders = [];
-    if (p.w < 560) return; // phones: the small plan has no room for leaders (a second-visit detail on larger sheets)
+    if (p.w < 480) return; // phones: the small plan has no room for leaders (nor has the static phone drawing)
     for (const f of s.forms) {
       const first = f.kind === 'tri' ? -1 : 1;
       const dirs: [number, number][] = [];
-      for (const deg of [45, 30, 60, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
+      for (const deg of [45, 30, 60, 75, 0, -30, -45]) for (const side of [first, -first]) dirs.push([side * Math.cos((deg * Math.PI) / 180), -Math.sin((deg * Math.PI) / 180)]);
       const text = formatLevel(f.top);
       const w = 14 + c.measureText(text).width;
       for (const [dx, dy] of dirs) {
@@ -151,14 +158,32 @@ export function createOverlay(canvas: HTMLCanvasElement) {
         const side = dx >= 0 ? 1 : -1;
         const endX = elbow[0] + side * 16;
         const box: Rect = { x: side > 0 ? endX + 3 : endX - 3 - w, y: elbow[1] - 9, w, h: 18 };
-        const inside = box.x >= p.x + inset && box.x + box.w <= p.x + p.w - inset && box.y >= p.y - 18 && box.y + box.h <= p.y + p.h - inset;
-        if (!inside || taken.some((q) => hit(box, q)) || onAnyForm(box)) continue;
+        if (!boxFits(box) || taken.some((q) => hit(box, q))) continue;
         if (crosses(dot, elbow) || crosses(elbow, [endX, elbow[1]])) continue;
-        leaders.push({ form: f, dot, elbow, end: [endX, elbow[1]], dir: side as 1 | -1, text, w, box });
+        leaders.push({ form: f, dot, u: [dx, dy], elbow, end: [endX, elbow[1]], dir: side as 1 | -1, text, w, box });
         taken.push(box);
         break;
       }
     }
+  }
+
+  /**
+   * A leader whose shoulder would share the moving cut line's y (the label would read as text on the cut line A–A):
+   * its elbow slides further out along the leader until the shoulder and label sit clear of the cut line — above it
+   * for a rising leader, below for a falling one. If that label box would leave the plan, land on a landform or meet
+   * another label or the hint, the leader stays put and the cut line breaks around its label instead.
+   */
+  function dodge(L: Leader, cutY: number, taken: Rect[]): Leader {
+    const band = 16; // label half-height (9) + 7: the label and its shoulder stand clearly off the line
+    if (Math.abs(cutY - L.elbow[1]) >= band || Math.abs(L.u[1]) < 0.2) return L;
+    const ny = L.u[1] < 0 ? cutY - band : cutY + band;
+    const d = (ny - L.elbow[1]) / L.u[1];
+    if (d <= 0) return L;
+    const elbow: [number, number] = [L.elbow[0] + L.u[0] * d, ny];
+    const endX = elbow[0] + L.dir * 16;
+    const box: Rect = { x: L.dir > 0 ? endX + 3 : endX - 3 - L.w, y: ny - 9, w: L.w, h: 18 };
+    if (!boxFits(box) || taken.some((q) => hit(box, q))) return L;
+    return { ...L, elbow, end: [endX, ny], box };
   }
 
   /**
@@ -178,25 +203,24 @@ export function createOverlay(canvas: HTMLCanvasElement) {
 
   /**
    * The north arrow, the sun's (or the moon's) glyph and the local time — never inside the plan box, where the cut
-   * line travels. On a wide sheet it sits in the legend row, left of the graphic scale (as on a title block); on a
-   * narrow one, at the right end of the hint row, N beside the needle. The time is left out if the row has no room.
+   * line travels. One symbol everywhere: N beside the needle. On a wide sheet it sits in the legend row, left of the
+   * graphic scale, centred on the row's centre line (the bubble's centre), as the time is; on a narrow one, at the
+   * right end of the hint row. The time is left out if the row has no room.
    */
   function northGeo(s: Scene, ty: Type, scaleX: number) {
     c.font = `500 ${ty.code}px ${ty.mono}`;
-    const tw = c.measureText(s.time).width;
+    const tw = c.measureText(s.time).width, nw = c.measureText(s.north).width;
     const glyph = 16; // the sun / moon glyph and its gap before the time
-    if (s.legend && s.sect.w >= 480) {
-      const r = 13, yc = (s.legend.y1 + s.legend.y2) / 2;
-      const right = scaleX - 28, cx = right - tw - glyph - 10 - r;
-      return { x: cx, y: yc, r, row: false, tx: cx + r + 10, showTime: cx - r - 8 > s.legend.right + 16, box: { x: cx - r - 4, y: yc - r - 22, w: right - cx + r + 8, h: 2 * r + 26 } as Rect };
-    }
-    const r = 8, right = s.plan.x + s.plan.w;
-    const yc = s.hint ? s.hint.y + s.hint.h / 2 + 0.5 : s.plan.y - 16;
-    const nw = c.measureText(s.north).width;
-    const hintEnd = s.hint ? s.hint.x + s.hint.w : -Infinity;
-    const withTime = right - (nw + 5 + 2 * r + 10 + glyph + tw) >= hintEnd + 12;
+    const wide = !!s.legend && s.sect.w >= 480;
+    const r = wide ? 13 : 8;
+    const right = wide ? scaleX - 28 : s.plan.x + s.plan.w;
+    const yc = wide ? s.legend!.yc : s.hint ? s.hint.y + s.hint.h / 2 + 0.5 : s.plan.y - 16;
+    const clearX = wide ? s.legend!.right + 16 : s.hint ? s.hint.x + s.hint.w + 12 : -Infinity;
+    const block = nw + 5 + 2 * r;                                   // N, gap, needle
+    const withTime = right - (block + 10 + glyph + tw) >= clearX;
     const cx = withTime ? right - tw - glyph - 10 - r : right - r - 1;
-    return { x: cx, y: yc, r, row: true, tx: cx + r + 10, showTime: withTime, box: { x: cx - r - nw - 9, y: yc - r - 2, w: right - (cx - r - nw - 9), h: 2 * r + 4 } as Rect };
+    const x0 = cx - r - 5 - nw - 4;
+    return { x: cx, y: yc, r, tx: cx + r + 10, showTime: withTime, box: { x: x0, y: yc - r - 2, w: right - x0, h: 2 * r + 4 } as Rect };
   }
 
   function draw(s: Scene, pal: Palette, ty: Type) {
@@ -287,12 +311,16 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       const dy = crisp(Y(0));
       c.strokeStyle = rgba(pal.ink, 0.45);
       c.lineWidth = ty.lw.object;
-      c.setLineDash([2, 4]);
+      c.setLineDash(ty.hidden);
       c.beginPath(); c.moveTo(x0, dy); c.lineTo(Math.max(x0, reach), dy); c.stroke();
       c.setLineDash([]);
       c.font = `400 ${ty.codeSm}px ${ty.mono}`;
       c.textAlign = 'left';
-      label(formatLevel(0), x0 + 3, dy + 10, rgba(pal.ink2, 1), halo);
+      // on a paper knockout (2px round the text): the earth hatch must not run through the figures
+      const d0 = formatLevel(0), dw = c.measureText(d0).width;
+      c.fillStyle = rgba(pal.paper, 0.94);
+      c.fillRect(x0 + 1, dy + 10 - ty.codeSm / 2 - 2, dw + 4, ty.codeSm + 4);
+      label(d0, x0 + 3, dy + 10, rgba(pal.ink2, 1), halo);
 
       // the cut line itself: the heaviest weight in the set (--lw-cut)
       c.strokeStyle = rgba(pal.ink, 1);
@@ -316,6 +344,13 @@ export function createOverlay(canvas: HTMLCanvasElement) {
     const scale = scaleGeo(s, sc.pxPerM);
     const north = northGeo(s, ty, scale.bx);
     placeLeaders(s, ty);
+    // the leaders as drawn at this cut: slid clear of the cut line where they would share its y
+    const legs: Leader[] = [];
+    for (const L of leaders) {
+      const others = [...legs.map((q) => q.box), ...leaders.filter((q) => q !== L && !legs.some((g) => g.form === q.form)).map((q) => q.box)];
+      if (s.hint) others.push(pad(s.hint, 4));
+      legs.push(dodge(L, crisp(s.cut), others));
+    }
 
     if (s.ui > 0) {
       c.globalAlpha = s.ui;
@@ -323,7 +358,7 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       //    breaks around the leader labels it passes, as a drawn line breaks for lettering ──
       const cyp = crisp(s.cut);
       const xa = plan.x + CUT_INSET_X, xb = plan.x + plan.w - CUT_INSET_X;
-      const gaps = leaders.map((L) => pad(L.box, 3)).filter((r) => cyp >= r.y && cyp <= r.y + r.h).map((r) => [r.x, r.x + r.w]).sort((p1, p2) => p1[0] - p2[0]);
+      const gaps = legs.map((L) => pad(L.box, 3)).filter((r) => cyp >= r.y && cyp <= r.y + r.h).map((r) => [r.x, r.x + r.w]).sort((p1, p2) => p1[0] - p2[0]);
       c.strokeStyle = rgba(pal.ink, 0.85);
       c.lineWidth = ty.lw.object;
       c.setLineDash(ty.dash);
@@ -351,8 +386,9 @@ export function createOverlay(canvas: HTMLCanvasElement) {
         c.fillText('A', snap(hx), snap(s.cut + 0.5));
       }
 
-      // ── north arrow: split-fill needle, N above (beside it on a narrow sheet); a rust dot on its circle at the
-      //    light's bearing; the sun (a moon at night) and the local time beside it ──
+      // ── north arrow: split-fill needle, N beside it; by day a rust tick inside its rim at the light's bearing (at
+      //    night the light is the 17:24 fallback, not the moon's, so no bearing is marked); the sun (a moon at night)
+      //    and the local time beside it ──
       const n = north;
       c.strokeStyle = rgba(pal.ink, 1);
       c.fillStyle = rgba(pal.ink, 1);
@@ -362,11 +398,14 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       c.beginPath(); c.moveTo(n.x, n.y - n.r + 2 * k); c.lineTo(n.x + 5 * k, n.y + n.r - 3 * k); c.lineTo(n.x, n.y + n.r - 7 * k); c.closePath(); c.fill();
       c.beginPath(); c.moveTo(n.x, n.y - n.r + 2 * k); c.lineTo(n.x - 5 * k, n.y + n.r - 3 * k); c.lineTo(n.x, n.y + n.r - 7 * k); c.closePath(); c.stroke();
       c.font = `500 ${ty.code}px ${ty.mono}`;
-      if (n.row) { c.textAlign = 'right'; label(s.north, n.x - n.r - 5, n.y, rgba(pal.ink, 1), halo); }
-      else label(s.north, n.x, n.y - n.r - 8, rgba(pal.ink, 1), halo);
-      const lx = n.x + Math.cos(s.ang) * n.r, ly = n.y + Math.sin(s.ang) * n.r;
-      c.fillStyle = rgba(pal.rust, 1);
-      c.beginPath(); c.arc(lx, ly, 2.6 * Math.max(k, 0.8), 0, TAU); c.fill();
+      c.textAlign = 'right';
+      label(s.north, n.x - n.r - 5, n.y + 0.5, rgba(pal.ink, 1), halo);
+      if (!s.night) {
+        const ca = Math.cos(s.ang), sa = Math.sin(s.ang), t0 = n.r - 6 * k, t1 = n.r + 0.5; // inside the rim: the N beside it stays clear
+        c.strokeStyle = rgba(pal.rust, 1);
+        c.lineWidth = ty.lw.cut;
+        c.beginPath(); c.moveTo(n.x + ca * t0, n.y + sa * t0); c.lineTo(n.x + ca * t1, n.y + sa * t1); c.stroke();
+      }
       if (n.showTime) {
         const gx = n.tx + 4, gy = n.y;
         c.strokeStyle = rgba(pal.rust, 1);
@@ -392,7 +431,7 @@ export function createOverlay(canvas: HTMLCanvasElement) {
 
       // ── leaders: dot terminal at the spot point, 45° leader, shoulder, then △ +26.00 on a paper knockout ──
       c.lineWidth = ty.lw.object;
-      for (const L of leaders) {
+      for (const L of legs) {
         c.strokeStyle = rgba(pal.clay, 0.72);
         c.fillStyle = rgba(pal.clay, 1);
         c.beginPath(); c.arc(L.dot[0], L.dot[1], 2.4, 0, TAU); c.fill();
@@ -437,7 +476,7 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       const px = crisp(s.sx), py = Y(lv);
       c.strokeStyle = rgba(pal.rust, 0.8);
       c.lineWidth = ty.lw.object;
-      c.setLineDash([3, 3]);
+      c.setLineDash(ty.hidden);
       c.beginPath(); c.moveTo(px, s.cut + 7); c.lineTo(px, py - 12); c.stroke();
       c.setLineDash([]);
       c.fillStyle = rgba(pal.rust, 1);
@@ -475,7 +514,7 @@ export function createOverlay(canvas: HTMLCanvasElement) {
       const t = `${s.el} ${formatLevel(lv)}`;
       c.font = `500 ${ty.code}px ${ty.mono}`;
       const tw = c.measureText(t).width + 12, th = 20;
-      const avoid: Rect[] = [north.box, ...leaders.map((L) => L.box)];
+      const avoid: Rect[] = [north.box, ...legs.map((L) => L.box)];
       if (lvBox) avoid.push(lvBox);
       if (s.hint) avoid.push(s.hint);
       const cands: [number, number][] = [
