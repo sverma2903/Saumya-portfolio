@@ -108,6 +108,7 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
     display: block; padding-inline-start: calc(var(--_delta) + var(--s-2)); text-indent: calc(-1 * (var(--_delta) + var(--s-2)));
     color: var(--ink); text-decoration: none;
   }
+  @media (pointer: coarse) { .titleblock__rev { padding-block: var(--s-2); min-block-size: var(--hit); } }
   .titleblock__delta { display: inline-block; inline-size: var(--_delta); margin-inline-end: var(--s-2); text-indent: 0; vertical-align: -0.2em; color: var(--rust); }
   .titleblock__delta :global(.sym-revdelta) { display: block; }
   .titleblock__revk { color: var(--rust); }

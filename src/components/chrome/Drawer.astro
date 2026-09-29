@@ -187,13 +187,15 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
       field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); hand(); } });
     }
 
-    // drag the grip down past 30% of the sheet to close
-    const grip = dlg.querySelector<HTMLElement>('[data-drawer-grip]');
+    // drag the sheet's head (the grip and the title row, as on any bottom sheet) down past 30% of the sheet to close;
+    // a press that starts on Close is Close's own
+    const grip = dlg.querySelector<HTMLElement>('.drawer__top');
     if (grip) {
       let y0 = 0;
       let dy = 0;
       let dragging = false;
       grip.addEventListener('pointerdown', (e) => {
+        if (!e.isPrimary || (e.target as Element | null)?.closest('button, a, input')) return;
         dragging = true; y0 = e.clientY; dy = 0;
         grip.setPointerCapture(e.pointerId);
         dlg.classList.add('is-dragging');
@@ -266,10 +268,13 @@ const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about
     display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
     padding-block: var(--s-4) var(--s-3); margin-inline: calc(-1 * var(--m)); padding-inline: var(--m);
     background: var(--sheet); border-block-end: var(--lw-object) solid var(--line-2);
+    /* the whole head drags (Drawer script); the list below keeps its own scrolling */
+    touch-action: none; cursor: grab;
   }
+  .drawer__top :is(button, a) { cursor: pointer; }
   .drawer__grip {
     position: absolute; inset-block-start: 0; inset-inline: 30%; block-size: var(--s-5);
-    display: grid; place-items: center; cursor: grab; touch-action: none;
+    display: grid; place-items: center;
   }
   .drawer__grip span { inline-size: var(--s-8); block-size: var(--lw-cut); background: var(--line-3); }
   /* centred on the Close button's box (the grip sits between them, so the title needs no clearance of its own) */

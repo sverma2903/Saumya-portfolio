@@ -146,18 +146,26 @@
    (Custom properties cannot be used inside @media conditions; the breakpoints are
    480 / 768 / 1024 / 1280 / 1600 and "below" queries use .98, e.g. max-width: 1023.98px.)
    -------------------------------------------------------------------------- */
-:root { --bar: 56px; --maxw: 1488px; --cols: 4; --m: 16px; --g: 12px; }
-@media (min-width: 480px)  { :root { --cols: 6;  --m: 20px; --g: 16px; } }
-@media (min-width: 768px)  { :root { --cols: 8;  --m: 32px; --g: 20px; } }
-@media (min-width: 1024px) { :root { --cols: 12; --m: 40px; --g: 24px; } }
-@media (min-width: 1280px) { :root { --cols: 12; --m: 56px; --g: 24px; } }
-@media (min-width: 1600px) { :root { --cols: 12; --m: 24px; --g: 24px; } } /* content max 1488 = 1440 + 2×24; .shell centres it */
+/* --m0 is the drawn margin; --m is what layout uses: never less than the device's safe area (viewport-fit=cover
+   draws the page under a landscape phone's notch and rounded corners). Both sides take the larger inset so the
+   grid stays symmetrical. Everything that reads --m (.shell, the case/about/chapter grids, the cover, the title
+   bar, the drawer) is safe with no rule of its own; a cell that already sits inside a safe-area padding (the
+   bottom bar) reads --m0. */
+:root { --bar: 56px; --maxw: 1488px; --cols: 4; --m0: 16px; --g: 12px; }
+@media (min-width: 480px)  { :root { --cols: 6;  --m0: 20px; --g: 16px; } }
+@media (min-width: 768px)  { :root { --cols: 8;  --m0: 32px; --g: 20px; } }
+@media (min-width: 1024px) { :root { --cols: 12; --m0: 40px; --g: 24px; } }
+@media (min-width: 1280px) { :root { --cols: 12; --m0: 56px; --g: 24px; } }
+@media (min-width: 1600px) { :root { --cols: 12; --m0: 24px; --g: 24px; } } /* content max 1488 = 1440 + 2×24; .shell centres it */
+:root { --m: max(var(--m0), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)); }
 
 /* --------------------------------------------------------------------------
    §2.6 Z-index layers
    -------------------------------------------------------------------------- */
 :root {
   --z-base: 0; --z-raised: 1; --z-sticky: 20;  /* Levels rail, Viewport, walkthrough figure */
+  --z-control: 2;  /* a control drawn over a raised hit layer (a plate's Enlarge surface, a card's stretched link): the
+                      control must win the hit test, or its click falls through to the surface under it */
   --z-vtline: 30;                              /* cut line during view transitions */
   --z-bar: 40;                                 /* title bar / bottom bar */
   --z-drawer: 60;                              /* mobile sheet drawer */

@@ -11,6 +11,8 @@
  *   - Omit runs: the break line's Show / Hide opens or closes that run only (aria-expanded).
  */
 import { listen } from '../core/bus';
+import { announce } from '../core/copy';
+import { focusNoScroll } from '../core/dom';
 import { registerShortcut } from '../core/keys';
 import { get, set } from '../core/prefs';
 
@@ -61,16 +63,50 @@ function restore(a: Anchor | null): void {
   if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: 'instant' as ScrollBehavior });
 }
 
+// ── keeping focus (a11y r1): Skim hides most of the page; what held focus may be among it ──
+let held: HTMLElement | null = null; // the last element that held focus in the page (the Sheet list returns it on close)
+const gone = (el: Element) => !el.isConnected || !el.getClientRects().length;
+/**
+ * If the switch hid the focused element (an Enlarge button, a link in a paragraph Skim drops), hand focus to what
+ * now stands for it: its omit run's Show button, else its chapter's heading — never to <body>.
+ */
+let standIn: { from: HTMLElement; to: HTMLElement } | null = null; // V, V: focus goes back where it was
+function rescue(el: HTMLElement | null): void {
+  if (!el) return;
+  if (standIn && el === standIn.to && document.activeElement === el && !gone(standIn.from)) {
+    standIn.from.focus({ preventScroll: true });
+    standIn = null;
+    return;
+  }
+  if (!gone(el)) return;
+  const f = document.activeElement;
+  if (f && f !== document.body && f !== el && !gone(f)) return; // focus has already moved on (the Sheet list)
+  const run = el.closest('[data-omit-run]');
+  const brk = run?.querySelector<HTMLElement>(':scope > .breakline');
+  const to = brk && !gone(brk) ? brk : el.closest('section.chapter')?.querySelector<HTMLElement>('h2');
+  if (!to || gone(to)) return;
+  if (to === brk) to.focus({ preventScroll: true }); else focusNoScroll(to);
+  standIn = { from: el, to };
+}
+/** What changed, said politely: the checked toggle's own words ("Skim · bold only" / "Full story"). */
+function say(): void {
+  const on = radios().find((b) => b.getAttribute('aria-checked') === 'true');
+  const t = (on?.querySelector('.viewtoggle__label') ?? on)?.textContent?.replace(/\s+/g, ' ').trim();
+  if (t) announce(t);
+}
+
 let mine = false;
 let rest: Anchor | null = null;
-/** Set the view, keeping the reader's place. */
+/** Set the view, keeping the reader's place (and focus). */
 export function setView(v: View, opts: { persist?: boolean } = {}): void {
   if (get('view') === v) return;
   const a = anchor();
+  const f = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   mine = true;
   set('view', v, opts);
   mine = false;
   restore(a);
+  rescue(f);
   rest = null;
 }
 
@@ -107,14 +143,24 @@ export function initPlanview(): void {
     if (brk) toggleRun(brk);
   });
   document.addEventListener('keydown', onKey);
+  document.addEventListener('focusin', (e) => {
+    const t = e.target as HTMLElement;
+    if (!t.closest('dialog')) held = t;
+  });
   listen('sv:view', () => {
     sync();
-    if (!mine) { restore(rest); rest = anchor(); }
+    if (!mine) {
+      restore(rest); rest = anchor();
+      say();
+      // a switch made from the Sheet list: it gives focus back as it closes, possibly to what just hid
+      const h = held;
+      requestAnimationFrame(() => rescue(h));
+    }
   });
   // remember where the reader rests, for a switch made by someone else (Sheet list action); measured in a frame
   let idle = 0;
   const note = () => requestAnimationFrame(() => { rest = anchor(); });
   addEventListener('scroll', () => { window.clearTimeout(idle); rest = null; idle = window.setTimeout(note, 160); }, { passive: true });
   note();
-  registerShortcut('v', 'case', () => setView(get('view') === 'plan' ? 'section' : 'plan'));
+  registerShortcut('v', 'case', () => { setView(get('view') === 'plan' ? 'section' : 'plan'); say(); });
 }

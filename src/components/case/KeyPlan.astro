@@ -182,7 +182,10 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     display: inline-flex; align-items: center; gap: var(--s-1);
     min-block-size: 32px; padding-block-start: var(--s-2);
     color: var(--ink-2); text-decoration: none;
+    position: relative;
   }
+  /* a 44px target (var(--hit)) around the drawn 32px row, without growing the card */
+  .keyplan__go::after { content: ''; position: absolute; inset-block: min(calc((100% - var(--hit)) / 2), 0px); inset-inline: calc(-1 * var(--s-2)); }
   .keyplan__arrow { font-family: var(--font-sans); transition: transform var(--dur-2) var(--ease-ui); }
   @media (hover: hover) {
     .keyplan__go:hover { color: var(--rust-deep); }

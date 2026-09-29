@@ -431,7 +431,7 @@ function actionList(): Action[] {
   const flip = (key: 'motion' | 'theme' | 'keys', label: string) => () => { toggle(key); syncActions(); rerun(); announce(label); };
   out.push(
     { id: 'motion', label: get('motion') === 'full' ? t.motionOff : t.motionOn, icon: icon('pause'), run: flip('motion', get('motion') === 'full' ? t.motionOff : t.motionOn) },
-    { id: 'theme', label: get('theme') === 'dusk' ? t.duskOff : t.duskOn, icon: icon('sun'), run: flip('theme', get('theme') === 'dusk' ? t.duskOff : t.duskOn) },
+    { id: 'theme', label: get('theme') === 'dusk' ? t.duskOff : t.duskOn, icon: icon('sun'), run: flip('theme', get('theme') === 'dusk' ? t.vellumNow : t.duskNow) },
     { id: 'keys', label: get('keys') === 'on' ? t.keysOff : t.keysOn, icon: icon('keycap-cmd'), run: flip('keys', get('keys') === 'on' ? t.keysOff : t.keysOn) },
     { id: 'show-keys', label: t.showKeys, icon: icon('keycap-cmd'), run: () => { if (ui) { ui.dlg.dataset.mode = 'keys'; render(); } } },
   );

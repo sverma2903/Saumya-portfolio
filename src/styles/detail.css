@@ -52,7 +52,7 @@
   }
   .detail .dt__item[data-state="ready"] .dt__ph, .detail .dt__item[data-state="playing"] .dt__ph { opacity: 0; visibility: hidden; }
   .detail .dt__zoom {
-    position: absolute; inset: auto auto var(--s-4) var(--s-4);
+    position: absolute; inset: auto auto calc(var(--s-4) + env(safe-area-inset-bottom, 0px)) calc(var(--s-4) + env(safe-area-inset-left, 0px));
     padding: var(--s-1) var(--s-2);
     font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
     color: var(--plate);
@@ -66,6 +66,9 @@
     position: relative;
     display: flex; flex-direction: column;
     min-block-size: 0;
+    /* viewport-fit=cover: on a landscape phone the side panel runs under the notch / rounded corner on the right and
+       the home indicator below; its contents keep clear of both (the paper still reaches the edge) */
+    padding-inline-end: env(safe-area-inset-right, 0px); padding-block-end: env(safe-area-inset-bottom, 0px);
     background: var(--sheet);
     border-inline-start: var(--lw-border) solid var(--ink);
   }
@@ -123,6 +126,7 @@
     font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink-2);
     text-decoration: none; min-block-size: var(--s-5);
   }
+  @media (pointer: coarse) { .detail .dt__back { min-block-size: var(--hit); } }
   .detail .dt__back:hover { color: var(--rust); }
   .detail .dt__back[hidden] { display: none; }
   .detail .dt__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
@@ -168,13 +172,23 @@
      as a bottom sheet (72px handle ↔ 50vh) ---------- */
   @media (max-width: 767.98px), (max-width: 1023.98px) and (orientation: portrait) {
     .detail .dt { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-    .detail .dt__panel { border-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); max-block-size: var(--_sheet); transition: max-block-size var(--dur-3) var(--ease-pen); }
-    .detail .dt__panel[data-open] { max-block-size: 50vh; max-block-size: 50dvh; }
+    /* the sheet: its handle and × clear the home indicator and the side insets (viewport-fit=cover); collapsed, only
+       the handle shows — the body is clipped (a zero-height scroller), and focus that reaches it opens the sheet (detail.ts) */
+    .detail .dt__panel {
+      border-inline-start: 0; border-block-start: var(--lw-border) solid var(--ink); overflow: hidden;
+      padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+      max-block-size: calc(var(--_sheet) + env(safe-area-inset-bottom, 0px)); transition: max-block-size var(--dur-3) var(--ease-pen);
+    }
+    .detail .dt__panel[data-open] {
+      max-block-size: calc(50vh + env(safe-area-inset-bottom, 0px)); max-block-size: calc(50dvh + env(safe-area-inset-bottom, 0px));
+    }
     .detail .dt__handle {
       display: grid; grid-template-columns: minmax(0, 1fr) var(--hit); align-items: center; gap: var(--s-3);
       min-block-size: var(--_sheet); padding: var(--s-3) var(--s-4) var(--s-2); padding-inline-end: calc(var(--s-4) + var(--hit) + var(--s-2));
       text-align: start;
     }
+    /* inside the sheet's clip (overflow: hidden), the handle's ring is drawn inset, never as a stray rule at its foot */
+    .detail .dt__handle:focus-visible { outline-offset: calc(-1 * var(--s-1)); }
     .detail .dt__handle-bar { position: absolute; inset: var(--s-2) auto auto 50%; translate: -50% 0; inline-size: var(--_btn); block-size: var(--s-1); border-radius: var(--r-dot); background: var(--line-3); }
     .detail .dt__handle-t { display: grid; gap: calc(var(--s-1) / 2); min-inline-size: 0; }
     .detail .dt__handle-t > :first-child { font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code); }
@@ -182,8 +196,10 @@
     /* open: the whole caption is in the body, so the handle keeps only the FIG number */
     .detail .dt__panel[data-open] .dt__handle-cap { display: none; }
     .detail .dt__body { padding: var(--s-2) var(--s-4) var(--s-4); }
+    /* collapsed, the body is a zero-height scroller: nothing of it peeks into the home-indicator inset under the handle */
+    .detail .dt__panel:not([data-open]) .dt__body { padding-block: 0; }
     .detail .dt__head { display: none; }
-    .detail .dt__close { position: absolute; inset: var(--s-3) var(--s-3) auto auto; margin: 0; inline-size: var(--hit); min-block-size: var(--hit); padding: 0; }
+    .detail .dt__close { position: absolute; inset: var(--s-3) calc(var(--s-3) + env(safe-area-inset-right, 0px)) auto auto; margin: 0; inline-size: var(--hit); min-block-size: var(--hit); padding: 0; }
     .detail .dt__close span, .detail .dt__close kbd { display: none; }
   }
   @media print { .detail { display: none !important; } }

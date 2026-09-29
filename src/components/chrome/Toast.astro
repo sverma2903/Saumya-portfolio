@@ -9,6 +9,9 @@ import Icon from '../symbols/Icon.astro';
 <div class="toast" role="status" aria-live="polite" aria-atomic="true">
   <span class="toast__chip"><Icon name="check" size={14} /><span data-toast-text></span></span>
 </div>
+<!-- a11y r1: the quiet twin — a state change a sighted reader sees on the page itself (V: Skim ↔ Full story, U: the
+     loupe) is said here, with no chip (core/copy.ts announce()) -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-announce></p>
 <style>
   .toast {
     position: fixed; z-index: var(--z-toast); inset-inline: 0; inset-block-end: var(--s-6);

@@ -63,7 +63,9 @@ const sub = nb(home.sub, 'front-end');
     <p class="cover__hint t-label" aria-hidden="true">
       <span>{hp.site}</span><span class="cover__act"><span class="cover__dot"> · </span><span class="cover__verb--p">{hp.verb}</span><span class="cover__verb--t">{ht.verb}</span> <span class="rust">{hp.cut}</span></span>
     </p>
-    <div class="cover__plan" role="img" aria-label={planName} data-plan></div>
+    <div class="cover__plan" role="img" aria-label={planName} data-plan data-roledesc={h.planRole}></div>
+    <p class="sr-only" id="cover-plan-keys" data-plan-keys hidden>{h.planKeys}</p>
+    <p class="sr-only" role="status" aria-live="polite" data-plan-status></p>
     <div class="cover__sect" data-sect></div>
     <div class="cover__legend" aria-hidden="true" data-legend>
       <Bubble n="1" sheet={SHEET} />
@@ -128,6 +130,7 @@ const sub = nb(home.sub, 'front-end');
     color: var(--ink-2);
   }
   .cover__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); margin-block-start: var(--s-6); }
+  @media (pointer: coarse) { .cover__connect { display: inline-flex; align-items: center; min-block-size: var(--hit); } }
   /* the §6.2 CTA hover: the blush hatch slides in (background-position, --dur-3) */
   .cover__btn {
     background-image: linear-gradient(90deg, transparent 50%, var(--sheet) 50%), var(--hatch-blush);

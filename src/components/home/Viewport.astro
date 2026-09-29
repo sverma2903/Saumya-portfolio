@@ -179,6 +179,10 @@ const first = items.find((i) => i.active) ?? items[0];
   <a class="vp__hit" href={first.s.href} tabindex="-1" data-vp-hit></a>
   <span class="vp__cplate"><button class="vp__enl" type="button" tabindex="-1" data-vp-enlarge title={v.enlarge} data-js-only hidden={!first.s.plate}><Icon name="enlarge" size={16} /></button><button class="vp__pause t-label" type="button" tabindex="-1" data-vp-pause data-js-only hidden data-pause={v.pause} data-play={v.play}><Icon name="pause" size={12} class="vp__pi vp__pi--pause" /><Icon name="play" size={12} class="vp__pi vp__pi--play" /><span data-vp-pause-l>{v.pause}</span></button></span>
  </div>
+ <!-- a11y r1: the keyboard's way to the two drawn controls above (which live in this aria-hidden layer). viewport.ts
+      clones it into the ACTIVE row's <li>, right after its link, so Tab reaches Pause / Enlarge from the row whose
+      focus started the preview; the buttons are visually hidden and a focused one rings its drawn twin. -->
+ <template data-vp-kbd><span class="vp-kbd" role="group" data-t-enlarge={v.enlargePreview} data-t-pause={v.pausePreview}><button type="button" class="vp-kbd__b" data-vp-kbd-pause aria-pressed="false" hidden></button><button type="button" class="vp-kbd__b" data-vp-kbd-enlarge hidden></button></span></template>
 </aside>
 
 <style>
@@ -237,6 +241,14 @@ const first = items.find((i) => i.active) ?? items[0];
     transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
   }
   .vp__enl:hover { color: var(--rust); background: var(--paper-2); }
+  /* a 44px target around the 32px drawn box (the shared hit-area pattern: .mc__b, .cmp__mode) — on a touch laptop or a
+     landscape iPad it is the Viewport's one way into the Enlarged detail */
+  .vp__enl { position: relative; }
+  .vp__enl::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: var(--hit); block-size: var(--hit); translate: -50% -50%; }
+  /* the keyboard twins (cloned into the active row): out of sight; the drawn control they stand for takes the ring */
+  :global(.vp-kbd) { position: absolute; inset: 0 auto auto 0; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  :global(.vp-kbd__b) { inline-size: 1px; block-size: 1px; }
+  .vp__enl[data-kbd], .vp__pause[data-kbd] { outline: 2px solid var(--focus); outline-offset: 3px; }
 
   /* the stage: every plate sits in the same 16:10 cell */
   .vp__stage { position: relative; display: grid; aspect-ratio: 1.6; isolation: isolate; inline-size: var(--_pw, 100%); justify-self: center; }
@@ -277,6 +289,8 @@ const first = items.find((i) => i.active) ?? items[0];
     min-block-size: var(--s-6); padding: 0 var(--s-3);
     color: var(--ink); background: var(--sheet); border: var(--lw-object) solid var(--line-3);
   }
+  .vp__pause { position: relative; }
+  .vp__pause::before { content: ''; position: absolute; inset: 50% auto auto 0; inline-size: 100%; block-size: var(--hit); translate: 0 -50%; }
   .vp__pause :global(.vp__pi--play), .vp__pause.is-paused :global(.vp__pi--pause) { display: none; }
   .vp__pause.is-paused :global(.vp__pi--play) { display: inline-block; }
 

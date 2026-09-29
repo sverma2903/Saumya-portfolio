@@ -46,7 +46,9 @@ const w = stagingOf(md.img).cap ?? facts(md.img).w; // 200 (media-staging cap fo
     color: var(--ink-2);
     text-wrap: balance;
   }
+  /* phones: a 60svh field centred a 200px image a screen away from its title and read as a missing figure (mobile
+     r1); here the stillness is the air after her line, and the image hangs from the title like every other love's */
   @media (max-width: 767.98px) {
-    .still { gap: var(--s-5); }
+    .still { gap: var(--s-5); min-block-size: 0; align-content: start; padding-block: var(--s-5) var(--s-8); }
   }
 </style>

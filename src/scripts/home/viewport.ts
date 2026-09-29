@@ -127,6 +127,10 @@ export function initViewport(): void {
   const pauseBtn = one<HTMLButtonElement>('[data-vp-pause]');
   const pauseLabel = one('[data-vp-pause-l]');
   const hit = one<HTMLAnchorElement>('[data-vp-hit]');
+  // the keyboard twins of ⤢ and Pause (a11y r1): real buttons that ride in the active row, after its link
+  const kbd = vp.querySelector<HTMLTemplateElement>('template[data-vp-kbd]')?.content.firstElementChild?.cloneNode(true) as HTMLElement | undefined;
+  const kPause = kbd?.querySelector<HTMLButtonElement>('[data-vp-kbd-pause]');
+  const kEnl = kbd?.querySelector<HTMLButtonElement>('[data-vp-kbd-enlarge]');
 
   let active = vp.dataset.active!; // the sheet the Viewport shows (or is wiping to)
   let shown = active;              // the plate fully on screen underneath any wipe
@@ -227,7 +231,28 @@ export function initViewport(): void {
     pauseBtn.hidden = !hasMoving || getPref('motion') !== 'full';
     pauseBtn.classList.toggle('is-paused', userPaused);
     pauseLabel.textContent = (userPaused ? pauseBtn.dataset.play : pauseBtn.dataset.pause) ?? '';
+    twins();
   };
+  /**
+   * The keyboard twins follow the active row: they sit in its <li> right after its link, so a Tab from the row that
+   * started a GIF or video reaches its Pause, then Enlarge ("Pause A-103 preview", pressed while paused). They mirror
+   * the drawn controls' hidden state; a twin that holds focus is never hidden or moved from under it.
+   */
+  function twins(): void {
+    if (!kbd || !kPause || !kEnl) return;
+    const row = desktop.matches ? rows.find((r) => keyOf(r) === active) : undefined;
+    const focused = kbd.contains(document.activeElement);
+    if (!row) { if (!focused) kbd.remove(); return; }
+    if (kbd.parentElement !== row && !focused) row.append(kbd);
+    if (kbd.parentElement !== row) return;
+    const no = plates.get(active)?.dataset.no ?? '';
+    const say = (t?: string) => (t ?? '').replace('{no}', no);
+    kEnl.setAttribute('aria-label', say(kbd.dataset.tEnlarge));
+    kPause.setAttribute('aria-label', say(kbd.dataset.tPause));
+    kPause.setAttribute('aria-pressed', String(userPaused));
+    if (document.activeElement !== kEnl) kEnl.hidden = enlarge.hidden;
+    if (document.activeElement !== kPause) kPause.hidden = pauseBtn.hidden;
+  }
 
   // ───────────────────────────── swap ─────────────────────────────
   const setVt = (key: string) => {
@@ -251,6 +276,7 @@ export function initViewport(): void {
     noEl.textContent = plate.dataset.no ?? '';
     dimsEl.textContent = plate.dataset.dims ?? '';
     enlarge.hidden = !plate.dataset.dims;
+    twins();
   };
   const commit = (key: string) => {
     settle();
@@ -483,6 +509,18 @@ export function initViewport(): void {
     if (box) emit('sv:fig-open', { el: box });
   });
   pauseBtn.addEventListener('click', () => { userPaused = !userPaused; sync(); });
+  if (kbd && kPause && kEnl) {
+    kPause.addEventListener('click', () => { userPaused = !userPaused; sync(); });
+    // the Enlarged detail returns focus to the twin that opened it
+    kEnl.addEventListener('click', () => {
+      const box = plates.get(active)?.querySelector('[data-vp-box]');
+      if (box) emit('sv:fig-open', { el: box });
+    });
+    for (const [twin, drawn] of [[kPause, pauseBtn], [kEnl, enlarge]] as const) {
+      twin.addEventListener('focus', () => drawn.toggleAttribute('data-kbd', twin.matches(':focus-visible')));
+      twin.addEventListener('blur', () => { drawn.removeAttribute('data-kbd'); twins(); });
+    }
+  }
   // clicking the preview mid-wipe: land the wipe first, so the view transition morphs from the plate being opened
   hit.addEventListener('pointerdown', () => { if (wiping || shown !== active) commit(active); });
 

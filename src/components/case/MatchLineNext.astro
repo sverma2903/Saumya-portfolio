@@ -56,7 +56,14 @@ const no = String(next.no);
   /* the foot: the drawn way in, and the way back to all work beside it (polish r1: the sheet no longer ends on an
      orphan link under the card). "All work" is its own link, raised over the card's stretched link. */
   .matchline__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-6); margin-block-start: var(--s-3); }
-  .matchline__foot .matchline__up { position: relative; z-index: calc(var(--z-raised) + 1); }
+  .matchline__foot .matchline__up { position: relative; z-index: var(--z-control); }
+  /* the cover's Pause / Restart must win over the card's stretched link too, but the cover is its own stacking
+     context (its view-transition-name), so its controls' z-index stays inside it: the whole cover is raised and lets
+     every press but the controls' fall through to the link under it */
+  .matchline__plate { position: relative; z-index: var(--z-control); pointer-events: none; }
+  .matchline__plate :global(.mc) { pointer-events: auto; }
+  /* (the cover no longer takes :hover itself, so the card's hover shows its controls, as a plate's own hover would) */
+  .matchline__card:is(:hover, :focus-within) .matchline__plate :global(.mc--overlay) { opacity: 1; }
   .matchline__rule { display: flex; align-items: center; gap: var(--s-4); margin: 0; color: var(--ink-2); }
   .matchline__rk { flex: none; }
   .matchline__see { color: var(--rust); }

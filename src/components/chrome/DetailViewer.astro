@@ -25,7 +25,8 @@ import Icon from '../symbols/Icon.astro';
 const d = chrome.wp4b.detail;
 const m = chrome.wp4b.media;
 ---
-<dialog class="detail" data-dialog="detail" aria-labelledby="dt-fig" aria-describedby="dt-cap" data-t-count={d.count} data-t-px={d.px} data-t-back={d.back}>
+<dialog class="detail" data-dialog="detail" aria-labelledby="dt-fig" aria-describedby="dt-cap" data-t-count={d.count} data-t-px={d.px} data-t-back={d.back} data-t-live={d.live}>
+  <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-dt-live></p>
   <div class="dt" data-dt>
     <div class="dt__stage" data-dt-stage>
       <div class="dt__canvas" data-dt-canvas>

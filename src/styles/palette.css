@@ -179,7 +179,12 @@
 
   /* ── phones: full screen ── */
   @media (max-width: 767.98px) {
-    .palette { inline-size: 100vw; max-inline-size: 100vw; block-size: 100svh; max-block-size: 100svh; margin: 0; border: 0; box-shadow: none; }
+    /* full screen under viewport-fit=cover: the head clears the status bar / notch, the foot the home indicator (the
+       sides read --m, which already includes the side insets) */
+    .palette {
+      inline-size: 100vw; max-inline-size: 100vw; block-size: 100svh; max-block-size: 100svh; margin: 0; border: 0; box-shadow: none;
+      padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+    }
     .pl-opt { grid-template-columns: 4.25rem minmax(0, 1fr) auto; padding-inline: var(--m); }
     /* a passage's citation drops under the sentence; short kinds (sheet, level, detail, action) stay on the row */
     .pl-opt.pl-opt--passage { grid-template-columns: var(--s-4) minmax(0, 1fr); }
@@ -189,3 +194,10 @@
     .pl-foot__keys { display: none; }
   }
   @media print { .palette { display: none !important; } }
+  /* forced colours strip the row's fill and the redline's background: the option aria-activedescendant points at
+     (what ↑ ↓ moved to, what Enter opens) keeps a system Highlight frame and redline */
+  @media (forced-colors: active) {
+    .pl-opt[aria-selected='true'] { outline: var(--lw-cut) solid Highlight; outline-offset: calc(-1 * var(--lw-cut)); }
+    .pl-opt[aria-selected='true']::before { background: Highlight; forced-color-adjust: none; }
+    .pl-chip[aria-selected='true'] { outline: var(--lw-cut) solid Highlight; }
+  }

@@ -79,7 +79,7 @@ const enlargeLabel = `${fill(m.enlargeLabel, { fig })}${finalTitle ? `: ${stripH
     <div class="cmp__rail" aria-hidden="true"><span class="cmp__head"><SectionHead letter="A" dir="left" size={30} /></span></div>
     <FrameBrowser class="cmp__frame">
       <Fragment slot="tools">
-        <button type="button" class="cmp__mode" data-compare-mode aria-pressed="false" data-js-only>
+        <button type="button" class="cmp__mode" data-compare-mode aria-pressed="false" data-js-only data-t-on={k.loupeOn} data-t-off={k.loupeOff}>
           <span class="cmp__mode-i" aria-hidden="true"></span>{m.loupe}
         </button>
         <button type="button" class="cmp__enlarge" data-fig data-mc-enlarge data-js-only aria-label={enlargeLabel}><Icon name="enlarge" size={16} /></button>

@@ -412,13 +412,25 @@ function fillPanel(item: Item): void {
   q<HTMLButtonElement>('[data-dt-act="next"]').disabled = items.length < 2;
 }
 
-function show(i: number): void {
+/**
+ * Put figure i on the stage. `say`: a step (Prev / Next, ← →, Home / End, a swipe) replaces the figure, its number
+ * and caption while focus stays on the control, so the polite status line says which figure is showing now (a11y r1,
+ * SC 4.1.3). Not on open: the focused FIG heading and the dialog's description already speak.
+ */
+let liveTimer = 0;
+function show(i: number, say = true): void {
   if (!items.length) return;
   idx = (i + items.length) % items.length;
   const item = items[idx];
   fillPanel(item);
   layout(item);
   loadMedia(item);
+  const live = q('[data-dt-live]');
+  window.clearTimeout(liveTimer);
+  live.textContent = ''; // cleared first, so the same figure (a one-figure page, Home twice) is said again
+  if (!say) return;
+  const head = tpl('tLive', { fig: item.fig || item.file, i: idx + 1, n: items.length });
+  liveTimer = window.setTimeout(() => { live.textContent = item.capText ? `${head}. ${item.capText}` : head; }, 60);
 }
 
 // ────────────────────────────── open / close ──────────────────────────────
@@ -457,7 +469,7 @@ function openStyled(el: Element, from?: HTMLElement | null): void {
   setHold(true);
   panel.removeAttribute('data-open');
   q('[data-dt-handle]').setAttribute('aria-expanded', 'false');
-  show(at);
+  show(at, false);
   if (motionOK() && !byKeyboard && list[at].plate) flipFrom(list[at].el);
   // focus lands on the FIG heading for screen readers; its ring shows only once the reader Tabs back to it (a shortcut
   // key after opening must not box the heading)
@@ -483,15 +495,22 @@ dlg?.addEventListener('close', () => {
 
 // ────────────────────────────── input ──────────────────────────────
 
+/** The phone / portrait-tablet bottom sheet: 72px handle ↔ 50vh (the attribute is inert on the side-panel layout). */
+function sheet(open: boolean): void {
+  panel.toggleAttribute('data-open', open);
+  q('[data-dt-handle]').setAttribute('aria-expanded', String(open));
+}
+// a11y r1: Tab past the handle reaches the sheet's body (Back, Fit, 1:1, ±, Prev, Next); focus there opens the sheet,
+// so the focused control and its ring are never clipped under the stage's bottom edge
+q('#dt-body').addEventListener('focusin', () => { if (!panel.hasAttribute('data-open')) sheet(true); });
+
 dlg?.addEventListener('click', (e) => {
   const t = e.target instanceof Element ? e.target : null;
   const b = t?.closest<HTMLElement>('[data-dt-act], [data-dt-rate], [data-dt-handle], [data-dt-back]');
   if (!b) return;
   byKeyboard = e.detail === 0; // a keyboard "click" on a button never animates
   if (b.matches('[data-dt-handle]')) {
-    const open = !panel.hasAttribute('data-open');
-    panel.toggleAttribute('data-open', open);
-    b.setAttribute('aria-expanded', String(open));
+    sheet(!panel.hasAttribute('data-open'));
     return;
   }
   if (b.matches('[data-dt-back]')) {

@@ -30,6 +30,19 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /**
+ * Say `message` politely to assistive tech, with nothing drawn (the page shows the change itself). Cleared first, so
+ * the same message twice (V, V, V) is said each time.
+ */
+let sayTimer = 0;
+export function announce(message: string): void {
+  const el = document.querySelector<HTMLElement>('[data-announce]');
+  if (!el || !message) return;
+  window.clearTimeout(sayTimer);
+  el.textContent = '';
+  sayTimer = window.setTimeout(() => { el.textContent = message; }, 60);
+}
+
+/**
  * Show a status message in the toast region for 1.6 s (announced politely by screen readers). With `anchor`, the chip
  * is laid over that control (same box, centred), so the confirmation reads as the click's own feedback and covers
  * nothing else; without one (e.g. from the Sheet list, which has closed) it sits bottom-centre.

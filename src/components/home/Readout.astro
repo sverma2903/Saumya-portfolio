@@ -25,8 +25,11 @@ interface Props {
   /** row variant: the figure the card shows below 1024 (IndexRow picks the first her outcome line does not already
    *  say; -1 = none, the whole readout is for screen readers) */
   show?: number;
+  /** row variant (a11y r1): figures whose whole run her outcome line already says — hidden from assistive tech, so the
+   *  row's description does not read her sentence twice (they stay on screen where the card shows them) */
+  quiet?: number[];
 }
-const { readout, srOnly = false, show = 0 } = Astro.props;
+const { readout, srOnly = false, show = 0, quiet = [] } = Astro.props;
 const variant = Astro.props.variant ?? (srOnly ? 'row' : 'viewport');
 const header = variant === 'header';
 const figs = Astro.props.lines ? readout.lines.filter((_, i) => Astro.props.lines!.includes(i)) : readout.lines;
@@ -38,9 +41,9 @@ const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
   <span class="rdr">
     {readout.lines.map((l, i) =>
       l.joined ? (
-        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]} data-v><span class="rdr__v">{l.value.text}</span><span class="rdr__l">{l.label.text}</span></span>
+        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]} aria-hidden={quiet.includes(i) ? 'true' : undefined} data-v><span class="rdr__v">{l.value.text}</span><span class="rdr__l">{l.label.text}</span></span>
       ) : (
-        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]}><span class="rdr__v" data-v>{l.value.text}</span> <span class="rdr__l" data-v>{l.label.text}</span></span>
+        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]} aria-hidden={quiet.includes(i) ? 'true' : undefined}><span class="rdr__v" data-v>{l.value.text}</span> <span class="rdr__l" data-v>{l.label.text}</span></span>
       ),
     )}
     {readout.sub && <span class="rdr__more" data-v>{readout.sub.text}</span>}

@@ -9,6 +9,7 @@
  */
 import { $$, motionOK, ready } from '../core/dom';
 import { observe } from '../core/io';
+import { announce } from '../core/copy';
 import { registerShortcut } from '../core/keys';
 
 type Pt = [number, number];
@@ -76,8 +77,12 @@ function wire(cmp: HTMLElement): void {
   });
 
   const setMode = (loupe: boolean, viaPointer: boolean) => {
+    // a11y r1: the loupe hides the peel slider; if it held focus (U fires on range inputs), the Loupe button, which
+    // now drives the drawing, takes it — never <body>
+    const hadFocus = loupe && !!document.activeElement && cmp.contains(document.activeElement) && document.activeElement !== btn;
     cmp.dataset.mode = loupe ? 'loupe' : 'cut';
     btn.setAttribute('aria-pressed', String(loupe));
+    if (hadFocus && !(document.activeElement as HTMLElement).getClientRects().length) btn.focus({ preventScroll: true });
     if (!loupe) { stop(); return; }
     steered = false;
     place(...CHART);
@@ -85,7 +90,11 @@ function wire(cmp: HTMLElement): void {
     if (!viaPointer || !stage.matches(':hover')) drift();
   };
   btn.addEventListener('click', (e) => setMode(cmp.dataset.mode !== 'loupe', (e as MouseEvent).detail > 0));
-  (cmp as HTMLElement & { svToggle?: () => void }).svToggle = () => setMode(cmp.dataset.mode !== 'loupe', false);
+  // U: the switch is made away from the button, so its new state is said (the button's aria-pressed says it on click)
+  (cmp as HTMLElement & { svToggle?: () => void }).svToggle = () => {
+    setMode(cmp.dataset.mode !== 'loupe', false);
+    announce((cmp.dataset.mode === 'loupe' ? btn.dataset.tOn : btn.dataset.tOff) ?? '');
+  };
 
   stage.addEventListener('pointermove', (e) => {
     if (cmp.dataset.mode !== 'loupe') return;

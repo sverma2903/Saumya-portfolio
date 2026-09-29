@@ -124,6 +124,14 @@ const firstSecs = stagingOf(first).gif?.secs ?? 10;
 
   /* ---------- sticky walkthrough (≥ 1024, JS, Motion on) ---------- */
   .wkp__stage[hidden] { display: none !important; }
+  /* portrait tablets (768–1023): the ≥ 1024 split, stacked — each step's text in 6/11 beside its own phone in 5/11, so
+     the stage is a plate paired with its words, not a 463px block hanging left in a 770px column (mobile r1) */
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .wkp { --_col: calc((100cqi - var(--s-6)) * 5 / 11); --_pad: var(--s-5); }
+    .wkp__step { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); column-gap: var(--s-6); align-items: center; }
+    .wkp__fig { margin: 0; }
+    .wkp__fig .wkp__panel { max-inline-size: none; padding: var(--s-6) var(--s-5); }
+  }
   @media (min-width: 1024px) {
     /* the phone is centred on the viewport (§6.2); --_below is what hangs under it (panel padding, the gap, the
        controls + FIG line, a margin), so the whole stage always fits a short viewport (1280×800, 1024×768) */

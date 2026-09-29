@@ -16,7 +16,7 @@
  * Debug params (QA): ?hour=9 (sun hour 0–24) · ?tier=hi|lo (pin the adaptive tier) · ?at=900 (render the timeline's
  * frame at 900 ms, then stop).
  */
-import { Hpx, crossingX, intervalFor, landforms, layoutPrimitives, restPose, sunDir, sunHour, REST_CUT, REST_FOCUS } from '../../lib/terrain.js';
+import { Hpx, crossingX, formatLevel, intervalFor, landforms, layoutPrimitives, restPose, sunDir, sunHour, REST_CUT, REST_FOCUS } from '../../lib/terrain.js';
 import type { Site } from '../../lib/terrain.js';
 import { createOverlay, CUT_INSET_BOTTOM, CUT_INSET_TOP, CUT_INSET_X, type Landform, type Palette, type RGB, type Rect, type Scene, type Type } from './section2d';
 import { on as onPref } from '../core/prefs';
@@ -233,6 +233,8 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   const sectEl = root.querySelector<HTMLElement>('[data-sect]');
   const textEl = root.querySelector<HTMLElement>('[data-text]');
   const legendEl = root.querySelector<HTMLElement>('[data-legend]');
+  const keysHint = root.querySelector<HTMLElement>('[data-plan-keys]');
+  const planStatus = root.querySelector<HTMLElement>('[data-plan-status]');
   // the static drawing takes over; the reason stays inspectable on the element (no console noise, SPEC §8.8)
   const fail = (why: unknown) => { root.dataset.heroFail = String(why).slice(0, 200); html.dataset.gl = 'no'; };
   if (!frameEl || !glCanvas || !ovCanvas || !planEl || !sectEl) return fail('markup missing');
@@ -614,6 +616,9 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     render();
     if (!shown) {
       shown = true; html.dataset.gl = 'live'; planEl!.tabIndex = 0;
+      // a11y r1: a Tab stop that answers the arrows says so (it stays an image: its name is the drawing's)
+      if (planEl!.dataset.roledesc) planEl!.setAttribute('aria-roledescription', planEl!.dataset.roledesc);
+      if (keysHint) { keysHint.hidden = false; planEl!.setAttribute('aria-describedby', keysHint.id); }
       // back from the bfcache: the first live frame takes the still's place (same pixels, no blank frame between)
       if (still) { still.remove(); still = null; glCanvas!.hidden = false; }
     }
@@ -658,6 +663,15 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   }, { passive: true });
   if (coarse) addEventListener('scroll', () => { if (st.ctl === 'touch') { scrolled = true; kick(); } }, { passive: true });
 
+  // the EL the keyboard's survey point reads, said once the keys come to rest (the drawn tag is for sighted readers)
+  let sayT = 0;
+  const sayEl = () => {
+    window.clearTimeout(sayT);
+    sayT = window.setTimeout(() => {
+      if (!planStatus || !st.tag || document.activeElement !== planEl) return;
+      planStatus.textContent = `${EL} ${formatLevel(Hpx(st.tag.x, st.tag.y, U))}`;
+    }, 400);
+  };
   planEl.addEventListener('keydown', (e) => {
     if (!live || e.altKey || e.ctrlKey || e.metaKey) return;
     const step = e.shiftKey ? KEY_STEP_BIG : KEY_STEP;
@@ -668,6 +682,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
       setNow(restValues());
       st.tag = { x: st.sx, y: st.cut };
       kick();
+      sayEl();
       return;
     }
     const m = d[e.key];
@@ -679,6 +694,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     const v = survey(st.sx + m[0], st.cut + m[1], true); // keyboard never animates (SPEC §2.7 law 1)
     st.tag = { x: v.sx, y: v.cut };
     kick();
+    sayEl();
   });
   planEl.addEventListener('focus', () => {
     if (!live || !planEl.matches(':focus-visible')) return;

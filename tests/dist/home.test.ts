@@ -74,8 +74,32 @@ describe('home · Drawing index (SM2)', () => {
     expect(view.hasAttribute('inert')).toBe(true);
     expect(view.querySelectorAll('a, button')).toHaveLength(0);
     expect(vp.querySelectorAll('.vp__ctl a[href]')).toHaveLength(1);
-    for (const el of vp.querySelectorAll('a, button')) expect(el.getAttribute('tabindex'), el.outerHTML.slice(0, 80)).toBe('-1');
+    // (a <template>'s content is not in the document: the keyboard twins below are cloned out of it into a row)
+    for (const el of vp.querySelectorAll('a, button')) if (!el.closest('template')) expect(el.getAttribute('tabindex'), el.outerHTML.slice(0, 80)).toBe('-1');
     expect(vp.querySelectorAll('h1, h2, h3, h4, h5, h6')).toHaveLength(0);
+  });
+
+  test('Viewport (a11y r1): the keyboard twins of Pause and ⤢ ship as a template, named per sheet', () => {
+    const { root } = load('index');
+    const tpl = root.querySelector('[data-vp] template[data-vp-kbd]')!;
+    expect(tpl).toBeTruthy();
+    const group = tpl.querySelector('.vp-kbd')!;
+    expect(group.getAttribute('role')).toBe('group');
+    expect(group.getAttribute('data-t-pause')).toBe('Pause {no} preview');
+    expect(group.getAttribute('data-t-enlarge')).toBe('Enlarge {no} preview');
+    expect(group.querySelector('[data-vp-kbd-pause]')!.getAttribute('aria-pressed')).toBe('false');
+    expect(group.querySelector('[data-vp-kbd-enlarge]')).toBeTruthy();
+    for (const b of group.querySelectorAll('button')) expect(b.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test('rows (a11y r1): a readout figure her line already says is aria-hidden (her sentence is not read twice), never the card figure', () => {
+    const { root } = load('index');
+    const quiet = (key: string) => root.querySelectorAll(`[data-ix="${key}"] .rdr__line[aria-hidden="true"]`);
+    expect(quiet('cloudflare')).toHaveLength(1);
+    expect(quiet('cloudflare')[0].text).toMatch(/^Two ?of the gaps identified/);
+    expect(quiet('u-up')).toHaveLength(1);
+    for (const l of root.querySelectorAll('#index .rdr__line[aria-hidden="true"]')) expect(l.classList.contains('rdr__line--more')).toBe(true);
+    expect(quiet('csbs')).toHaveLength(0);
   });
 
   test('loading: before interaction only A-101 (cover + logo) has a src; GIF and video never in HTML', () => {

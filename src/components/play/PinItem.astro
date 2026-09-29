@@ -36,6 +36,8 @@ if (!conf) throw new Error(`PinItem: no board staging for ${fileOf(first)}`);
 const ft = facts(top);
 const video = ft.kind === 'video';
 const id = `pin-${n}`;
+/** the narrated video (sound): its description, visible on demand under the title block (a11y r1) */
+const narrated = video && !!stagingOf(top).video?.audio;
 const fig = { no: fill(p.fig, { n }).toUpperCase(), capId: `${id}-t` };
 const a = alt(fileOf(top));
 const frame = stagingOf(top).frame;
@@ -73,6 +75,12 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
       <a class="pin__link t-label" href={link.href} {...(link.ext ? externalAttrs(link.href) : {})}>
         <span>{link.label}</span><Icon name={link.ext ? 'arrow-up-right' : 'arrow-right'} size={14} />
       </a>
+    )}
+    {narrated && a && (
+      <details class="pin__vt">
+        <summary class="pin__vt-s t-label">{p.videoText}</summary>
+        <p class="pin__vt-p">{a}</p>
+      </details>
     )}
   </div>
 </li>
@@ -176,6 +184,20 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
   .pin__link span { text-decoration: underline; text-decoration-color: currentColor; text-decoration-thickness: var(--lw-object); }
   .pin__link:hover { color: var(--rust-deep); }
   @media (pointer: coarse) { .pin__link { min-block-size: var(--hit); } }
+  /* the narrated video's description: one quiet disclosure row under the tag; open, a caption-sized paragraph */
+  .pin__vt { margin-block-start: var(--s-2); }
+  .pin__vt-s {
+    display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: var(--s-6); cursor: pointer; list-style: none; color: var(--ink-2);
+  }
+  .pin__vt-s::-webkit-details-marker { display: none; }
+  .pin__vt-s::before { content: '▸' / ''; font-family: var(--font-mono); transition: transform var(--dur-2) var(--ease-ui); }
+  .pin__vt[open] .pin__vt-s::before { transform: rotate(90deg); }
+  .pin__vt-s:hover { color: var(--rust-deep); }
+  @media (pointer: coarse) { .pin__vt-s { min-block-size: var(--hit); } }
+  .pin__vt-p {
+    margin: var(--s-1) 0 0; max-inline-size: var(--measure); font-family: var(--font-serif); font-size: var(--fs-caption);
+    line-height: var(--lh-caption); color: var(--ink-2); text-wrap: pretty;
+  }
 
   :global(html[data-theme='dusk']) .pin { --_tape: color-mix(in oklab, var(--rust-2) 22%, var(--plate)); --_tape-o: 0.55; }
   @media (forced-colors: active) {

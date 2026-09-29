@@ -42,6 +42,14 @@ const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span clas
 const said = (sheet.line?.text ?? '').replace(/\s+/g, ' ');
 const inLine = (v: string) => new RegExp(`(^|[^\\w~])${v.replace(/\s+/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'i').test(said);
 const cardFig = sheet.readout ? sheet.readout.lines.findIndex((l) => !inLine(l.value.text)) : -1;
+/**
+ * a11y r1: a readout figure whose whole run her outcome line already says (A-101 "Two of the gaps identified…", A-104
+ * "1st Place…") is hidden from assistive tech (aria-hidden; it is never the card's shown figure either), so the row's
+ * name does not read her sentence twice. ARIA only; every word stays on the page.
+ * (The row stays named by its content, not by aria-labelledby = "number + title": the card's whole text is its visible
+ * label, and a shorter name fails WCAG 2.5.3 label-in-name, which tools/axe.mjs gates on.)
+ */
+const dupes = sheet.readout ? sheet.readout.lines.flatMap((l, i) => (said.includes(`${l.value.text}${l.joined ? '' : ' '}${l.label.text}`.replace(/\s+/g, ' ')) ? [i] : [])) : [];
 const SEP = '\u00a0· ';
 const DASH = '\u00a0— ';
 ---
@@ -66,7 +74,7 @@ const DASH = '\u00a0— ';
     {!compact && sheet.tags.length > 0 && (
       <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <span class="ix__tg">{i > 0 && <span class="sr-only">, </span>}<span class="ix__tag" data-v>{t.text}</span></span>)}</span>
     )}
-    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={cardFig} /></span>}
+    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={cardFig} quiet={dupes} /></span>}
     {!compact && minutes != null && <span class="ix__min t-label"><span class="sr-only">, </span><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
     {!compact && isCase && <span class="ix__open t-label" aria-hidden="true">{chrome.wp3.index.open}<Icon name="arrow-right" size={14} /></span>}
   </a>

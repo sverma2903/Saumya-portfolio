@@ -160,7 +160,7 @@ const rows = resolveDecisions(cs);
     position: relative; display: inline;
     color: var(--ink); text-decoration: none; white-space: nowrap;
   }
-  .decisions__lk::after { content: ''; position: absolute; inset-block: min(calc((100% - 32px) / 2), calc(-1 * var(--s-2))); inset-inline: calc(-1 * var(--s-1)); }
+  .decisions__lk::after { content: ''; position: absolute; inset-block: min(calc((100% - var(--hit)) / 2), calc(-1 * var(--s-2))); inset-inline: calc(-1 * var(--s-1)); }
   .decisions__arrow {
     display: inline-block; margin-inline-start: var(--s-1);
     font-family: var(--font-sans); color: var(--ink-2); transition: transform var(--dur-2) var(--ease-ui);

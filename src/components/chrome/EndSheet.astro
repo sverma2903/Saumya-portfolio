@@ -146,6 +146,8 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
     overflow-wrap: anywhere;
   }
   .endsheet__email:hover { color: var(--rust-deep); text-decoration-color: currentColor; }
+  /* the primary contact action: a full touch target on coarse pointers (the text keeps its line) */
+  @media (pointer: coarse) { .endsheet__email { display: inline-flex; align-items: center; min-block-size: var(--hit); } }
   .endsheet__acts { display: flex; flex-wrap: wrap; gap: var(--s-3); }
   .endsheet__copy.is-done { border-color: var(--rust); color: var(--rust-deep); }
 

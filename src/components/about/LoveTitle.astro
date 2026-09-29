@@ -98,6 +98,7 @@ const label = fill(a.permalink, { n, sheet: a.sheet, title: stripHtml(title) });
     text-decoration: none;
   }
   .lt__b :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
+  @media (pointer: coarse) { .lt__b::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: var(--hit); block-size: var(--hit); translate: -50% -50%; } }
   .lt__b:hover :global(.bubble), .lt__b:focus-visible :global(.bubble) { color: var(--rust); }
   :global(:target) > .lt .lt__b :global(.bubble) { color: var(--rust); background: var(--blush); }
   /* Meditation (data-still) has no hover effect and no motion (§5.3): its bubble is still a permalink (and still shows

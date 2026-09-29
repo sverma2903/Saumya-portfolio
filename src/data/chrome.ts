@@ -121,6 +121,9 @@ export const chrome = {
         motionOn: 'Motion on',
         duskOn: 'Dusk',
         duskOff: 'Vellum',
+        /** a11y r1: what the status line says after the theme flips (the row's own label names the action) */
+        duskNow: 'Dusk theme on',
+        vellumNow: 'Vellum theme on',
         keysOff: 'Keyboard shortcuts off',
         keysOn: 'Keyboard shortcuts on',
         showKeys: 'Show keys',
@@ -175,6 +178,9 @@ export const chrome = {
       coverSheet: 'Cover sheet',
       planHintPointer: 'Site plan · move to cut A–A',
       planHintTouch: 'Site plan · scroll to cut A–A',
+      /** a11y r1: once the live plan takes focus, what it is and what the keys do (the EL it reads is said politely) */
+      planRole: 'interactive drawing',
+      planKeys: 'Arrow keys move the section cut; Shift for larger steps; Esc resets.',
       section: 'Section A–A',
       scale: 'Scale 1:500',
       north: 'N',
@@ -213,6 +219,9 @@ export const chrome = {
       enlarge: 'Enlarge',
       pause: 'Pause',
       play: 'Play',
+      /** a11y r1: the Viewport's controls as keyboard / screen-reader buttons in the active row (sheet number) */
+      enlargePreview: 'Enlarge {no} preview',
+      pausePreview: 'Pause {no} preview',
     },
   },
 
@@ -260,6 +269,9 @@ export const chrome = {
       section: 'Section A–A',
       peel: 'Peel the wireframe back from the final screen',
       peelValue: '{n}% wireframe',
+      /** a11y r1: said when U switches the drawing (the button's pressed state says it on click) */
+      loupeOn: 'Loupe on',
+      loupeOff: 'Loupe off · section cut',
     },
     detail: {
       file: 'File',
@@ -285,6 +297,8 @@ export const chrome = {
       normal: '1×',
       details: 'Details',
       seek: 'Position',
+      /** a11y r1: said (politely) when Prev / Next / ← → / Home / End / a swipe puts another figure on the stage */
+      live: '{fig}, {i} of {n}',
     },
   },
 
@@ -376,6 +390,9 @@ export const chrome = {
       sheet: 'C-100',
       title: 'Play',
       devpost: 'Devpost',
+      /** a11y r1: the narrated video's text alternative, visible to everyone (SC 1.2.1 / 1.2.2) until her captions and
+       *  transcript arrive (owner item) */
+      videoText: 'What the video shows',
       openA105: 'Open sheet A-105',
       openA106: 'Open sheet A-106',
       teachablePlay: 'Play · 0:48 · sound',

@@ -48,6 +48,11 @@ const label = fill(chrome.wp4a.permalinkLabel, { n, sheet: ctx.sheet, title: blo
     text-decoration: none;
   }
   .dt__bubble :global(.bubble) { transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui); }
+  /* touch: a 44px target centred on the drawn bubble (the drawing keeps its size) */
+  @media (pointer: coarse) {
+    .dt__bubble { position: relative; }
+    .dt__bubble::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: var(--hit); block-size: var(--hit); translate: -50% -50%; }
+  }
   .dt__bubble:hover :global(.bubble),
   .dt__bubble:focus-visible :global(.bubble),
   .dt:has(> :target) .dt__bubble :global(.bubble) { color: var(--rust); }
