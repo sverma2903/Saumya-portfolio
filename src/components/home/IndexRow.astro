@@ -1,35 +1,215 @@
 ---
 /**
- * IndexRow · OWNER: WP3 (P0 functional stub). One Drawing-index row (SM2): the whole row is one link —
- * sheet no. (mono), her title, her outcome line (italic), her tags, ≈ N min (chrome) and the readout repeated sr-only.
+ * IndexRow · OWNER: WP3 (SPEC SM2). One Drawing-index entry: an <li> whose whole content is ONE link.
+ *
+ *   ≥ 1024 (row)   A-101 ▸ | her title                                 | ≈ 13 min
+ *                          | her outcome line (italic)
+ *                          | HER ROLE · HER DATE (labels)
+ *                  The active row (the one the Viewport shows) gets the rust sheet number and ▸.
+ *                  Her readout is repeated here for screen readers (the Viewport is aria-hidden).
+ *   < 1024 (card)  A-101 · PERSONAL PROJECT · MAR 2026 / cover plate 16:10 / her logo / title / outcome /
+ *                  one-line readout / ≈ 13 min · Open →          ("rows become cards"; same DOM, CSS grid areas)
+ *   also rows      B-100  About — her headline   ·   ↗  Architecture Portfolio · issuu.com   (run-in, all widths)
+ *   compact        (404) sheet no. + her title, 44px rows, nothing else.
+ *
+ * Reading order (DOM) is always: sheet no., title, line, tags, readout, minutes — "A-101, Cloudflare R2 Redesign, …".
+ * Her words carry data-v; everything we add (sheet no., separators, minutes, domain, ▸, Open) is chrome.
  */
 import Glyphs from '../symbols/Glyphs.astro';
 import type { Sheet } from '../../data/sheets';
+import { about, play } from '../../content/site';
 import { chrome, fill } from '../../data/chrome';
 import { externalAttrs } from '../../lib/rich';
+import { escapeHtml } from '../../lib/text';
 import Icon from '../symbols/Icon.astro';
+import IndexCard from './IndexCard.astro';
 import Readout from './Readout.astro';
-interface Props { sheet: Sheet; minutes?: number; compact?: boolean }
-const { sheet, minutes, compact = false } = Astro.props;
+interface Props { sheet: Sheet; minutes?: number; compact?: boolean; active?: boolean }
+const { sheet, minutes, compact = false, active = false } = Astro.props;
+const key = sheet.slug ?? (sheet.kind === 'external' ? (sheet.href.includes('issuu') ? 'architecture' : 'resume') : sheet.kind);
+const isCase = sheet.kind === 'case';
+/** B-100 / C-100: her headline HTML (keeps her <em>), not the stripped line */
+const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play' ? play.headline : undefined;
+const ext = sheet.external ? externalAttrs(sheet.href) : {};
+/** her title with each hyphenated word kept whole ("E-learning", "COVID-era"): wrapping spans only, text unchanged */
+const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span class="ix__nb">$1</span>');
+/**
+ * The card's one-line readout (< 1024): her first figure whose numeral her outcome line, just above it on the card,
+ * does not already state (A-103's line opens with its 50% figure, so the card shows "~ 600 K …"). When every
+ * figure's numeral is already in the line (A-101 "Two", A-104 "1st"), the card shows none (-1): the readout stays
+ * for screen readers only. Chrome logic only; her words are untouched.
+ */
+const said = (sheet.line?.text ?? '').replace(/\s+/g, ' ');
+const inLine = (v: string) => new RegExp(`(^|[^\\w~])${v.replace(/\s+/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'i').test(said);
+const cardFig = sheet.readout ? sheet.readout.lines.findIndex((l) => !inLine(l.value.text)) : -1;
+const SEP = '\u00a0· ';
+const DASH = '\u00a0— ';
 ---
-<li class:list={['irow', { 'irow--compact': compact }]}>
-  <a class="irow__a" href={sheet.href} {...externalAttrs(sheet.href)} data-sheet={sheet.slug ?? sheet.kind}>
-    <span class="irow__no t-code">{sheet.no === '↗' ? <Icon name="arrow-up-right" size={14} /> : sheet.no}</span>
-    <span class="irow__main">
-      <span class="irow__title t-index" data-v>{sheet.title.text}</span>
-      {!compact && sheet.line && <span class="irow__line t-deck ink-2" data-v>{sheet.line.text}</span>}
-      {!compact && sheet.domain && <span class="irow__line t-code ink-2">{sheet.domain}</span>}
-      {!compact && sheet.tags.length > 0 && (
-        <span class="irow__tags t-label ink-2">{sheet.tags.map((t, i) => <>{i > 0 && <span aria-hidden="true"> · </span>}<span data-v>{t.text}</span></>)}</span>
-      )}
-      {!compact && sheet.readout && <Readout readout={sheet.readout} srOnly />}
+<li class:list={['ix', compact ? 'ix--compact' : isCase ? 'ix--case' : 'ix--also', { 'is-active': active && !compact, 'ix--nofig': isCase && cardFig < 0 }]} data-ix={compact ? undefined : key}>
+  <a class="ix__a" href={sheet.href} {...ext} data-sheet={key}>
+    <span class="ix__no t-code">
+      {sheet.no === '↗' ? <><Icon name="arrow-up-right" size={14} class="ix__ext" /><span class="sr-only">{chrome.wp3.index.external}</span></> : <span>{sheet.no}</span>}
+      {!compact && <svg class="ix__mark" viewBox="0 0 6 8" aria-hidden="true" focusable="false"><path d="M0 0 6 4 0 8Z" /></svg>}
+      <span class="sr-only">, </span>
     </span>
-    {minutes != null && <span class="irow__min t-label ink-2"><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
+    {!compact && isCase && <IndexCard sheet={sheet} part="plate" />}
+    {!compact && isCase && <IndexCard sheet={sheet} part="logo" />}
+    {(compact || isCase) && <span class="ix__title" data-v set:html={titleHtml} />}
+    {!compact && isCase && sheet.line && <><span class="sr-only">, </span><span class="ix__line" data-v>{sheet.line.text}</span></>}
+    {!compact && !isCase && (
+      <span class="ix__run">
+        <span class="ix__title" data-v set:html={titleHtml} />
+        {lineHtml && <><span class="ix__rs" aria-hidden="true">{DASH}</span><span class="sr-only">, </span><span class="ix__line" data-v set:html={lineHtml} /></>}
+        {sheet.domain && <><span class="ix__rs" aria-hidden="true">{SEP}</span><span class="sr-only">, </span><span class="ix__domain t-code">{sheet.domain}</span></>}
+      </span>
+    )}
+    {!compact && sheet.tags.length > 0 && (
+      <span class="ix__tags t-label"><span class="sr-only">, </span>{sheet.tags.map((t, i) => <span class="ix__tg">{i > 0 && <span class="sr-only">, </span>}<span class="ix__tag" data-v>{t.text}</span></span>)}</span>
+    )}
+    {!compact && sheet.readout && <span class="ix__rd"><span class="sr-only">. </span><Readout readout={sheet.readout} variant="row" show={cardFig} /></span>}
+    {!compact && minutes != null && <span class="ix__min t-label"><span class="sr-only">, </span><Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></span>}
+    {!compact && isCase && <span class="ix__open t-label" aria-hidden="true">{chrome.wp3.index.open}<Icon name="arrow-right" size={14} /></span>}
   </a>
 </li>
+
 <style>
-  .irow { border-block-start: var(--lw-object) solid var(--line-2); }
-  .irow__a { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: var(--s-4); padding-block: var(--s-4); text-decoration: none; align-items: baseline; min-block-size: 44px; }
-  .irow__main { display: grid; gap: var(--s-2); }
-  .irow--compact .irow__a { padding-block: var(--s-2); }
+  .ix { position: relative; }
+  .ix__a {
+    display: grid; column-gap: var(--s-4);
+    color: var(--ink); text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ix__a:hover { color: var(--ink); }
+  .ix__a:focus-visible { outline-offset: calc(-1 * var(--lw-cut)); }
+  .ix__no { grid-area: no; display: inline-flex; align-items: baseline; gap: var(--s-2); color: var(--ink-2); white-space: nowrap; }
+  /* ↗ (external rows): its box stands on the baseline, so the arrow sits at the title's cap height */
+  .ix__no :global(.ix__ext) { align-self: baseline; }
+  .ix__mark {
+    block-size: var(--s-2); inline-size: auto; fill: var(--rust);
+    opacity: 0; transform: translateX(calc(-1 * var(--s-1)));
+    transition: opacity var(--dur-1) var(--ease-ui), transform var(--dur-2) var(--ease-pen);
+  }
+  .ix__title {
+    grid-area: title; font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index);
+    line-height: var(--lh-index); letter-spacing: var(--tr-index); text-wrap: balance;
+  }
+  .ix__line {
+    grid-area: line; font-family: var(--font-serif); font-style: italic;
+    font-size: var(--fs-body-md); font-weight: var(--wt-deck); line-height: var(--lh-deck);
+    color: var(--ink-2); text-wrap: pretty;
+  }
+  .ix__title :global(.ix__nb) { white-space: nowrap; }
+  /* her <em> inside an italic line reads upright, as emphasis within italics should */
+  .ix__line :global(em) { font-style: normal; }
+  /* her tags, separated by a centred dot in a fixed --s-4 cell. Every tag carries its dot in front; the list is
+     pulled one cell to the left and clipped there, so the dot of whichever tag starts a line (the first, or one that
+     wrapped) is never seen: no line starts or ends on a stray "·". */
+  .ix__tags {
+    grid-area: tags; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    margin-inline-start: calc(-1 * var(--s-4));
+    clip-path: inset(calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) var(--s-4));
+  }
+  .ix__tg { white-space: nowrap; }
+  .ix__tg::before { content: '·' / ''; display: inline-block; inline-size: var(--s-4); text-align: center; letter-spacing: 0; color: var(--ink-3); }
+  .ix__rd { grid-area: readout; }
+  .ix__min { grid-area: min; color: var(--ink-2); white-space: nowrap; }
+  .ix__open { grid-area: open; display: none; }
+
+  /* also rows: her label, then her line run in after a dash (B-100, C-100) or the domain (external) */
+  /* the run's own strut sets the leading, so a wrapped line keeps the outcome lines' rhythm (not the body's) */
+  .ix__run { grid-area: title; text-wrap: pretty; font-size: var(--fs-body-md); line-height: var(--lh-lede); }
+  .ix__run .ix__title { font-size: var(--fs-body-md); line-height: inherit; }
+  .ix__run .ix__line { font-size: var(--fs-body); line-height: inherit; }
+  .ix__rs { color: var(--ink-3); }
+  .ix__domain { color: var(--ink-2); }
+
+  /* ── ≥ 1024: the schedule row ── */
+  @media (min-width: 1024px) {
+    .ix { border-block-start: var(--lw-object) solid var(--line-2); }
+    .ix__a {
+      /* the hover well and the focus ring are the row's own box, edge to edge with its rules; the text is inset by
+         --_pi and the sheet-number column gives the inset back, so the titles keep their column */
+      --_pi: var(--s-2);
+      grid-template-columns: calc(var(--_no) - var(--_pi)) minmax(0, 1fr) auto;
+      grid-template-areas:
+        'no title min'
+        'no line  line'
+        'no tags  tags';
+      padding-block: var(--_pt, calc(var(--s-2) + var(--s-1) / 2)) var(--s-4);
+      padding-inline: var(--_pi);
+      transition: background-color var(--dur-1) var(--ease-ui);
+    }
+    .ix__no, .ix__title, .ix__min { align-self: first baseline; }
+    .ix__min { padding-inline-start: var(--s-3); }
+    .ix__rd { display: contents; }
+    /* her outcome at --fs-body-md (22px at 1440; SPEC: --fs-deck) set on --lh-lede: at 1440 × 900 both lines of the
+       A-101 outcome must stand above the fold the cover leaves (SM2 acceptance) */
+    .ix__line { max-inline-size: var(--measure); line-height: var(--lh-lede); }
+    .ix__tags { margin-block-start: var(--s-3); }
+    .ix--also .ix__a { grid-template-areas: 'no title title'; padding-block: var(--s-3); }
+    .ix--also .ix__run { align-self: first baseline; }
+    .ix__a:hover { background-color: var(--sheet); }
+    /* a row that slid under a resting pointer (scroll, #index, J / K) is not hovered until the pointer moves */
+    :global(.dix__list[data-rest]) .ix__a:hover { background-color: transparent; }
+    /* the Viewport's sheet: rust sheet number (or ↗) + ▸, so the state never rests on colour alone */
+    .ix.is-active .ix__no { color: var(--rust); }
+    .ix.is-active .ix__mark { opacity: 1; transform: none; }
+  }
+
+  /* ── < 1024: rows become cards (SM2: tag line, plate, title, outcome, one-line readout, ≈ N min · Open →) ── */
+  @media (max-width: 1023.98px) {
+    .ix--case .ix__a {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        'no      tags'
+        'plate   plate'
+        'logo    logo'
+        'title   title'
+        'line    line'
+        'readout readout'
+        'foot    foot';
+      column-gap: 0;
+      row-gap: var(--s-3);
+    }
+    /* the sheet number leads the tag line, with the tags' own dot cell after it */
+    .ix--case .ix__no { color: var(--rust); gap: 0; align-self: baseline; }
+    .ix--case .ix__no::after { content: '·' / ''; display: inline-block; inline-size: var(--s-4); text-align: center; color: var(--ink-3); }
+    .ix--case .ix__tags { align-self: baseline; }
+    .ix--case .ix__title { margin-block-start: var(--s-1); }
+    .ix--case .ix__line { font-size: var(--fs-body); line-height: var(--lh-body-sm); }
+    .ix--case .ix__rd { align-self: start; }
+    /* no figure the card has not already said (A-101, A-104): no readout row, so no empty gap either */
+    .ix--case.ix--nofig .ix__a { grid-template-areas: 'no tags' 'plate plate' 'logo logo' 'title title' 'line line' 'foot foot'; }
+    .ix--case.ix--nofig .ix__rd { position: absolute; }
+    .ix--case .ix__min {
+      grid-area: foot; align-self: end; padding-block-start: var(--s-3); margin-block-start: var(--s-1);
+      border-block-start: var(--lw-object) solid var(--line-2);
+    }
+    .ix__open { grid-area: foot; justify-self: end; align-self: end; display: inline-flex; align-items: center; gap: var(--s-1); color: var(--rust); }
+    .ix--also { border-block-start: var(--lw-object) solid var(--line-2); }
+    /* the also rows hang their titles on the group labels' edge (past the bubble): one indent, not a third edge */
+    .ix--also .ix__a { grid-template-columns: calc(var(--_bub) + var(--s-1)) minmax(0, 1fr); column-gap: var(--s-3); grid-template-areas: 'no title'; padding-block: var(--s-3); }
+    .ix--also .ix__no, .ix--also .ix__run { align-self: first baseline; }
+    .ix__mark { display: none; }
+  }
+  /* 2-up (768–1023): each card is a subgrid over its pair's shared row tracks, so the tag lines, plates, logos,
+     titles, outcomes, readouts and feet of the two cards line up (the list sets the tracks, see DrawingIndex) */
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .ix--case { display: grid; grid-row: span 7; grid-template-rows: subgrid; }
+    .ix--case .ix__a { grid-row: 1 / -1; grid-template-rows: subgrid; }
+    /* a one-line title stands at the foot of a track sized for its partner's two lines: the title-to-outcome distance
+       is the same on both cards, and the slack falls between the logo chip and the title */
+    .ix--case .ix__title { align-self: end; }
+    /* a card without a figure keeps its pair's readout track (empty) */
+    .ix--case.ix--nofig .ix__a { grid-template-areas: 'no tags' 'plate plate' 'logo logo' 'title title' 'line line' 'readout readout' 'foot foot'; }
+  }
+
+  /* ── compact (404): sheet no. + her title, 44px targets ── */
+  .ix--compact { border-block-start: var(--lw-object) solid var(--line-2); }
+  .ix--compact .ix__a {
+    grid-template-columns: calc(var(--_no) - var(--_pi, 0px)) minmax(0, 1fr); grid-template-areas: 'no title';
+    align-items: baseline; min-block-size: calc(var(--s-6) + var(--s-3)); padding-block: var(--s-2);
+  }
+  .ix--compact .ix__title { font-size: var(--fs-body-md); line-height: var(--lh-body-sm); }
 </style>

@@ -1,35 +1,139 @@
 ---
 /**
- * Readout · OWNER: WP3 (P0 functional stub). Her real numbers for the Viewport (and sr-only inside each index row):
- * value (big, --fs-readout) + label, each verbatim; `joined` lines render as two adjacent spans whose textContent is one
- * verbatim run ("Two" + " of the gaps…"). Optional sub-line, PFF bars (15 : 6) and the "Cited from" line (chrome).
+ * Readout · OWNER: WP3 (SPEC SM2). Her real numbers, verbatim, in two settings:
+ *
+ *  variant="viewport" — the Viewport's readout: numerals in Newsreader Light (tnum) with her labels on the same last
+ *                       baseline, the optional verbatim sub-line, and PFF's bars drawn to scale (15 : 6) with her
+ *                       caption. (The "Cited from" line is rendered by the Viewport's foot.)
+ *  variant="row"      — inside every index row: screen-reader-only at ≥ 1024 (the Viewport is aria-hidden, so the
+ *                       rows carry its information), and the card's one-line readout (her first figure) below 1024.
+ *
+ * Verbatim rules (tests/data/substrings + tests/dist/verbatim): every figure is a VerbatimRef from sheets.ts. A
+ * `joined` line renders its value and label as two adjacent spans inside ONE data-v element, so the element's
+ * textContent is the exact source run ("Two" + " of the gaps identified…"). Typographic splits never add or remove
+ * characters.
  */
 import type { Readout as R } from '../../data/sheets';
-import { chrome } from '../../data/chrome';
-interface Props { readout: R; srOnly?: boolean }
-const { readout, srOnly = false } = Astro.props;
+interface Props {
+  readout: R;
+  variant?: 'viewport' | 'row';
+  /** P0 compatibility: srOnly === variant "row" */
+  srOnly?: boolean;
+  /** row variant: the figure the card shows below 1024 (IndexRow picks the first her outcome line does not already
+   *  say; -1 = none, the whole readout is for screen readers) */
+  show?: number;
+}
+const { readout, srOnly = false, show = 0 } = Astro.props;
+const variant = Astro.props.variant ?? (srOnly ? 'row' : 'viewport');
+const pair = readout.lines.length > 1;
+const bars = readout.bars;
+const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
 ---
-<div class:list={['readout', { 'sr-only': srOnly }]}>
-  {readout.lines.map((l) =>
-    l.joined ? (
-      <p class="readout__line" data-v><span class="readout__v">{l.value.text}</span><span class="readout__l">{l.label.text}</span></p>
-    ) : (
-      <p class="readout__line"><span class="readout__v" data-v>{l.value.text}</span> <span class="readout__l" data-v>{l.label.text}</span></p>
-    ),
-  )}
-  {readout.sub && <p class="readout__sub t-body-sm ink-2" data-v>{readout.sub.text}</p>}
-  {readout.bars && (
-    <div class="readout__bars">
-      <p class="readout__bar" style={`--_w: ${100}%`}><span data-v>{readout.bars.from.text}</span></p>
-      <p class="readout__bar readout__bar--to" style={`--_w: ${(readout.bars.ratio[1] / readout.bars.ratio[0]) * 100}%`}><span data-v>{readout.bars.to.text}</span></p>
-      <p class="t-caption ink-2" data-v>{readout.bars.caption.text}</p>
+{variant === 'row' ? (
+  <span class="rdr">
+    {readout.lines.map((l, i) =>
+      l.joined ? (
+        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]} data-v><span class="rdr__v">{l.value.text}</span><span class="rdr__l">{l.label.text}</span></span>
+      ) : (
+        <span class:list={['rdr__line', { 'rdr__line--more': i !== show }]}><span class="rdr__v" data-v>{l.value.text}</span> <span class="rdr__l" data-v>{l.label.text}</span></span>
+      ),
+    )}
+    {readout.sub && <span class="rdr__more" data-v>{readout.sub.text}</span>}
+    {bars && <span class="rdr__more" data-v>{bars.caption.text}</span>}
+  </span>
+) : (
+  <div class:list={['rd', { 'rd--pair': pair, 'rd--bars': !!bars }]}>
+    <div class="rd__figs">
+      {readout.lines.map((l) =>
+        l.joined ? (
+          <p class="rd__fig" data-v><span class="rd__v">{l.value.text}</span><span class="rd__l">{l.label.text}</span></p>
+        ) : (
+          <p class="rd__fig"><span class="rd__v" data-v>{l.value.text}</span> <span class="rd__l" data-v>{l.label.text}</span></p>
+        ),
+      )}
     </div>
-  )}
-  {!srOnly && <p class="readout__cited t-label ink-2">{chrome.wp3.viewport.citedFrom} · {readout.cited.join(' · ')}</p>}
-</div>
+    {bars && (
+      <div class="rd__bars" style={`--_to: ${toRatio}`}>
+        <span class="rd__track rd__track--from" aria-hidden="true" data-hatch></span><p class="rd__bl rd__bl--from" data-v>{bars.from.text}</p>
+        <p class="rd__bar rd__bar--to"><span class="rd__track" aria-hidden="true"></span><span class="rd__bl" data-v>{bars.to.text}</span></p>
+        <p class="rd__cap" data-v>{bars.caption.text}</p>
+      </div>
+    )}
+    {readout.sub && <p class="rd__sub" data-v>{readout.sub.text}</p>}
+  </div>
+)}
+
 <style>
-  .readout { display: grid; gap: var(--s-2); }
-  .readout__v { font-size: 2rem; font-weight: 300; margin-inline-end: var(--s-2); }
-  .readout__bar { inline-size: var(--_w); background: var(--hatch-45); border: var(--lw-object) solid var(--line-2); padding: 2px 6px; }
-  .readout__bar--to { background: var(--rust); color: var(--paper); border-color: var(--rust); }
+  /* ─────────────── row / card variant ─────────────── */
+  .rdr { display: block; }
+  .rdr__line, .rdr__more { display: block; }
+  /* ≥ 1024: the whole readout is for screen readers only (the Viewport shows it) */
+  @media (min-width: 1024px) {
+    .rdr {
+      position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+    }
+  }
+  /* < 1024: the card's readout is one figure, set as one run: the numeral (a stat) and her label follow each other on
+     the line, and a label that wraps runs back under the numeral, never down a narrow column beside it. Every card
+     sets it the same way. The rest stays for screen readers. */
+  @media (max-width: 1023.98px) {
+    .rdr__line--more, .rdr__more {
+      position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+    }
+    .rdr__line { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); text-wrap: pretty; }
+    .rdr__v {
+      font-size: var(--fs-stat); font-weight: var(--wt-stat); line-height: var(--lh-stat);
+      letter-spacing: var(--tr-stat); font-variant-numeric: tabular-nums; color: var(--ink);
+      margin-inline-end: var(--s-2); white-space: nowrap;
+    }
+  }
+
+  /* ─────────────── viewport variant ─────────────── */
+  /* the numerals' 0.95 line box leaves no air over their caps: the readout takes --s-2 more above, so the room over
+     the numeral matches the room under the labels (to the foot) */
+  .rd { display: grid; row-gap: var(--s-3); padding-block-start: var(--s-2); }
+  .rd__figs { display: grid; gap: var(--s-2) var(--s-6); }
+  .rd__fig {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-4); align-items: last baseline;
+    font-size: var(--fs-body); line-height: var(--lh-body-sm); color: var(--ink-2); text-wrap: pretty;
+  }
+  .rd__v {
+    font-size: var(--fs-readout); font-weight: var(--wt-readout); line-height: var(--lh-readout);
+    letter-spacing: var(--tr-readout); font-variant-numeric: tabular-nums; color: var(--ink);
+    white-space: nowrap;
+  }
+  .rd__l { max-inline-size: calc(var(--measure) * 0.55); }
+  /* two figures (A-103, A-105): side by side, each numeral over its label */
+  .rd--pair .rd__figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rd--pair .rd__fig { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-1); align-items: start; font-size: var(--fs-body-sm); }
+  /* two numerals share the width: each is set at --fs-stat, so "~ 600 K" stays inside its half at 1024–1440 */
+  .rd--pair .rd__v { font-size: var(--fs-stat); }
+
+  .rd__sub {
+    font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2);
+    padding-inline-start: var(--s-3); border-inline-start: var(--lw-border) solid var(--line-2);
+    max-inline-size: calc(var(--measure) * 0.6);
+  }
+
+  /* A-102: 15 minutes → ~6 minutes, drawn to scale (graphite hatch = before, rust = after), as a drawing with a
+     note column. Both tracks measure against the same column (1), so the ratio holds exactly (the rust track is
+     --_to of it); the "15 minutes" label and her caption share the note column (2), on one left edge, the caption
+     on the rust bar's line; "~6 minutes" follows its own short bar. */
+  .rd__bars {
+    display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; gap: var(--s-1) var(--s-3);
+  }
+  .rd__bar { display: flex; align-items: center; gap: var(--s-3); }
+  .rd__bl, .rd__cap { font-size: var(--fs-body-sm); line-height: var(--lh-label); color: var(--ink-2); }
+  .rd__track { flex: none; display: block; block-size: var(--s-2); }
+  .rd__track--from { background: var(--hatch-45); box-shadow: inset 0 0 0 var(--lw-object) var(--line-3); }
+  .rd__bar--to .rd__track { inline-size: calc(100% * var(--_to)); background: var(--rust); }
+  .rd__bar--to .rd__bl { color: var(--rust); }
+  .rd__cap { font-style: italic; font-size: var(--fs-caption); }
+  @media (forced-colors: active) {
+    .rd__track { forced-color-adjust: none; }
+    .rd__track--from { background: none; box-shadow: inset 0 0 0 1px CanvasText; }
+    .rd__bar--to .rd__track { background: CanvasText; }
+  }
 </style>

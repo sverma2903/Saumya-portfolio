@@ -1,12 +1,89 @@
 ---
 /**
- * IndexCard · OWNER: WP3 (P0 stub). Below 1024px the index rows become cards (SM2): tag line `A-101 · PERSONAL PROJECT
- * · MAR 2026`, the 16:10 plate (lazy, view-transition-name plate-<slug>), title, italic outcome line, a one-line
- * readout, `≈ 13 min · Open →`. Never rendered together with the Viewport plate (VT names must be unique).
- * P0: not mounted yet (the rows serve every width).
+ * IndexCard · OWNER: WP3 (SPEC SM2 "Mobile / tablet"). The card-only parts of an index entry, rendered INSIDE the
+ * row's link by IndexRow: below 1024 the rows become cards (1-up < 768, 2-up 768–1023) and these parts appear —
+ *   · the 16:10 cover plate on its stage, which carries view-transition-name plate-<slug> only below 1024 (set
+ *     through --_vt, never inline: the Viewport plate owns the name at ≥ 1024, and the two are never rendered at the
+ *     same width, so exactly one element per name exists on screen). Its layers are placed like the Viewport's
+ *     (plate-box.ts), so the SM3 morph into the case cover is the same box.
+ *   · her home-card logo in a fixed-height chip, where her original cards had it (between the image and the title),
+ *     optically sized (logo-optics.ts) so the four chips are one size and read at one weight.
+ *
+ * Loading (SM2 "Loading", §7.2 Home budget): the card plate's layers carry data-src only; viewport.ts (initCards)
+ * gives a still its src once the card itself is on screen (not the browser's 1250–2500px lazy margin). A card is a
+ * link and can carry no pause control, so the CSBS GIF never animates here: once its card is on screen it shows the
+ * GIF's poster frame, with the drafting X and its file facts until then (and for good with JS off or without
+ * ImageDecoder). With JS off, a <noscript> twin carries each still's real src inside a <picture> whose ≥ 1024 source
+ * is an empty pixel (the logo chip too), so the hidden card parts never download on desktop.
  */
 import type { Sheet } from '../../data/sheets';
-interface Props { sheet: Sheet; minutes?: number }
-const { sheet } = Astro.props;
+import { facts, dimsLabel, stagingOf } from '../../lib/staging';
+import { logoK } from './logo-optics';
+import { layerBox, boxStyle } from './plate-box';
+interface Props { sheet: Sheet; part: 'plate' | 'logo' }
+const { sheet, part } = Astro.props;
+const logo = sheet.card?.logo ? facts(sheet.card.logo) : undefined;
+/** a transparent 1 × 1 GIF: the ≥ 1024 <source> of a no-JS card plate, so nothing heavy is fetched there */
+const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const A = sheet.plate?.aspect ?? 1.6;
+const layers = (sheet.plate?.layers ?? []).map((l) => {
+  const f = facts(l.file);
+  return { f, style: boxStyle(layerBox(f.aspect, A, l.pad ?? 0)), gif: f.gif, poster: stagingOf(l.file).gif?.poster ?? 0 };
+});
+const top = layers[layers.length - 1];
+const hasGif = layers.some((l) => l.gif);
 ---
-<li class="icard"><a href={sheet.href}><span data-v>{sheet.title.text}</span></a></li>
+{part === 'plate' && sheet.plate && (
+  <span class="icard__plate" style={sheet.slug ? `--_vt: plate-${sheet.slug}` : undefined} data-card-plate>
+    <span class="icard__box" style={`background: ${sheet.plate.stage}`}>
+      {layers.map((l) => (
+        <img class="icard__layer" style={l.style} data-src={l.f.src} width={l.f.w} height={l.f.h} alt="" decoding="async" data-card-media data-gif-layer={l.gif ? '' : undefined} data-frame={l.gif ? l.poster : undefined} />
+      ))}
+      <noscript>
+        {layers.filter((l) => !l.gif).map((l) => (
+          <picture><source media="(min-width: 1024px)" srcset={PIXEL} /><img class="icard__layer" style={l.style} src={l.f.src} width={l.f.w} height={l.f.h} alt="" loading="lazy" decoding="async" /></picture>
+        ))}
+      </noscript>
+      {hasGif && top && (
+        <span class="icard__ph" data-card-ph>
+          <svg class="icard__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
+          <span class="icard__xl t-code-sm">{dimsLabel(top.f.file)}</span>
+        </span>
+      )}
+    </span>
+  </span>
+)}
+{part === 'logo' && logo && (
+  <span class="icard__logo"><picture><source media="(min-width: 1024px)" srcset={PIXEL} /><img src={logo.src} width={logo.w} height={logo.h} alt="" loading="lazy" decoding="async" style={`--_k: ${logoK(logo.file)}`} /></picture></span>
+)}
+<style>
+  .icard__plate, .icard__logo { display: none; }
+  @media (max-width: 1023.98px) {
+    .icard__plate { display: block; grid-area: plate; view-transition-name: var(--_vt, none); }
+    .icard__box { position: relative; display: block; aspect-ratio: 1.6; overflow: hidden; }
+    .icard__layer { position: absolute; display: block; max-inline-size: none; }
+    /* a layer waiting for its src draws nothing (no broken-image box) */
+    img.icard__layer:not([src]) { visibility: hidden; }
+    /* the drafting X with the GIF's file facts: until its poster frame is drawn. It is our drawing, not her print,
+       so it sits on --sheet (dark in Dusk), not on the always-light --plate */
+    .icard__ph {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2);
+    }
+    .icard__ph[hidden] { display: none; }
+    .icard__x { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
+    .icard__x path { fill: none; stroke: var(--line-2); stroke-width: var(--lw-object); vector-effect: non-scaling-stroke; }
+    .icard__xl { position: relative; padding: var(--s-1) var(--s-2); background: var(--sheet); color: var(--ink-3); text-transform: uppercase; }
+    /* one chip size for every logo: the cell is --s-5 tall inside a --s-1 padding (a --s-6 chip) */
+    .icard__logo {
+      grid-area: logo; justify-self: start; align-self: start; display: inline-grid; place-items: center;
+      block-size: var(--s-6); padding: var(--s-1) var(--s-2); background: var(--plate);
+      box-shadow: inset 0 0 0 var(--lw-object) var(--line-1);
+    }
+    .icard__logo picture { display: contents; }
+    .icard__logo img { block-size: calc(var(--s-5) * var(--_k)); inline-size: auto; object-fit: contain; }
+  }
+  @media (forced-colors: active) {
+    .icard__ph { border: 1px solid CanvasText; }
+  }
+</style>
