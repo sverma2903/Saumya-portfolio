@@ -5,7 +5,7 @@
  *   TEAM    1 Designer
  *   SKILLS  User Research, Design System, …
  *   REV.    △1 UPDATE — This study examined the dashboard in March 2026.   ← only when a callout is titled "Update"
- *   SHEET   A-101 · 6 levels · ≈ 13 min                                    ← chrome (computed)
+ *   SHEET   A-101 · 6 LEVELS · ≈ 13 MIN                                    ← chrome (computed)
  * Borders: outer --lw-border ink, rows --lw-object --line-2, a key column of 96px with its own hairline. The REV. row
  * links to the revision cloud (the callout block's id, e.g. #overview-0). Her values are comma-separated lists: each
  * item is kept whole on its line when it fits (lib/typeset.ts keepItems), so "1 UX Researcher" never splits as
@@ -28,7 +28,7 @@ for (const s of cs.sections) {
 }
 const r = rev as { id: string; title: string; lede: string } | null;
 const c = chrome.wp5.case;
-// "A-101 · 6 levels · ≈ 13 min", set as three atomic items so "≈" never parts from its minutes on a phone
+// "A-101 · 6 LEVELS · ≈ 13 MIN" (caps, like every minutes value on the site), set as three atomic items so "≈" never parts from its minutes on a phone
 const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading.minutes }).split(' · ');
 ---
 <dl class="titleblock">
@@ -100,5 +100,5 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
   }
 
   @media (max-width: 479.98px) { .titleblock__v { padding-inline: var(--s-3); } }
-  .titleblock__v.titleblock__sheet { font-size: var(--fs-code); line-height: var(--lh-code); color: var(--ink-2); padding-block: var(--titleblock-pad-sheet, var(--s-3)); }
+  .titleblock__v.titleblock__sheet { font-size: var(--fs-code); line-height: var(--lh-code); color: var(--ink-2); padding-block: var(--titleblock-pad-sheet, var(--s-3)); text-transform: uppercase; }
 </style>

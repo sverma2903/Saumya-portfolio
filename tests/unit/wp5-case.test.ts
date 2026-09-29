@@ -11,7 +11,7 @@ import { reading } from '@/lib/reading';
 import { blockTexts } from '@/lib/verbatim';
 import { normalize } from '@/lib/text';
 import { SHEET_NO, sheets } from '@/data/sheets';
-import { keepCompounds, keepItems } from '@/lib/typeset';
+import { keepCompounds, keepItems, keepPhrases } from '@/lib/typeset';
 import { decodeEntities } from '@/lib/text';
 import type { CaseSlug } from '@/lib/verbatim';
 
@@ -103,5 +103,13 @@ describe('typesetting her words (lib/typeset.ts): presentation only', () => {
       '<span class="keep">1 PM,</span> <span class="keep">3 Designers,</span> <span class="keep">1 UX Researcher</span>',
     );
     expect(keepItems('MAR 2025 - JUN 2025')).toBe('<span class="keep">MAR 2025 - JUN 2025</span>');
+  });
+  test('keepPhrases never changes a character, binds each listed phrase, and ignores a phrase that is not there', () => {
+    for (const t of titles) expect(textOf(keepPhrases(t, ['Object Storage', 'approval chain', 'nowhere']))).toBe(t);
+    expect(keepPhrases('Cloudflare R2 Object Storage Redesign', ['Cloudflare R2', 'Object Storage'])).toBe(
+      '<span class="keep">Cloudflare R2</span> <span class="keep">Object Storage</span> Redesign',
+    );
+    expect(keepPhrases('Simplifying e-learning for COVID-era', ['not in it'])).toBe(keepCompounds('Simplifying e-learning for COVID-era'));
+    expect(keepPhrases('A (b) c', ['(b)'])).toBe('A <span class="keep">(b)</span> c');
   });
 });

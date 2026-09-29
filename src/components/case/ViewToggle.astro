@@ -53,10 +53,9 @@ const opts = [
   /* "SECTION" and "FULL TEXT" are atomic: a narrow toggle breaks after the " · ", never inside "FULL / TEXT" */
   .viewtoggle__name, .viewtoggle__desc { display: inline-block; }
   .viewtoggle__sep, .viewtoggle__desc { color: inherit; }
-  .viewtoggle__min {
-    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code-sm); letter-spacing: var(--tr-code);
-    text-transform: none; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap;
-  }
+  /* the minutes are set like every minutes value on the site (the index, the drawer, the Levels header): caps in the
+     label face, one tone quieter */
+  .viewtoggle__min { color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .viewtoggle__opt::after {
     content: ''; position: absolute; inset-inline: 0; inset-block-end: -1px; block-size: var(--lw-cut);
     background: var(--rust); transform: scaleX(0); transform-origin: left;
@@ -74,22 +73,20 @@ const opts = [
   :global(html:not([data-view='plan'])) .viewtoggle__opt[data-view-value='section'] .viewtoggle__min,
   :global(html[data-view='plan']) .viewtoggle__opt[data-view-value='plan'] .viewtoggle__min { color: var(--ink-2); }
 
-  /* stack (Levels rail): two cells, "SECTION / full text / ≈ 13 min" on three short lines */
+  /* one typographic treatment in every size: the label is always "SECTION · FULL TEXT" in the label face and the
+     minutes always "≈ 13 MIN" under or beside it — a narrower toggle changes only the arrangement, never the case or face.
+
+     stack (the Levels rail, and a header toggle under 340px): three short lines per option, SECTION / FULL TEXT / ≈ 13 MIN */
   .viewtoggle--stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); inline-size: 100%; }
-  .viewtoggle--stack .viewtoggle__opt { display: grid; justify-content: stretch; gap: 3px; align-content: center; padding: var(--s-2) var(--s-3) calc(var(--s-2) + 2px); }
+  .viewtoggle--stack .viewtoggle__opt { display: grid; justify-content: stretch; gap: 2px; align-content: center; padding: var(--s-2) var(--s-2) calc(var(--s-2) + 2px); }
   .viewtoggle--stack .viewtoggle__label { display: grid; gap: 2px; }
   .viewtoggle--stack .viewtoggle__sep { display: none; }
-  .viewtoggle--stack .viewtoggle__desc {
-    font-family: var(--font-serif); font-style: italic; font-size: var(--fs-code-sm); font-weight: var(--wt-body);
-    font-variation-settings: normal; letter-spacing: 0; text-transform: none; line-height: 1.2;
-  }
-  .viewtoggle--stack .viewtoggle__min { font-size: var(--fs-code-sm); }
 
   /* a host that makes the toggle a size container named `viewtoggle` (the case header does) gets one layout for both
      options, chosen by the toggle's own width — never one option wrapped and the other not:
-       ≥ 500px   SECTION · FULL TEXT        ≈ 13 min      one line
-       340–499   SECTION · FULL TEXT / ≈ 13 min           label over minutes
-       < 340     SECTION / full text / ≈ 13 min           the rail's stack */
+       ≥ 500px   SECTION · FULL TEXT        ≈ 13 MIN      one line
+       340–499   SECTION · FULL TEXT / ≈ 13 MIN           label over minutes
+       < 340     SECTION / FULL TEXT / ≈ 13 MIN           the rail's stack */
   @container viewtoggle (min-width: 500px) {
     .viewtoggle__opt { flex-wrap: nowrap; }
   }
@@ -98,14 +95,9 @@ const opts = [
     .viewtoggle__label { white-space: nowrap; }
   }
   @container viewtoggle (max-width: 339.98px) {
-    .viewtoggle__opt { gap: 3px; padding: var(--s-2) var(--s-3) calc(var(--s-2) + 2px); }
+    .viewtoggle__opt { padding: var(--s-2) var(--s-2) calc(var(--s-2) + 2px); }
     .viewtoggle__label { display: grid; gap: 2px; white-space: normal; }
     .viewtoggle__sep { display: none; }
-    .viewtoggle__desc {
-      font-family: var(--font-serif); font-style: italic; font-size: var(--fs-code-sm); font-weight: var(--wt-body);
-      font-variation-settings: normal; letter-spacing: 0; text-transform: none; line-height: 1.2;
-    }
-    .viewtoggle__min { font-size: var(--fs-code-sm); }
   }
 
   /* the drawer (WP1) lays the two options out as full-width rows on its --sheet: rule them horizontally, and mark the

@@ -36,7 +36,7 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
   <nav class="levels" aria-label={l.title} data-levels-rail data-slug={reading.slug}>
     <p class="levels__head t-label">
       <span><span>{l.title}</span><span class="levels__sheet"> <span class="levels__dot" aria-hidden="true">·</span> <span class="t-code levels__no">{sheetNo}</span></span></span>
-      <span class="levels__total t-code"><Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></span>
+      <span class="levels__total"><Glyphs text={fill(chrome.wp3.index.minutes, { n: reading.minutes })} /></span>
     </p>
     <div class="levels__section">
       <ol class="levels__floors" role="list" data-floors>
@@ -54,7 +54,7 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
     </div>
   </nav>
 
-  <div class="rail__view">
+  <div class="rail__view" data-js-only>
     <p class="rail__sub t-label"><span>{l.view}</span><kbd class="rail__key t-code" aria-hidden="true">{chrome.wp5.view.key}</kbd></p>
     <ViewToggle minutes={reading.minutes} planMinutes={reading.planMinutes} variant="stack" class="rail__toggle" />
   </div>
@@ -92,8 +92,8 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
   /* ── header ── */
   .levels__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-4); color: var(--ink-2); }
   .levels__no { color: var(--ink-2); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
-  /* minutes are set the same everywhere on the page: lowercase mono (≈ 13 min) */
-  .levels__total { white-space: nowrap; font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
+  /* minutes are set as everywhere else on the site (SPEC SM4, the index, the drawer): caps in the label face (≈ 13 MIN) */
+  .levels__total { white-space: nowrap; }
 
   /* ── the building section ── */
   .levels__section { position: relative; }
@@ -218,7 +218,7 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
     .rail__match:hover :global(.icon) { transform: translateX(2px); }
   }
 
-  /* lg (1024–1279): the rail is 168px — the sheet number is already in the title bar */
+  /* lg (1024–1279): the rail is 184px — the sheet number is already in the title bar */
   @media (max-width: 1279.98px) {
     .levels__sheet { display: none; }
   }

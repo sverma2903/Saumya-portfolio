@@ -146,8 +146,29 @@ const rows = resolveDecisions(cs);
   @media (min-width: 1024px) {
     .decisions__c { inline-size: 42%; }
   }
-  @media (min-width: 768px) and (max-width: 1023.98px) {
+  /* tablets (768–1023): the LEVEL column would keep ~16% of the width for one word while her sentences wrap to 5–6
+     lines; the LEVEL link moves under the decided sentence (like the phone card) and CONSIDERED and DECIDED share the
+     width 1fr : 1fr. The rows become grids (table roles keep the semantics); the LEVEL head is kept for screen readers */
+  @media screen and (min-width: 768px) and (max-width: 1023.98px) {
     .decisions { --_no: var(--s-8); }
+    .decisions__t, .decisions__t thead, .decisions__t tbody { display: block; }
+    .decisions__t tr { display: grid; grid-template-columns: var(--_no) minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); }
+    .decisions__thead tr { border-block-end: var(--lw-object) solid var(--ink); }
+    .decisions__thead th { display: block; border: 0; padding-inline-end: 0; }
+    .decisions__thead th.decisions__lv { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; padding: 0; }
+    .decisions__row {
+      grid-template-areas: 'no c d' 'no c lv'; grid-template-rows: auto 1fr; align-items: baseline;
+      padding-block: var(--s-4); border-block-end: var(--lw-object) solid var(--line-2);
+    }
+    .decisions__row:last-child { border-block-end: var(--lw-border) solid var(--ink); }
+    .decisions__row > th, .decisions__row > td,
+    .decisions__row:last-child > th, .decisions__row:last-child > td { display: block; padding: 0; border: 0; inline-size: auto; }
+    .decisions__row > th.decisions__no { grid-area: no; }
+    .decisions__row > td.decisions__c { grid-area: c; }
+    .decisions__row > td.decisions__d { grid-area: d; padding-inline-start: var(--_ret); }
+    .decisions__row > td.decisions__lv { grid-area: lv; padding-inline-start: var(--_ret); margin-block-start: var(--s-3); }
+    .decisions__ret { inset-block-start: 1px; }
+    .decisions__thead th.decisions__dh { padding-inline-start: var(--_ret); }
   }
 
   /* print (a sheet ≈ 180 mm wide): considered and decided share the width, the LEVEL cell is just her label (a page

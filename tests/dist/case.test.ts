@@ -68,6 +68,14 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
       expect(go.getAttribute('href')).toBe(`#${cs.sections[i].id}`);
       expect(go.getAttribute('aria-label')).toBe(`Go to ${cs.sections[i].label}`);
     });
+    // the last stop spans the empty cells of a short last row in every layout (2, 3 and 4 columns), so the box closes
+    const n = stops.length;
+    const style = kp.getAttribute('style') ?? '';
+    for (const c of [2, 3, 4]) {
+      const want = n % c === 0 ? 1 : c - (n % c) + 1;
+      expect(style, `--_span${c}`).toContain(`--_span${c}: ${want}`);
+    }
+    expect(kp.classList.contains('keyplan--wide')).toBe(n > 6);
   });
 
   test('Decision schedule: every pair verbatim, LEVEL links land inside the right chapter', () => {

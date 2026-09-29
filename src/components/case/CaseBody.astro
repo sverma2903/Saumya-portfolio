@@ -7,7 +7,9 @@
  *         once the viewport passes --maxw), so the rail starts on the same line as the title bar's brand, the back link
  *         and the h1, and the notes end on the plate's right edge. The leftover width goes to the two gaps (they never
  *         drop below --gap), which keeps the text column exactly where the spec's centred grid puts it.
- * 1024–1279  rail 168 · 32 · text (1fr); notes fold under their block (base.css). Chapters keep text at the measure.
+ * 1024–1279  rail 184 · 32 · text (1fr); notes fold under their block (base.css). Chapters keep text at the measure.
+ *            (SPEC: 168; 184 is the rail's own minimum at ≥ 1280, where the View toggle's caps labels fit one line —
+ *            the text column is still ≥ 728px at 1024.)
  * < 1024  one column; the rail becomes the bottom bar's level pill + the Sheet drawer (WP1).
  * Chapters are their own grids (not subgrids; P0-NOTES §7.1: content-visibility's layout containment forbids subgrid).
  */
@@ -28,7 +30,9 @@ const { cs, chapters, reading, sheetNo, next } = Astro.props;
 
 <style>
   .case-body {
-    --rail: clamp(184px, 14vw, 224px);
+    /* the rail is never narrower than 184px: its View toggle's caps labels (FULL TEXT, BOLD ONLY) fit one line each */
+    --_rail-min: 184px;
+    --rail: clamp(var(--_rail-min), 14vw, 224px);
     --notes: clamp(208px, 17vw, 280px);
     --gap: clamp(32px, 3vw, 56px);
     /* chapters (descendants) resolve the side margin against this box with cqi; here, 100% is the same width */
@@ -48,7 +52,7 @@ const { cs, chapters, reading, sheetNo, next } = Astro.props;
   @media (max-width: 1279.98px) {
     .case-body {
       --gap: var(--s-6);
-      grid-template-columns: [full-start] var(--m) [rail-start] 168px [rail-end gutter-start] var(--gap) [text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end];
+      grid-template-columns: [full-start] var(--m) [rail-start] var(--_rail-min) [rail-end gutter-start] var(--gap) [text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end];
     }
   }
   @media (max-width: 1023.98px) {

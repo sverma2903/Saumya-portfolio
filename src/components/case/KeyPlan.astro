@@ -11,9 +11,11 @@
  *   R2's core …   I conducted …
  *   GO ↓          GO ↓
  *
- * Columns: ≤ 6 levels sit in one row ≥ 1280 and wrap 3 + 3 at 768–1279; 7 levels (PFF) wrap 4 + 3 at every width
- * ≥ 768 — seven equal columns would give her longest stop a 16–20-character measure (14–15 lines) even at 1440, while
- * 4 + 3 sets it at 35–40 characters in the same height; a vertical list < 768.
+ * Columns are chosen by the measure they leave her sentence, not by the level count (a container query on the band):
+ * a vertical list below 44rem; 2 columns from 44rem; 3 from 55rem for ≤ 6 levels; 4 from 72rem for 7 levels (PFF).
+ * Every layout keeps each column's text at ≥ 27ch of Newsreader "0" (≈ 33 average characters; the dist test and
+ * scratchpad probe measure it), where one row of six gave 17–22ch (8–10-line stubs) at 1280–1920. A short last row is
+ * closed by letting the last stop span the empty cells (PFF 4 + 3 → 07 spans two), so the schedule is one closed box.
  * The level you are in (scripts/case/levels.ts) is hatched on the strip and carries an accent rule over its stop, so the
  * two register; hovering a stop (or focusing its Go ↓) lights its segment, and a pointer can take a segment as a
  * shortcut to its level (the Go ↓ links stay the keyboard and screen-reader control; the strip is aria-hidden).
@@ -28,19 +30,20 @@ interface Props { stops: KeyStop[]; seconds: number[]; sheetNo: string; minutes:
 const { stops, seconds, sheetNo, minutes } = Astro.props;
 const k = chrome.wp5.keyPlan;
 const n = stops.length;
-const perRow = n <= 6 ? Math.ceil(n / 2) : 4;
-const lastRow = (Math.ceil(n / perRow) - 1) * perRow; // index of the first stop in the last row (768–1279)
-const oneRow = n <= 6; // ≥ 1280: every level in one row (7 levels keep 4 + 3)
+// the widest layout this case uses (3 columns for ≤ 6 levels, 4 for 7), and how far the last stop spans to close a
+// short last row in each layout (2, 3 or 4 columns)
+const wide = n > 6;
+const span = (c: number) => (n % c === 0 ? 1 : c - (n % c) + 1);
 const total = seconds.reduce((a, s) => a + s, 0) || 1;
 const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0 ? [k.go, ''] : [k.go.slice(0, i), k.go.slice(i + 1)]; })();
 ---
-<section class:list={['keyplan shell', { 'keyplan--one-row': oneRow }]} aria-labelledby="keyplan-h" data-keyplan style={`--_n: ${n}; --_row: ${perRow}`}>
+<section class:list={['keyplan shell', { 'keyplan--wide': wide }]} aria-labelledby="keyplan-h" data-keyplan style={`--_span2: ${span(2)}; --_span3: ${span(3)}; --_span4: ${span(4)}`}>
   <div class="keyplan__head">
     <h2 id="keyplan-h" class="keyplan__h">
       <span class="keyplan__title t-label-lg">{k.title}</span>
       <span class="keyplan__sub t-label">{k.sub}</span>
     </h2>
-    <p class="keyplan__meta t-code">{sheetNo} · <Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></p>
+    <p class="keyplan__meta t-label"><span class="t-code">{sheetNo}</span> · <Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></p>
   </div>
 
   <div class="keyplan__strip" aria-hidden="true" data-kp-strip>
@@ -55,7 +58,7 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     {stops.map((s, i) => {
       const stat = s.kind === 'stat' && s.stat ? splitStat(s.stat.v) : null;
       return (
-        <li class:list={['keyplan__stop', { 'is-rowstart': i % perRow === 0, 'is-lastrow': i >= lastRow }]} data-kp-stop={i}>
+        <li class="keyplan__stop" data-kp-stop={i}>
           <p class="keyplan__label">
             <span class="keyplan__no t-code" aria-hidden="true">{pad2(i + 1)}</span>
             <span class="t-label" data-v>{s.label}</span>
@@ -86,6 +89,9 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
 <style>
   .keyplan {
     --_strip: 10px;
+    --_c: 1;               /* columns of stops: set by the band's own width (@container keyplan, below) */
+    --_pad: var(--s-4);    /* a stop's side padding, either side of its column rule */
+    container: keyplan / inline-size;
     padding-block: var(--s-5) 0;
   }
   @media (min-width: 1024px) { .keyplan { padding-block-start: var(--s-7); } }
@@ -130,19 +136,24 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   .keyplan__seg:is(.is-hover, .is-focus) .keyplan__segno { color: var(--ink); font-weight: var(--wt-code); }
   .keyplan__seg.is-current .keyplan__segno { color: var(--acc); font-weight: var(--wt-code); }
 
-  /* ── the stops ── */
+  /* ── the stops ── one ruled grid: every stop draws its column rule on its leading edge and a hairline under itself;
+     a stop that starts a row (nth-child, per layout below) drops the rule and its leading padding, so its text sits flush
+     with the strip. The last row is always full (the last stop spans any empty cells), so the hairlines under it close
+     the box in every layout. */
   .keyplan__stops {
     list-style: none; margin: 0; padding: 0;
     margin-block-start: calc(var(--s-5) + var(--s-3));
-    display: grid; grid-template-columns: minmax(0, 1fr);
+    display: grid; grid-template-columns: repeat(var(--_c), minmax(0, 1fr));
     border-block-start: var(--lw-border) solid var(--ink);
   }
   .keyplan__stop {
     position: relative;
     display: flex; flex-direction: column; gap: var(--s-1);
-    padding-block: var(--s-4) var(--s-3);
+    padding: var(--s-4) var(--_pad) var(--s-3);
+    border-inline-start: var(--lw-object) solid var(--line-2);
     border-block-end: var(--lw-object) solid var(--line-2);
   }
+  .keyplan__stop:last-child { grid-column: span var(--_span, 1); }
   /* the level you are in: an accent rule over the stop's head, registering with its hatched segment on the strip */
   .keyplan__stop::before {
     content: ''; position: absolute; inset-inline: 0; inset-block-start: calc(-1 * var(--lw-border));
@@ -164,7 +175,7 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   }
   .keyplan__line {
     margin: var(--s-2) 0 0; font-size: var(--fs-body-sm); line-height: 1.45; color: var(--ink);
-    text-wrap: pretty; hyphens: manual;
+    max-inline-size: var(--measure); text-wrap: pretty; hyphens: manual;
   }
   .keyplan__join { color: var(--clay); }
   .keyplan__stat { font-size: var(--fs-lede); font-weight: var(--wt-stat); line-height: 1; letter-spacing: var(--tr-stat); font-variant-numeric: tabular-nums; margin-inline-end: var(--s-1); }
@@ -205,30 +216,41 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     .keyplan__segno { forced-color-adjust: auto; }
   }
 
-  /* phones: a vertical list — number + label with the elevation on the right, then her sentence */
-  @media (max-width: 767.98px) {
+  /* one column (a vertical list): number + label with the elevation on the right, then her sentence */
+  @container keyplan (max-width: 43.99rem) {
     .keyplan__segno { display: none; }
     .keyplan__stops { margin-block-start: var(--s-5); }
-    .keyplan__stop { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-3); padding-block: var(--s-4); }
+    .keyplan__stop {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-3);
+      padding: var(--s-4) 0; border-inline-start: 0;
+    }
     .keyplan__elev { align-self: baseline; }
     .keyplan__line, .keyplan__go { grid-column: 1 / -1; }
   }
-  /* 768–1279: ≤ 4 per row (6 levels → 3 + 3, PFF 4 + 3); rows are ruled by the full rows above them and the grid is
-     closed by one full-width rule, so a short last row (PFF) never leaves its rule stopping short; ≥ 1280: one row,
-     closed by the same rule — the schedule is drawn as one closed box in every layout */
-  @media (min-width: 768px) {
-    .keyplan__stops {
-      grid-template-columns: repeat(var(--_row), minmax(0, 1fr));
-      border-block-end: var(--lw-object) solid var(--line-2);
-    }
-    .keyplan__stop { padding-inline: var(--s-4); border-inline-start: var(--lw-object) solid var(--line-2); }
-    .keyplan__stop.is-lastrow { border-block-end: 0; }
-    .keyplan__stop.is-rowstart { border-inline-start: 0; padding-inline-start: 0; }
+  /* columns by measure: 2 from 44rem (704px); ≤ 6 levels take 3 from 55rem (880px), 7 levels 4 from 72rem (1152px) —
+     each keeps a column's text ≥ 27ch; one row of six never does (≤ 22ch even at the 1440px max width) */
+  @container keyplan (min-width: 44rem) {
+    .keyplan__stops { --_c: 2; }
+    .keyplan__stop:last-child { --_span: var(--_span2); }
+    .keyplan__stop:nth-child(2n + 1) { border-inline-start: 0; padding-inline-start: 0; }
   }
-  @media (min-width: 1280px) {
-    .keyplan--one-row .keyplan__stops { grid-template-columns: repeat(var(--_n), minmax(0, 1fr)); }
-    .keyplan--one-row .keyplan__stop { border-block-end: 0; }
-    .keyplan--one-row .keyplan__stop.is-rowstart { border-inline-start: var(--lw-object) solid var(--line-2); padding-inline-start: var(--s-4); }
-    .keyplan--one-row .keyplan__stop:first-child { border-inline-start: 0; padding-inline-start: 0; }
+  @container keyplan (min-width: 55rem) {
+    .keyplan:not(.keyplan--wide) .keyplan__stops { --_c: 3; }
+    .keyplan:not(.keyplan--wide) .keyplan__stop:last-child { --_span: var(--_span3); }
+    .keyplan:not(.keyplan--wide) .keyplan__stop { border-inline-start: var(--lw-object) solid var(--line-2); padding-inline-start: var(--_pad); }
+    .keyplan:not(.keyplan--wide) .keyplan__stop:nth-child(3n + 1) { border-inline-start: 0; padding-inline-start: 0; }
+  }
+  @container keyplan (min-width: 72rem) {
+    .keyplan--wide .keyplan__stops { --_c: 4; }
+    .keyplan--wide .keyplan__stop:last-child { --_span: var(--_span4); }
+    .keyplan--wide .keyplan__stop { border-inline-start: var(--lw-object) solid var(--line-2); padding-inline-start: var(--_pad); }
+    .keyplan--wide .keyplan__stop:nth-child(4n + 1) { border-inline-start: 0; padding-inline-start: 0; }
+  }
+  /* print: two columns on the sheet, whatever the band measures */
+  @media print {
+    .keyplan .keyplan__stops { --_c: 2; }
+    .keyplan .keyplan__stop:last-child { --_span: var(--_span2); }
+    .keyplan .keyplan__stop { display: flex; border-inline-start: var(--lw-object) solid var(--line-2); padding-inline: var(--_pad); }
+    .keyplan .keyplan__stop:nth-child(2n + 1) { border-inline-start: 0; padding-inline-start: 0; }
   }
 </style>

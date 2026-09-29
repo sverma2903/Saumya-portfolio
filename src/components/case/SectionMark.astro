@@ -4,10 +4,10 @@
  *
  *   (02)▾ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ▾(02)     bubbles 02 / A-101 at both ends,
  *   A-101                                                          A-101    heavy long–short cut line (--lw-cut),
- *   Empathize                                        LEVEL 02 · +00:36 · ≈ 2 min        view arrows pointing into the level
+ *   Empathize                                        LEVEL 02 · +00:36 · ≈ 2 MIN        view arrows pointing into the level
  *
- * The line drafts across once when the mark is ≥ 30% visible (clip-path, --dur-5, --ease-draft; scripts/case/levels.ts
- * adds .is-drawn). It is hidden only under html.js + Motion on + the case script running (html[data-case]), so it is
+ * The cut line drafts across once when the mark is ≥ 30% visible (clip-path on the line only, --dur-5, --ease-draft;
+ * scripts/case/levels.ts adds .is-drawn); the bubbles are placed whole, the end one as the line arrives. It is hidden only under html.js + Motion on + the case script running (html[data-case]), so it is
  * never missing: no JS / reduced motion → drawn statically; a fast scroll (> 3 viewports/s) completes it instantly.
  * Her label is the <h2> (tabindex -1: J/K and level links move focus here). The meta line is chrome.
  */
@@ -19,21 +19,24 @@ import MatchLine from '../symbols/MatchLine.astro';
 interface Props { index: number; id: string; label: string; sheet: string; elev: string; minutes: number }
 const { index, id, label, sheet, elev, minutes } = Astro.props;
 const nn = pad2(index + 1);
-// "Level 02 · +00:36 · ≈ 2 min": the minutes are set like every other minutes value on the page (lowercase mono)
-const meta = fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes }).split(' · ');
-const mins = meta.pop() ?? '';
+// "LEVEL 02 · +00:36 · ≈ 2 MIN" (SPEC §5.2.3): one label string, minutes in caps like every minutes value on the site
+const meta = fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes });
 ---
 <div class="section-mark" data-smark>
   <div class="section-mark__line" aria-hidden="true" data-chrome>
-    <Bubble n={nn} sheet={sheet} />
-    <svg class="section-mark__arrow" viewBox="0 0 12 10" aria-hidden="true" focusable="false"><path d="M0 0H12L6 10Z" /></svg>
+    <span class="section-mark__end section-mark__end--start">
+      <Bubble n={nn} sheet={sheet} />
+      <svg class="section-mark__arrow" viewBox="0 0 12 10" aria-hidden="true" focusable="false"><path d="M0 0H12L6 10Z" /></svg>
+    </span>
     <MatchLine class="section-mark__cut" />
-    <svg class="section-mark__arrow" viewBox="0 0 12 10" aria-hidden="true" focusable="false"><path d="M0 0H12L6 10Z" /></svg>
-    <Bubble n={nn} sheet={sheet} />
+    <span class="section-mark__end section-mark__end--stop">
+      <svg class="section-mark__arrow" viewBox="0 0 12 10" aria-hidden="true" focusable="false"><path d="M0 0H12L6 10Z" /></svg>
+      <Bubble n={nn} sheet={sheet} />
+    </span>
   </div>
   <div class="section-mark__head">
     <h2 id={`${id}-h`} class="section-mark__title t-chapter" tabindex="-1" data-v>{label}</h2>
-    <p class="section-mark__meta t-label"><Glyphs text={meta.join(' · ')} /> · <span class="section-mark__min t-code"><Glyphs text={mins} /></span></p>
+    <p class="section-mark__meta t-label"><Glyphs text={meta} /></p>
   </div>
 </div>
 
@@ -55,13 +58,23 @@ const mins = meta.pop() ?? '';
   .section-mark__arrow { flex: none; inline-size: 11px; block-size: 9px; fill: currentColor; margin-inline: -1px; }
   .section-mark__line :global(.section-mark__cut) { color: var(--ink); }
 
-  /* drafting-in: only once the case script is running (html[data-case]), with Motion on */
-  :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) .section-mark__line { clip-path: inset(0 100% 0 0); }
-  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn .section-mark__line {
+  .section-mark__end { flex: none; display: flex; align-items: center; }
+
+  /* drafting-in: only once the case script is running (html[data-case]), with Motion on. Like a drafter: the start
+     bubble is placed, the cut line is drawn across (only the line is wiped in, never a bubble), and the end arrow and
+     bubble are placed whole as the line arrives (a short fade timed to the end of the stroke). */
+  :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) :global(.section-mark__cut) { clip-path: inset(0 100% 0 0); }
+  :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) .section-mark__end { opacity: 0; }
+  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn :global(.section-mark__cut) {
     clip-path: inset(0 0 0 0);
-    transition: clip-path var(--dur-5) var(--ease-draft);
+    transition: clip-path var(--dur-5) var(--ease-draft) var(--dur-1);
   }
-  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn.is-instant .section-mark__line { transition: none; }
+  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn .section-mark__end--start { transition: opacity var(--dur-2) var(--ease-ui); }
+  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn .section-mark__end--stop {
+    transition: opacity var(--dur-2) var(--ease-ui) calc(var(--dur-1) + var(--dur-5) - var(--dur-2));
+  }
+  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn.is-instant :global(.section-mark__cut),
+  :global(html.js[data-case][data-motion='full']) .section-mark.is-drawn.is-instant .section-mark__end { transition: none; }
 
   .section-mark__head {
     display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
@@ -70,13 +83,13 @@ const mins = meta.pop() ?? '';
   .section-mark__title { margin: 0; outline-offset: var(--s-2); text-wrap: balance; }
   .section-mark__title:focus:not(:focus-visible) { outline: none; }
   .section-mark__meta { margin: 0; color: var(--ink-2); white-space: nowrap; }
-  .section-mark__min { font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); text-transform: none; }
 
   @media (max-width: 767.98px) {
     .section-mark__line { margin-block-end: var(--s-5); }
     .section-mark__head { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
   }
   @media print {
-    :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) .section-mark__line { clip-path: none; }
+    :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) :global(.section-mark__cut) { clip-path: none; }
+    :global(html.js[data-case][data-motion='full']) .section-mark:not(.is-drawn) .section-mark__end { opacity: 1; }
   }
 </style>

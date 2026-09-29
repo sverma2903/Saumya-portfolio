@@ -69,11 +69,18 @@ const p = chrome.wp5.plan;
   .omit-run:has(> .omit-run__body > :global(:is(.blk--media, .blk--stats, .blk--cards, .blk--callout, .blk--timeline, .blk--stories, .blk--insights, .blk--tabs, .blk--concept, .blk--feature, .blk--run, .blk--split):last-child)) + :global(.blk:not(.blk--h)) { margin-block-start: var(--flow-xl); }
   .omit-run:has(> .omit-run__body > :global(.blk--lede:last-child)) + :global(.blk:not(.blk--h)) { margin-block-start: var(--flow-l); }
 
-  /* Plan view: a closed run is just its break line — spaced like a paragraph between kept blocks */
-  :global(html[data-view='plan']) .omit-run:not(.is-open) { margin-block-start: var(--flow-s); }
-  :global(html[data-view='plan']) .omit-run:not(.is-open) + :global(.blk) { margin-block-start: var(--flow-s); }
-  :global(html[data-view='plan']) .omit-run:not(.is-open) + :global(:is(.blk--h, .blk--h3)) { margin-block-start: var(--flow-l); }
-  :global(html[data-view='plan']) .omit-run--silent:not(.is-open) { margin: 0; }
+  /* Plan view: a closed run is only its break line, with its own symmetric gap above and below (--s-6), whatever it
+     replaced — the transparent rhythm above is for Section view and open runs only (the break line would otherwise
+     take a figure's 64px on one side and a paragraph's 16px on the other, and hang off the block above). A heading
+     after it keeps its larger gap; a run that opens a chapter sits under the section mark's own gap. The doubled class
+     outranks the transparent-rhythm :has() rules, which it must override in Plan view. */
+  :global(html[data-view='plan'] .chapter) > .omit-run.omit-run:not(.is-open) { margin-block: var(--s-6) 0; }
+  :global(html[data-view='plan'] .chapter) > .omit-run.omit-run:not(.is-open) + :global(.blk.blk) { margin-block-start: var(--s-6); }
+  :global(html[data-view='plan'] .chapter) > .omit-run.omit-run:not(.is-open) + :global(.blk:is(.blk--h, .blk--h3)) { margin-block-start: var(--flow-l); }
+  :global(html[data-view='plan'] .chapter) > :global(.section-mark) + .omit-run.omit-run:not(.is-open) { margin-block-start: 0; }
+  /* a run with nothing countable (only spacers) has no break line: it takes no room, and the next block keeps a prose gap */
+  :global(html[data-view='plan'] .chapter) > .omit-run.omit-run--silent:not(.is-open) { margin: 0; }
+  :global(html[data-view='plan'] .chapter) > .omit-run.omit-run--silent:not(.is-open) + :global(.blk.blk) { margin-block-start: var(--flow-m); }
 
   @media (max-width: 1279.98px) {
     .breakline { grid-column: text; }

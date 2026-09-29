@@ -37,7 +37,12 @@ const segs = Array.from(document.querySelectorAll<HTMLElement>('[data-kp-seg]'))
 const stops = Array.from(document.querySelectorAll<HTMLElement>('[data-kp-stop]'));
 const marks = Array.from(document.querySelectorAll<HTMLElement>('[data-smark]'));
 const railMatch = document.querySelector<HTMLElement>('[data-rail-match]');
-const AT_FLOOR = 8; // px: the datum is "on" a floor line, whose tick then stands in for the datum's own level line
+// px: the datum is "at" a floor line, whose tick then stands in for the datum's own level line. The ▼ hangs ABOVE its
+// level (tip on y), so just below a floor line (every J/K or Go ↓ landing rests there) the ▼ would sit on that floor's
+// tick with its own rule a triangle's height under it (a doubled line): that band is the triangle's height plus a
+// margin (AT_BELOW); just above the next floor line the two rules would touch (AT_ABOVE).
+const AT_BELOW = 20;
+const AT_ABOVE = 8;
 const KEY = `sv:trace:${slug}`;
 
 // ── state ──
@@ -124,7 +129,8 @@ function frame(): void {
   if (datum && floorH.length) {
     const yy = floorTop[i] + (above ? 0 : p * floorH[i]);
     datum.style.setProperty('--_y', `${yy.toFixed(1)}px`);
-    const onFloor = Math.abs(yy - floorTop[i]) < AT_FLOOR || (i < n - 1 ? Math.abs(floorTop[i + 1] - yy) : Math.abs(floorTop[i] + floorH[i] - yy)) < AT_FLOOR;
+    const below = yy - floorTop[i];
+    const onFloor = (below > -AT_ABOVE && below < AT_BELOW) || Math.abs(floorTop[i] + floorH[i] - yy) < AT_ABOVE;
     if (onFloor !== datum.classList.contains('is-at-floor')) datum.classList.toggle('is-at-floor', onFloor);
   }
 }
@@ -174,9 +180,14 @@ function initKeyplan(): void {
     const x = t instanceof Element ? t.closest<HTMLElement>('[data-kp-stop], [data-kp-seg]') : null;
     return x ? Number(x.dataset.kpStop ?? x.dataset.kpSeg) : -1;
   };
+  // exactly one stop is lit besides the rust "current" one: the last thing the reader did wins (moving the pointer onto
+  // a stop takes over from keyboard focus, and focusing a Go ↓ takes over from the pointer)
   const light = (i: number, cls: 'is-hover' | 'is-focus'): void => {
-    segs.forEach((s, k) => s.classList.toggle(cls, k === i));
-    stops.forEach((s, k) => s.classList.toggle(cls, k === i));
+    const other = cls === 'is-hover' ? 'is-focus' : 'is-hover';
+    for (const list of [segs, stops]) list.forEach((s, k) => {
+      s.classList.toggle(cls, k === i);
+      if (i >= 0) s.classList.remove(other);
+    });
   };
   let hover = -1;
   kp.addEventListener('pointerover', (e) => {
@@ -185,7 +196,7 @@ function initKeyplan(): void {
     if (i !== hover) light((hover = i), 'is-hover');
   });
   kp.addEventListener('pointerleave', () => light((hover = -1), 'is-hover'));
-  kp.addEventListener('focusin', (e) => light(which(e.target), 'is-focus'));
+  kp.addEventListener('focusin', (e) => { hover = -1; light(which(e.target), 'is-focus'); });
   kp.addEventListener('focusout', () => light(-1, 'is-focus'));
   kp.addEventListener('click', (e) => {
     const seg = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-kp-seg]') : null;
