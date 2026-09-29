@@ -95,6 +95,11 @@ const m = chrome.wp4b.media;
     </aside>
   </div>
 </dialog>
+<script>
+  // the page-wide `sv:fig-open` listener + lazy opener: every page answers a figure-open request, including pages that
+  // render no <Plate> (home: the Viewport's ⤢). The viewer itself (detail.ts, panzoom) still loads on first use.
+  import '../../scripts/media/detail-open';
+</script>
 <style>
   /* ---------- the dialog: full viewport, top layer, a warm-black light table ---------- */
   .detail {

@@ -181,6 +181,10 @@ const canGL = () => {
 const drafted = () => { try { return sessionStorage.getItem('sv:drafted') === '1'; } catch { return false; } };
 const markDrafted = () => { try { sessionStorage.setItem('sv:drafted', '1'); } catch { /* private mode */ } };
 const waitIdle = () => new Promise<void>((r) => idle(r, 800));
+/** true while a view transition runs on this document (:active-view-transition; false where it is unsupported) */
+const inViewTransition = () => { try { return document.documentElement.matches(':active-view-transition'); } catch { return false; } };
+/** resolves on the first frame with no view transition running (at once when there is none) */
+const afterViewTransition = () => new Promise<void>((r) => { const tick = () => (inViewTransition() ? requestAnimationFrame(tick) : r()); tick(); });
 const GL_ATTRS: WebGLContextAttributes = { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false, powerPreference: 'low-power' };
 
 /** Boot: called once from CoverSheet.astro. */
@@ -200,8 +204,14 @@ export function initSitePlan(): void {
   // forced colours show the static drawing (CSS); don't run an invisible hero or leave a focusable, hidden plan box
   if (matchMedia('(forced-colors: active)').matches && html.dataset.gl === 'maybe') html.dataset.gl = 'no';
   if (html.dataset.gl === 'maybe') {
-    if (tryContext()) void boot(false);
-    else { html.dataset.gl = 'no'; root.dataset.heroFail = 'no WebGL2 context'; }
+    // arriving under a view transition (SM3 cut from another sheet): no WebGL context may be created until the cut has
+    // finished — Chromium drops a cross-document transition when the NEW page creates one while it is being revealed
+    // (integration finding; CoverSheet's parse-time probe stands down for the same reason)
+    void afterViewTransition().then(() => {
+      if (html.dataset.gl !== 'maybe') return; // Motion went off meanwhile
+      if (tryContext()) void boot(false);
+      else { html.dataset.gl = 'no'; root.dataset.heroFail = 'no WebGL2 context'; }
+    });
     return;
   }
   // Static at load (reduced motion, Motion off, Save-Data…). If Motion is switched on later, come alive at the rest pose.
@@ -716,6 +726,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     lost = true; live = false;
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    if (leaving) return; // released on purpose while the page is left under a view transition: its still stands in
     html.dataset.gl = 'no';
     planEl!.removeAttribute('tabindex');
   });
@@ -727,6 +738,42 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     live = true; shown = false; needLayout = true;
     html.dataset.gl = 'maybe';
     kick();
+  });
+
+  // ── leaving A-000 under a view transition (SM3 "cut to sheet"; integration) ──
+  // Chromium skips a cross-document view transition whose OLD page still holds a live WebGL context: every cut away
+  // from the cover sheet was dropped (measured 0/5, 5/5 once the context is released). So when a transition is about
+  // to capture this page (pageswap carries it), the live frame is drawn once more and copied, pixel for pixel, into a
+  // 2D canvas that takes the GL canvas's place (a shallow clone: same scoped class, same box), and the context is
+  // released. The snapshot shows exactly what was on screen. Back from the bfcache, the copy goes and the context is
+  // restored (webglcontextrestored → live again, at the rest pose).
+  let leaving = false;
+  let still: HTMLCanvasElement | null = null;
+  let loseExt: WEBGL_lose_context | null = null;
+  addEventListener('pageswap', (e) => {
+    const vt = (e as Event & { viewTransition?: ViewTransition | null }).viewTransition;
+    if (!vt || !gl || lost) return;
+    leaving = true;
+    try {
+      if (shown && !needLayout) render(); // preserveDrawingBuffer is off: draw, then read in the same task
+      const copy = glCanvas.cloneNode(false) as HTMLCanvasElement;
+      copy.removeAttribute('data-gl-canvas');
+      copy.setAttribute('data-gl-still', '');
+      copy.width = glCanvas.width; copy.height = glCanvas.height;
+      if (shown) copy.getContext('2d')?.drawImage(glCanvas, 0, 0);
+      glCanvas.after(copy);
+      glCanvas.hidden = true;
+      still = copy;
+    } catch { /* the snapshot keeps whatever is painted */ }
+    loseExt = gl.getExtension('WEBGL_lose_context');
+    loseExt?.loseContext();
+  });
+  addEventListener('pageshow', (e) => {
+    if (!(e as PageTransitionEvent).persisted || !leaving) return;
+    leaving = false;
+    still?.remove(); still = null;
+    glCanvas.hidden = false;
+    loseExt?.restoreContext();
   });
 
   // warm the pipeline once (a 1-px draw with nothing inked, then cleared), so the first visible frame does not stall

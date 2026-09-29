@@ -122,7 +122,7 @@ main:focus { outline: none; }
 /* Shared button (the §6.2 cta look). Her labels keep her casing. */
 .btn {
   display: inline-flex; align-items: center; gap: var(--s-2);
-  min-block-size: 44px; padding: 13px 18px;
+  min-block-size: var(--hit); padding: 13px 18px;
   font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
   font-variation-settings: var(--wdth-label); letter-spacing: .04em; line-height: 1.2;
   color: var(--ink); background: var(--sheet);

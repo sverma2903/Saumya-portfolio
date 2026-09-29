@@ -10,9 +10,9 @@
  *   · a mini title block: her title (Newsreader 420), her tag (label), the link (label, rust): Devpost ↗ /
  *     Open sheet A-105 → / Open sheet A-106 → (chrome) — and no award styling on any tag
  *   · every plate is an Enlarged-detail figure, FIG. 1–5 (the detail panel cites her title through `capId`)
- * The two videos carry controls for the P0 Plate only (scripts/play/pinboard.ts): the Teachable's
- * "Play · 0:48 · sound" and Pause / Mute / Restart; the Conversense Pause. When the media system (WP4b) renders the
- * plate it brings its own, and these stay hidden (see pinboard.ts).
+ * The two videos are managed by the media system (WP4b's Plate + video.ts): Conversense's Pause; Teachable's
+ * "Play · 0:48 · sound", then Pause / Mute / Restart. Its unplayed screen is a phone that is off, tinted here by her
+ * stage colour (--plate-screen-off). (Integration: the P0-Plate fallback player, scripts/play/pinboard.ts, is retired.)
  */
 import type { Media } from '../../lib/blocks';
 import { alt } from '../../data/alt';
@@ -29,14 +29,12 @@ interface Props {
 }
 const { item, n } = Astro.props;
 const p = chrome.wp6.play;
-const m4 = chrome.wp4b.media;
 const first = item.media[0];
 const top = item.media[item.media.length - 1];
 const conf = PINS[fileOf(first)];
 if (!conf) throw new Error(`PinItem: no board staging for ${fileOf(first)}`);
 const ft = facts(top);
 const video = ft.kind === 'video';
-const sound = video && !!stagingOf(top).video?.audio;
 const id = `pin-${n}`;
 const fig = { no: fill(p.fig, { n }).toUpperCase(), capId: `${id}-t` };
 const a = alt(fileOf(top));
@@ -45,8 +43,6 @@ const da = video ? deviceAspect(ft.w, ft.h, frame === 'bezel-dark' ? BEZEL.ring 
 const link = item.href
   ? { href: item.href, label: isExternal(item.href) ? p.devpost : item.href === '/orbit' ? p.openA105 : item.href === '/educademy' ? p.openA106 : undefined, ext: isExternal(item.href) }
   : undefined;
-/** the sound pill's units ("Play", "0:48", "sound"): one line with dots when the phone is wide enough, else stacked */
-const soundUnits = p.teachablePlay.split(' · ');
 /** a plain-colour stage tints the unplayed screen (a phone that is off, catching the room's colour) */
 const flatTone = /^#[0-9a-f]{3,8}$/i.test(item.tone) ? item.tone : undefined;
 const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { ...top, pad: conf.pad }] : item.media;
@@ -59,17 +55,6 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
       {conf.kind === 'device' && (
         <div class="pin__device" style={`--_da: ${da}`}>
           <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />
-          {sound && (
-            <button type="button" class="pin__sound" data-pin-sound data-js-only hidden>
-              <Icon name="play" size={14} />
-              <span class="sr-only">{p.teachablePlay}</span>
-              <span class="pin__sl" aria-hidden="true">
-                {soundUnits.map((u, i) => (
-                  <>{i > 0 && <span class="pin__dot" aria-hidden="true">·</span>}<span class="pin__su">{u}</span></>
-                ))}
-              </span>
-            </button>
-          )}
         </div>
       )}
       {conf.kind === 'scaled' && (
@@ -79,21 +64,6 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
         <Plate layers={layers} stage={item.tone} aspect={conf.box} alt={a} fig={fig} class="pin__plate" />
       )}
       {conf.kind === 'natural' && <Plate layers={item.media} alt={a} fig={fig} class="pin__plate" />}
-      {video && (
-        <div class="pin__ctl" role="group" aria-label={p.playerLabel} data-pin-ctl data-js-only hidden>
-          <button type="button" class="pin__btn" data-pin-toggle aria-label={p.pause} data-l-pause={p.pause} data-l-play={p.resume}>
-            <Icon name="pause" size={16} class="pin__i--pause" /><Icon name="play" size={16} class="pin__i--play" />
-          </button>
-          {sound && (
-            <button type="button" class="pin__btn" data-pin-mute aria-pressed="false" aria-label={p.mute}>
-              <Icon name="sound-on" size={16} class="pin__i--on" /><Icon name="sound-off" size={16} class="pin__i--off" />
-            </button>
-          )}
-          {sound && (
-            <button type="button" class="pin__btn" data-pin-restart aria-label={p.restart}><Icon name="restart" size={16} /></button>
-          )}
-        </div>
-      )}
     </div>
   </div>
   <div class="pin__tb">
@@ -168,92 +138,14 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
     aspect-ratio: var(--_da);
   }
   .pin__device > :global(.pin__plate) { inline-size: 100%; }
-  /* P0 Plate only (its <video> is a direct child of .plate): the frames the media system draws for these two files —
-     inert once WP4b's Plate renders them (its media sits inside .plate__mat › .plate__view) */
-  .pin__device > :global(.plate--phone-video) > :global(video) { border-radius: 5% / 2.3%; }
-  .pin__device > :global(.plate--bezel-dark:has(> video)) {
-    padding: 3.6%;
-    border-radius: 12% / 5.65%;
-    background: var(--bezel-dark, var(--detail-bg));
-    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
-  }
-  /* the unplayed screen (preload=none, no poster) is a phone that is off: dark glass a shade lifted from the bezel and
-     tinted by her stage colour, a finished surface under the Play button (no placeholder X: that reads as a failed
-     asset); once a frame is decoded the video paints over it */
-  .pin__device > :global(.plate--bezel-dark:has(> video)) > :global(video) {
-    background: color-mix(in oklab, var(--bezel-dark, var(--detail-bg)) 82%, var(--_tone, var(--ink-3)));
+  /* the unplayed Teachable screen is a phone that is off (WP4b's Plate draws it): dark glass a shade lifted from the
+     bezel and tinted by her stage colour, a finished surface under the Play button */
+  .pin__device {
+    --plate-screen-off: color-mix(in oklab, var(--bezel-dark) 82%, var(--_tone, var(--ink-3)));
   }
 
   /* ExpressLanes: 1.2× inside its 1:1 stage (the stage clips only her uniform #f2f2f2 margin, §6.4 #2) */
   .pin__stage > :global(.pin__plate--scaled) { scale: var(--_scale); }
-
-  /* ---------- the Teachable player (P0 Plate fallback, see pinboard.ts) ---------- */
-  /* sized from the device, not from its words: it keeps ≥ --s-3 of clear bezel each side at every width. On a phone
-     wide enough it is one line, "▶ PLAY · 0:48 · SOUND"; on a narrow one it stacks its units, whole, on centred lines
-     (▶ / PLAY / 0:48 / SOUND) and drops the dots — no line ever breaks inside a unit or after a dot. Its name is the
-     full string, from visually hidden text (the drawn units are aria-hidden). */
-  .pin__device { container-type: inline-size; }
-  .pin__sound {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    translate: -50% -50%;
-    z-index: calc(var(--z-raised) + 1);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--s-2);
-    inline-size: max-content;
-    max-inline-size: calc(100% - 2 * var(--s-3));
-    min-block-size: 44px;
-    padding: var(--s-2) var(--s-3);
-    text-align: center;
-    font-family: var(--font-sans);
-    font-size: var(--fs-label-lg);
-    font-weight: var(--wt-label-lg);
-    font-variation-settings: var(--wdth-label);
-    letter-spacing: var(--tr-label-lg);
-    text-transform: uppercase;
-    color: var(--ink);
-    background: var(--sheet);
-    border: var(--lw-border) solid var(--ink);
-  }
-  .pin__sl { display: inline-flex; align-items: baseline; gap: var(--s-1); white-space: nowrap; }
-  .pin__su { white-space: nowrap; }
-  .pin__dot { color: var(--ink-3); }
-  :global(.pin__sound > svg) { flex: none; }
-  /* a narrow phone: the icon over the units, one unit per line, no dots */
-  @container (max-width: 219.98px) {
-    .pin__sound { flex-direction: column; gap: var(--s-1); padding-inline: var(--s-2); }
-    .pin__sl { flex-direction: column; align-items: center; gap: 0; line-height: 1.25; }
-    .pin__dot { display: none; }
-  }
-  .pin__sound:hover { color: var(--rust-deep); }
-  .pin__ctl {
-    /* in the stage's margin beside the device, level with its foot: the controls never lie on her pixels */
-    position: absolute;
-    inset-inline-end: var(--s-3);
-    inset-block-end: calc((100% - var(--_dh, 84%)) / 2);
-    z-index: calc(var(--z-raised) + 1);
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-1);
-  }
-  .pin__ctl[hidden], .pin__sound[hidden] { display: none; }
-  .pin__btn {
-    display: grid;
-    place-items: center;
-    inline-size: calc(var(--s-6) + var(--s-1));
-    block-size: calc(var(--s-6) + var(--s-1));
-    color: var(--ink);
-    background: var(--sheet);
-    border: var(--lw-object) solid var(--line-3);
-  }
-  .pin__btn:hover { color: var(--rust-deep); }
-  .pin__btn :global(svg) { grid-area: 1 / 1; }
-  .pin__btn[data-state='paused'] :global(.pin__i--pause), .pin__btn:not([data-state='paused']) :global(.pin__i--play) { visibility: hidden; }
-  /* Mute is a toggle: pressed = muted (the sound-off drawing), not pressed = sound on */
-  .pin__btn[aria-pressed='true'] :global(.pin__i--on), .pin__btn[aria-pressed='false'] :global(.pin__i--off) { visibility: hidden; }
-  @media (pointer: coarse) { .pin__btn { inline-size: 44px; block-size: 44px; } }
 
   /* ---------- the mini title block ---------- */
   .pin__tb {
@@ -283,7 +175,7 @@ const layers = conf.kind === 'layered' ? [{ ...first, fit: 'fill' as const }, { 
   }
   .pin__link span { text-decoration: underline; text-decoration-color: currentColor; text-decoration-thickness: var(--lw-object); }
   .pin__link:hover { color: var(--rust-deep); }
-  @media (pointer: coarse) { .pin__link { min-block-size: 44px; } }
+  @media (pointer: coarse) { .pin__link { min-block-size: var(--hit); } }
 
   :global(html[data-theme='dusk']) .pin { --_tape: color-mix(in oklab, var(--rust-2) 22%, var(--plate)); --_tape-o: 0.55; }
   @media (forced-colors: active) {

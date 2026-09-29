@@ -52,9 +52,6 @@ const meta = fill(chrome.wp5.case.levelMeta, { nn, elev, m: minutes });
     margin-block-end: var(--s-6);
   }
   .section-mark__line :global(.bubble) { color: var(--ink); }
-  /* a section mark's bubbles carry the sheet number ("A-101"): one step larger than a detail bubble (--s-7, 48px), so
-     the number sits clear of the circle in its lower half-chord (at 44px its first and last glyphs touch the stroke) */
-  @media (min-width: 768px) { .section-mark__line :global(.bubble) { --_d: var(--s-7); } }
   .section-mark__arrow { flex: none; inline-size: 11px; block-size: 9px; fill: currentColor; margin-inline: -1px; }
   .section-mark__line :global(.section-mark__cut) { color: var(--ink); }
 

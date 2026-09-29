@@ -17,9 +17,6 @@ import PinItem from './PinItem.astro';
     {play.items.map((it, i) => <PinItem item={it} n={i + 1} />)}
   </ul>
 </div>
-<script>
-  import '../../scripts/play/pinboard';
-</script>
 <style>
   .board { padding-block-end: var(--s-10); }
   .board__list {

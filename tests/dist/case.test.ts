@@ -48,7 +48,9 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
     if (rev) expect(page().getElementById(rev.getAttribute('href')!.slice(1))?.getAttribute('data-block')).toBe('callout');
     const plate = head.querySelector('.case-head__plate [data-plate]')!;
     expect(plate.getAttribute('style')).toContain(`view-transition-name: plate-${slug}`);
-    expect(plate.getAttribute('style')).toContain('aspect-ratio: 1.6');
+    // the 16:10 box is the plate's view (WP4b's Plate, SPEC §6.3: the root carries the VT name, frame and controls;
+    // `.plate__view` is the exact-aspect box on her stage). P0's stub put the aspect on the root.
+    expect(plate.querySelector('.plate__view')?.getAttribute('style')).toContain('aspect-ratio: 1.6');
     const top = COVERS[slug].layers[COVERS[slug].layers.length - 1].file;
     expect(page().querySelector('link[rel=preload][as=image]')?.getAttribute('href')).toBe(srcOf(top));
     expect(text(head.querySelector('.titleblock__sheet'))).toBe(`${sheetBySlug(slug).no} · ${r.levels} levels · ≈ ${r.minutes} min`);

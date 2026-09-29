@@ -110,6 +110,8 @@ const ctlVariant: 'bar' | 'below' | 'overlay' = matFrame === 'browser' ? 'bar' :
 const secs = stTop.gif?.secs ?? stTop.video?.secs;
 const m = chrome.wp4b.media;
 const soundLabel = audio ? fillTpl(m.playSound, { t: clock(secs ?? 0) }) : '';
+// its drawn units ("Play", "0:48", "sound"): one line with dots on a wide screen, stacked whole on a narrow one
+const soundUnits = soundLabel ? soundLabel.split(' · ') : [];
 
 // ---- the view: the exact aspect box (staged: the stage box; natural: the file itself) ----
 const viewAspect = staged ? boxAspect : ft.w / ft.h;
@@ -197,7 +199,7 @@ const rootAttrs = {
 };
 ---
 <Wrap {...wrapProps}>
-  <div class:list={['plate', `plate--${matFrame}`, `plate--${motionKind}`, devInStage && `plate--dev-${device}`, { 'plate--staged': staged, 'plate--natural': !staged }, cls]} style={rootStyle || undefined} {...rootAttrs}>
+  <div class:list={['plate', `plate--${matFrame}`, `plate--${motionKind}`, devInStage && `plate--dev-${device}`, { 'plate--staged': staged, 'plate--natural': !staged, 'plate--sound': audio }, cls]} style={rootStyle || undefined} {...rootAttrs}>
     <Win>
       {controls && ctlVariant === 'bar' && <MediaControls slot="tools" variant="bar" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
       {controls && ctlVariant === 'bar' && secs && <MediaControls slot="progress" part="progress" variant="bar" secs={secs} />}
@@ -254,8 +256,12 @@ const rootAttrs = {
           })}
           {motionKind === 'gif' && !(devInStage && kindOf(top) === 'gif') && <canvas class="plate__poster" style={topStyle} hidden aria-hidden="true"></canvas>}
           {audio && (
-            <button type="button" class="plate__sound" data-mc-sound data-js-only aria-label={soundLabel}>
-              <Icon name="play" class="plate__sound-i" /><span aria-hidden="true">{soundLabel}</span>
+            <button type="button" class="plate__sound" data-mc-sound data-js-only>
+              <Icon name="play" class="plate__sound-i" />
+              <span class="sr-only">{soundLabel}</span>
+              <span class="plate__sound-l" aria-hidden="true">
+                {soundUnits.map((u, i) => (<Fragment>{i > 0 && <span class="plate__sound-dot">·</span>}<span>{u}</span></Fragment>))}
+              </span>
             </button>
           )}
           {dims && <DimString part="lines" rect={dimRect} w={ft.w} h={ft.h} />}
@@ -337,20 +343,37 @@ const rootAttrs = {
     background: transparent;
   }
 
-  /* the Teachable video's unplayed state: a centred "Play · 0:48 · sound" on the bezel (a click plays with sound) */
+  /* The narrated video before its first play (Teachable, SPEC §5.4: "the bezel plus a centred button"): a phone that
+     is off. Its screen is dark glass a shade lifted from the bezel (a host may tint it, --plate-screen-off: Play tints
+     it with her stage colour), with no drafting X and no file facts — on a device's screen they read as a failed
+     asset. "Play · 0:48 · sound" is the only thing on it, centred and sized from the device: one line with dots on a
+     wide screen, its units stacked whole (▶ / PLAY / 0:48 / SOUND, no dots) on a narrow one; never wider than the
+     screen less --s-3 each side. Its name is the full string (visually hidden text; the drawn units are aria-hidden). */
+  .plate--sound .plate__view { container: plate-screen / inline-size; }
+  .plate--sound:not([data-played]) .plate__view {
+    background: var(--plate-screen-off, color-mix(in oklab, var(--bezel-dark) 86%, var(--ink-3)));
+  }
+  .plate--sound:not([data-played]) .plate__view > :global(.ph) { display: none; }
   .plate__sound {
-    /* just below the centre, so the drafting X's file label (dims · format · size, centred) stays readable above it */
-    position: absolute; inset: calc(50% + var(--s-5)) auto auto 50%; translate: -50% 0; z-index: calc(var(--z-raised) + 1);
-    display: inline-flex; align-items: center; gap: var(--s-2);
-    min-block-size: var(--hit); padding: var(--s-2) var(--s-4);
+    position: absolute; inset: 50% auto auto 50%; translate: -50% -50%; z-index: calc(var(--z-raised) + 1);
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+    inline-size: max-content; max-inline-size: calc(100% - 2 * var(--s-3));
+    min-block-size: var(--hit); padding: var(--s-2) var(--s-3);
     font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
     font-variation-settings: var(--wdth-label); letter-spacing: var(--tr-label-lg); text-transform: uppercase;
-    white-space: nowrap;
+    text-align: center;
     color: var(--ink); background: var(--sheet);
     border: var(--lw-border) solid var(--ink);
   }
+  .plate__sound-l { display: inline-flex; align-items: baseline; gap: var(--s-1); white-space: nowrap; }
+  .plate__sound-dot { color: var(--ink-3); }
+  @container plate-screen (max-width: 219.98px) {
+    .plate__sound { flex-direction: column; gap: var(--s-1); padding-inline: var(--s-2); }
+    .plate__sound-l { flex-direction: column; align-items: center; gap: 0; line-height: var(--lh-label); }
+    .plate__sound-dot { display: none; }
+  }
   .plate__sound:hover { color: var(--rust-deep); }
-  .plate__sound :global(.plate__sound-i) { inline-size: var(--s-4); block-size: var(--s-4); }
+  .plate__sound :global(.plate__sound-i) { flex: none; inline-size: var(--s-4); block-size: var(--s-4); }
   :global(.plate[data-played]) .plate__sound { display: none; }
   /* before its first play, the sound video offers only "Play · 0:48 · sound"; then Pause, Restart and Mute appear */
   .plate:has(.plate__sound):not([data-played]) :global(:is(.mc, .mprog)) { display: none; }

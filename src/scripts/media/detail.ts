@@ -74,7 +74,9 @@ function kindOfFmt(fmt: string): Kind {
 }
 
 function levelOf(el: Element): { href: string; text: string } | null {
-  const sec = el.closest<HTMLElement>('section[id]');
+  // the nearest titled part of the sheet: a case chapter (section#id, its h2), or on About the love the figure belongs
+  // to (article#historical-fiction…, her h3) rather than the band around it (integration: WP6 review note)
+  const sec = el.closest<HTMLElement>('article[id][aria-labelledby], section[id]');
   const block = el.closest<HTMLElement>('.blk[id], [id].blk--run') ?? el.closest<HTMLElement>('[id]');
   const sheet = document.querySelector('.sheetno')?.textContent?.trim() ?? '';
   const label = sec ? (document.getElementById(`${sec.id}-h`)?.textContent ?? sec.querySelector('h2')?.textContent ?? '').trim() : '';

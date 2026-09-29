@@ -59,7 +59,8 @@ const hasGif = layers.some((l) => l.gif);
 <style>
   .icard__plate, .icard__logo { display: none; }
   @media (max-width: 1023.98px) {
-    .icard__plate { display: block; grid-area: plate; view-transition-name: var(--_vt, none); }
+    /* named below 1024 only (the Viewport owns the name above); the class joins it to the plate morph (transitions.css) */
+    .icard__plate { display: block; grid-area: plate; view-transition-name: var(--_vt, none); view-transition-class: plate; }
     .icard__box { position: relative; display: block; aspect-ratio: 1.6; overflow: hidden; }
     .icard__layer { position: absolute; display: block; max-inline-size: none; }
     /* a layer waiting for its src draws nothing (no broken-image box) */

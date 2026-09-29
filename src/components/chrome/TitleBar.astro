@@ -37,7 +37,7 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     {page.sheetTitleIsHers
       ? <><span class="titlebar__title" data-v data-fit-title>{page.sheetTitle}</span><span class="titlebar__title titlebar__cut" aria-hidden="true" data-fit-cut hidden></span></>
       : page.kind === 'home'
-        ? <span class="titlebar__title" data-home-title data-cover={t.coverSheet} data-index={t.drawingIndex}>{page.sheetTitle}</span>
+        ? <span class="titlebar__title" data-home-title data-t-cover={t.coverSheet} data-t-index={t.drawingIndex}>{page.sheetTitle}</span>
         : <span class="titlebar__title">{page.sheetTitle}</span>}
     {page.kind === 'case' && (
       <span class="titlebar__level" data-titlebar-level hidden>
@@ -80,7 +80,7 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     new IntersectionObserver((entries) => {
       const e = entries[entries.length - 1];
       const line = e.rootBounds ? e.rootBounds.bottom : innerHeight * 0.4;
-      const name = (e.boundingClientRect.top <= line ? homeTitle.dataset.index : homeTitle.dataset.cover) ?? '';
+      const name = (e.boundingClientRect.top <= line ? homeTitle.dataset.tIndex : homeTitle.dataset.tCover) ?? '';
       if (name && homeTitle.textContent !== name) homeTitle.textContent = name;
     }, { rootMargin: '0px 0px -60% 0px' }).observe(index);
   }

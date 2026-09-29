@@ -5,15 +5,16 @@
  *     pixels already decoded never wait: a cached image is marked ready at once, with no fade)
  *   · hands every managed GIF/video plate to gif.ts / video.ts (plates hosted by a walkthrough are left to it)
  *   · the controls: Pause/Play, Restart, Mute, "Play · 0:48 · sound", Enlarge — one delegated click listener
- *   · Enlarged detail: [data-fig] plate buttons, the Enlarge control, `sv:fig-open` (the I key, the home Viewport's ⤢)
- *     → import('./detail') on first use (the viewer and panzoom are lazy), then open
+ *   · Enlarged detail: [data-fig] plate buttons and the Enlarge control → openDetail (detail-open.ts: import('./detail')
+ *     on first use — the viewer and panzoom are lazy — then open). `sv:fig-open` (the I key, the home Viewport's ⤢) is
+ *     answered by detail-open.ts itself, which DetailViewer loads on every page
  *   · a plate inside a link or button (a home card) can't carry controls (no nested interactive elements), so it is
  *     marked data-still: its GIF shows the poster frame and its video the first frame — nothing loops that can't be
  *     paused (WCAG 2.2.2); the moving original lives, with its controls, on the case page
  *   · print: every managed source is attached first, so a printout shows frames, never voids
  */
 import { $$, ready } from '../core/dom';
-import { listen } from '../core/bus';
+import { openDetail } from './detail-open';
 import { registerShortcut } from '../core/keys';
 import { manageGif, restartGif, toggleGif, isManagedGif, mountAllForPrint } from './gif';
 import { manageVideo, restartVideo, toggleVideo, playWithSound, toggleMute, isManagedVideo, attachAllForPrint } from './video';
@@ -73,14 +74,9 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Enlarged detail (lazy) ----------
-type DetailApi = { open: (el: Element, trigger?: HTMLElement | null) => void };
-let detail: Promise<DetailApi> | null = null;
-export function openDetail(el: Element, trigger?: HTMLElement | null): void {
-  const from = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-  detail ??= import('./detail') as Promise<DetailApi>;
-  detail.then((d) => d.open(el, from)).catch(() => { detail = null; });
-}
-listen('sv:fig-open', ({ el }) => openDetail(el));
+// the opener and the page-wide `sv:fig-open` listener live in detail-open.ts, which DetailViewer loads on every page
+// (the home Viewport's ⤢ has no <Plate> to bring this module along)
+export { openDetail };
 
 /**
  * I: the figure nearest the viewport centre (WP1 registers the same key through sv:fig-open; either path lands here).

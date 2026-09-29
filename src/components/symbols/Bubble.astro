@@ -1,9 +1,12 @@
 ---
 /**
- * Bubble · P0 symbol. The detail bubble: a 44px circle with a horizontal diameter; number on top (Plex Mono 12),
- * sheet below (Plex Mono, 11.5 = the minimum text size). `size="sm"` (and every bubble below 768px) is 36px and
- * shows the top number only. It is chrome: aria-hidden + data-chrome. Wrap it in a link with an aria-label when
- * it is a permalink.
+ * Bubble · P0 symbol. The detail bubble: a 48px (--s-7) circle with a horizontal diameter; number on top (Plex Mono
+ * 12), sheet below (Plex Mono, 11.5 = the minimum text size, set a hair tight). `size="sm"` (and every bubble below
+ * 768px) is 36px and shows the top number only. It is chrome: aria-hidden + data-chrome. Wrap it in a link with an
+ * aria-label when it is a permalink.
+ * Integration: 48px, not the spec's 44px — at 44px a five-character sheet id ("A-101", "B-100") meets the circle's
+ * stroke in the lower half-chord (0.9px measured; WP2/WP5/WP6 notes). At 48px with −0.04em tracking it stands ≥ 3px
+ * clear. Layouts that compute with the diameter read the same token (DrawingIndex --_bub, Heading --_d).
  */
 interface Props {
   n: string | number;
@@ -18,7 +21,7 @@ const { n, sheet, size = 'md', class: cls } = Astro.props;
 </span>
 <style>
   .bubble {
-    --_d: 44px;
+    --_d: var(--s-7);
     position: relative; flex: none;
     display: inline-grid; grid-template-rows: 1fr 1fr; place-items: center;
     inline-size: var(--_d); block-size: var(--_d);
@@ -31,7 +34,7 @@ const { n, sheet, size = 'md', class: cls } = Astro.props;
     border-block-start: var(--lw-object) solid currentColor;
   }
   .bubble__n { align-self: end; padding-block-end: 2px; font-size: var(--fs-code); font-weight: 500; }
-  .bubble__s { align-self: start; padding-block-start: 1px; font-size: var(--fs-code-sm); color: var(--ink-2); letter-spacing: -0.02em; }
+  .bubble__s { align-self: start; padding-block-start: 1px; font-size: var(--fs-code-sm); color: var(--ink-2); letter-spacing: -0.04em; }
   .bubble--solo { grid-template-rows: 1fr; }
   .bubble--solo .bubble__n { align-self: center; padding: 0; }
   .bubble--sm { --_d: 36px; grid-template-rows: 1fr; }

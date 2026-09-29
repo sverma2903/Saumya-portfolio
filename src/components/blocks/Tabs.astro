@@ -92,7 +92,7 @@ const listLabel = fill(chrome.wp4a.tabs, { fig: ctx.fig ?? '' }).replace(/^,\s*/
     display: inline-flex;
     align-items: baseline;
     gap: var(--s-2);
-    min-block-size: calc(var(--s-7) - var(--s-1));   /* 44px target */
+    min-block-size: var(--hit);   /* 44px target */
     padding: var(--s-2) var(--s-4) var(--s-3);
     /* one outline at the mat/tab joint: no tab draws a top edge. An inactive tab hangs just below the mat's bottom
        edge (that edge is its top); the active tab starts ON it and covers it between its own sides, so its side

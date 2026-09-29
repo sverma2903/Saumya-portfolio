@@ -5,8 +5,8 @@
  * Header: a drafting DETAIL TITLE. The rule runs through the bubble's diameter (2 over A-000); the title "Drawing
  * index" stands on the rule; the computed summary `6 SHEETS · 2023–2026 · ≈ 65 MIN IN FULL` sits on it at the far right.
  * Under the rule, in the bubble's lower half, the list's first strip (SELECTED PROJECTS … READ) and the Viewport's strip
- * (VIEWPORT · A-101 ⤢) share one baseline. This keeps the header + first row inside the 140px the cover leaves at
- * 1440 × 900 (SM1: cover = 100svh − bar − 140px) without crowding.
+ * (VIEWPORT · A-101 ⤢) share one baseline. This keeps the header + first row inside the 144px the cover leaves at
+ * 1440 × 900 (SM1: cover = 100svh − bar − 140px; 144px at integration, see CoverSheet) without crowding.
  *
  * Groups: Selected Projects (her phrase) · Further projects · Also in the set (chrome). Rows: IndexRow (a row ≥ 1024,
  * a card below). Beside the list, the sticky Viewport (≥ 1024). viewport.ts wires activation (hover 60 ms dwell,
@@ -75,7 +75,7 @@ const summaryParts = summary.split(' · ').map((seg, i, all) => (i < all.length 
   /* ─────────────────────────────── shared ─────────────────────────────── */
   .dix {
     --_strip: var(--s-5);                          /* the strip under the header rule (group label · READ | VIEWPORT) */
-    --_bub: calc(var(--s-7) - var(--s-1));         /* Bubble (md) diameter, 44px: it sits on the rule, half above */
+    --_bub: var(--s-7);                            /* Bubble (md) diameter, 48px: it sits on the rule, half above */
     --_no: calc(var(--s-8) + var(--s-2));          /* the rows' sheet-number column (72px): the bubble's column */
     padding-block: var(--s-5) var(--s-9);
   }
@@ -111,7 +111,7 @@ const summaryParts = summary.split(' · ').map((seg, i, all) => (i < all.length 
 
   /* ─────────────────────────── ≥ 1024: list | Viewport ─────────────────────────── */
   @media (min-width: 1024px) {
-    /* the cover (SM1) leaves 140px above the fold at 1440 × 900 and already ends in ≥ 43px of its own air: the index
+    /* the cover (SM1) leaves 144px above the fold at 1440 × 900 and already ends in ≥ 39px of its own air: the index
        starts right away, and its first strip is one --s-4 line, so the header, the first strip, the A-101 title and
        both lines of its outcome are on screen */
     .dix { padding-block: 0 var(--s-6); }

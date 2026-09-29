@@ -30,7 +30,7 @@ const label = fill(chrome.wp4a.permalinkLabel, { n, sheet: ctx.sheet, title: blo
 </div>
 <style>
   .dt {
-    --_d: calc(var(--s-7) - var(--s-1));                                          /* Bubble diameter (36px below 768, see Bubble.astro) */
+    --_d: var(--s-7);                                                             /* Bubble diameter (36px below 768, see Bubble.astro) */
     --_lh: calc(var(--fs-h) * var(--lh-h));              /* one line of the title */
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

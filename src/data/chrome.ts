@@ -399,12 +399,6 @@ export const chrome = {
       /** screen-reader help and status for the tiles (visually hidden) */
       gridHint: 'Arrow keys move between tiles. Enter changes a material tile.',
       relaid: 'Tiles re-laid.',
-      /** the Teachable-AI player's controls (a fallback until the media system's own controls are present) */
-      pause: 'Pause',
-      resume: 'Play',
-      mute: 'Mute',
-      restart: 'Restart',
-      playerLabel: 'Video controls',
     },
   },
 

@@ -65,7 +65,14 @@ export function manageVideo(v: HTMLVideoElement, plate: HTMLElement): void {
   const x: Vid = { v, plate, src, sound: !v.muted || plate.querySelector('[data-mc-sound]') != null, near: false, visible: false, far: false, choice: still ? 'pause' : 'auto' };
   vids.set(plate, x);
   v.addEventListener('loadeddata', () => { if (plate.dataset.state === 'loading') setState(plate, v.paused ? 'ready' : 'playing'); });
-  v.addEventListener('playing', () => { plate.toggleAttribute('data-played', true); setState(plate, 'playing', { restartProgress: true, at: v.currentTime }); });
+  v.addEventListener('playing', () => {
+    // "Play · 0:48 · sound" hides on the first play; if it held focus, focus moves on to Pause (never dropped to <body>)
+    const pill = plate.querySelector<HTMLElement>('[data-mc-sound]');
+    const handOff = !!pill && document.activeElement === pill && !plate.hasAttribute('data-played');
+    plate.toggleAttribute('data-played', true);
+    setState(plate, 'playing', { restartProgress: true, at: v.currentTime });
+    if (handOff) plate.querySelector<HTMLElement>('[data-mc-toggle]')?.focus({ preventScroll: true });
+  });
   v.addEventListener('pause', () => { if (v.getAttribute('src')) setState(plate, v.readyState >= 2 ? 'paused' : 'loading'); });
   v.addEventListener('ended', () => setState(plate, 'paused'));
   observe(plate, (en) => { x.near = en.isIntersecting; evaluate(x); }, { rootMargin: viewportMargin(1.5) });

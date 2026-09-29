@@ -211,12 +211,12 @@ const subParts = t.keys.sub.split('{mod}');
     padding: var(--s-2) var(--s-3) var(--s-2) var(--s-5); border-block-end: var(--lw-object) solid var(--line-2);
   }
   .pl-title { margin: 0; color: var(--ink-2); }
-  .pl-esc { display: inline-grid; place-items: center; min-inline-size: calc(var(--s-7) - var(--s-1)); min-block-size: var(--s-6); color: var(--ink-2); }
+  .pl-esc { display: inline-grid; place-items: center; min-inline-size: var(--hit); min-block-size: var(--s-6); color: var(--ink-2); }
   .pl-esc:hover { color: var(--rust-deep); }
   /* touch has no Esc key: say Close */
   .pl-esc__touch { display: none; align-items: center; gap: var(--s-2); color: var(--ink); }
   @media (pointer: coarse) {
-    .pl-esc { min-block-size: calc(var(--s-7) - var(--s-1)); padding-inline: var(--s-3); }
+    .pl-esc { min-block-size: var(--hit); padding-inline: var(--s-3); }
     .pl-esc__key { display: none !important; }
     /* no keyboard hints on touch (the header already says Close) */
     .pl-foot__keys { display: none !important; }
@@ -275,7 +275,7 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-g__meta { color: var(--ink-3); }
   .pl-opt {
     position: relative; display: grid; grid-template-columns: 5.25rem minmax(0, 1fr) auto; align-items: baseline; gap: var(--s-3);
-    min-block-size: calc(var(--s-7) - var(--s-1)); padding: var(--s-2) var(--s-5); cursor: pointer; color: var(--ink);
+    min-block-size: var(--hit); padding: var(--s-2) var(--s-5); cursor: pointer; color: var(--ink);
   }
   .pl-opt[aria-selected='true'] { background: var(--paper-2); }
   /* the redline marks the current row */
@@ -315,7 +315,7 @@ const subParts = t.keys.sub.split('{mod}');
   .pl-tray { overflow: hidden; margin-inline: calc(var(--s-5) - var(--s-2)) var(--s-3); }
   .pl-tray__in { display: flex; flex-wrap: wrap; margin-inline-start: calc(-1 * var(--s-4)); }
   .pl-opt.pl-opt--chip {
-    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: calc(var(--s-7) - var(--s-1)); margin-inline-start: var(--s-4); padding: 0 var(--s-2);
+    display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: var(--hit); margin-inline-start: var(--s-4); padding: 0 var(--s-2);
     font-family: var(--font-sans); font-size: var(--fs-ui); color: var(--ink-2);
   }
   .pl-opt--chip::after {

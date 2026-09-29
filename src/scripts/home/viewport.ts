@@ -403,10 +403,14 @@ export function initViewport(): void {
     if (past > 1) {
       const r0 = rows[0].getBoundingClientRect();
       const line = Math.min(innerHeight * BAND, (r0.top + r0.bottom) / 2 + 2 * past);
-      pick = rows.find((r) => {
-        const b = r.getBoundingClientRect();
-        return b.top <= line && b.bottom > line;
-      });
+      // the last row the line has crossed: the row under the line, or — when the line falls in a group strip or the
+      // runway after a jump (End, a scrollbar drag, a restored scroll position) — the row a continuous scroll would
+      // have left active, so the Viewport never keeps a stale sheet
+      pick = undefined;
+      for (const r of rows) {
+        if (r.getBoundingClientRect().top > line) break;
+        pick = r;
+      }
     }
     if (pick) activate(keyOf(pick), 'anim');
   };

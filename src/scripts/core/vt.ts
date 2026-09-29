@@ -23,13 +23,15 @@ const KEY = 'sv:vt-plates';
      screen. An old plate left without a partner (its new end is off screen or absent) does not move: it is clipped by
      the same section cut as the old page around it (same curve, same duration, from its recorded rect), so it leaves
      with the old sheet instead of fading or sliding over the new one. */
+/* A plate is named inline (Plate.astro, the home Viewport) or through a custom property its component's CSS applies
+   (WP3's phone cards: `--_vt: plate-<slug>`, named only below 1024) — so the name is read from the computed style. */
 const namedPlates = () =>
-  Array.from(document.querySelectorAll<HTMLElement>('[style*="view-transition-name: plate-"], [style*="view-transition-name:plate-"]'));
+  Array.from(document.querySelectorAll<HTMLElement>('[style*="plate-"]')).filter((el) => plateName(el).startsWith('plate-'));
 const onScreen = (el: Element) => {
   const r = el.getBoundingClientRect();
   return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
 };
-const plateName = (el: HTMLElement) => el.style.viewTransitionName;
+function plateName(el: HTMLElement): string { return getComputedStyle(el).viewTransitionName || ''; }
 // un-named plates get their names back once the transition is over (or when the old page returns from the bfcache),
 // so the next navigation from this page can morph them again
 const unnamed: [HTMLElement, string][] = [];
