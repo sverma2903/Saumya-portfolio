@@ -16,7 +16,10 @@
 import type { Readout as R } from '../../data/sheets';
 interface Props {
   readout: R;
-  variant?: 'viewport' | 'row';
+  /** 'header' (polish r1): the case header's outcome, under the cover plate — the viewport setting, smaller, with only
+   *  the figures in `lines` (those her deck does not already state) and no sub-line */
+  variant?: 'viewport' | 'row' | 'header';
+  lines?: number[];
   /** P0 compatibility: srOnly === variant "row" */
   srOnly?: boolean;
   /** row variant: the figure the card shows below 1024 (IndexRow picks the first her outcome line does not already
@@ -25,7 +28,9 @@ interface Props {
 }
 const { readout, srOnly = false, show = 0 } = Astro.props;
 const variant = Astro.props.variant ?? (srOnly ? 'row' : 'viewport');
-const pair = readout.lines.length > 1;
+const header = variant === 'header';
+const figs = Astro.props.lines ? readout.lines.filter((_, i) => Astro.props.lines!.includes(i)) : readout.lines;
+const pair = figs.length > 1;
 const bars = readout.bars;
 const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
 ---
@@ -42,9 +47,9 @@ const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
     {bars && <span class="rdr__more" data-v>{bars.caption.text}</span>}
   </span>
 ) : (
-  <div class:list={['rd', { 'rd--pair': pair, 'rd--bars': !!bars }]}>
+  <div class:list={['rd', { 'rd--pair': pair, 'rd--bars': !!bars, 'rd--header': header }]}>
     <div class="rd__figs">
-      {readout.lines.map((l) =>
+      {figs.map((l) =>
         l.joined ? (
           <p class="rd__fig" data-v><span class="rd__v">{l.value.text}</span><span class="rd__l">{l.label.text}</span></p>
         ) : (
@@ -59,7 +64,7 @@ const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
         <p class="rd__cap" data-v>{bars.caption.text}</p>
       </div>
     )}
-    {readout.sub && <p class="rd__sub" data-v>{readout.sub.text}</p>}
+    {readout.sub && !header && <p class="rd__sub" data-v>{readout.sub.text}</p>}
   </div>
 )}
 
@@ -131,6 +136,11 @@ const toRatio = bars ? bars.ratio[1] / bars.ratio[0] : 0;
   .rd__bar--to .rd__track { inline-size: calc(100% * var(--_to)); background: var(--rust); }
   .rd__bar--to .rd__bl { color: var(--rust); }
   .rd__cap { font-style: italic; font-size: var(--fs-caption); }
+  /* the case header's outcome (polish r1): the same drawing a step smaller, under a hairline, beside the cover */
+  .rd--header { padding-block-start: var(--s-4); border-block-start: var(--lw-object) solid var(--line-2); }
+  .rd--header .rd__v, .rd--header.rd--pair .rd__v { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+  .rd--header .rd__fig { font-size: var(--fs-body-sm); }
+  .rd--header .rd__l { max-inline-size: calc(var(--measure) * 0.6); }
   @media (forced-colors: active) {
     .rd__track { forced-color-adjust: none; }
     .rd__track--from { background: none; box-shadow: inset 0 0 0 1px CanvasText; }

@@ -2,12 +2,12 @@
 /**
  * MatchLineNext · WP5. The end of a sheet (SPEC §5.2.4): the match line that carries you to the next one.
  *
- *   MATCH LINE ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ SEE SHEET A-102
- *   ┌──────────────────────────────┐   A-102 · NEXT SHEET
+ *   NEXT PROJECT ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ ━━ ━ A-102
+ *   ┌──────────────────────────────┐
  *   │ next cover plate 16:10       │   Auditable Approvals for Emergency Spending          ← her index title
  *   │ view-transition: plate-pff   │   Rebuilt a legacy budget platform into a system…      ← her index line
- *   └──────────────────────────────┘   [ Open sheet A-102 → ]
- *   ↑ A-000 Drawing index
+ *   └──────────────────────────────┘   [ Read case study → ]   ↑ All work
+ * (polish r1: plain words lead — "Next project", "Read case study", "All work" — and the sheet number is the tag.)
  *
  * Next = the following case in site.ts `cases`, cycling (sheets.ts nextCase). The link is her next title, stretched over
  * the whole card (one tab stop, a concise name, the card as the target; the drawn "Open sheet" button is its label for
@@ -29,7 +29,7 @@ const no = String(next.no);
   <p class="matchline__rule t-label" aria-hidden="true">
     <span class="matchline__rk">{l.matchLine}</span>
     <MatchLine class="matchline__cut" />
-    <span class="matchline__rk matchline__see">{fill(l.seeSheet, { no })}</span>
+    <span class="matchline__rk matchline__see t-code">{fill(l.seeSheet, { no })}</span>
   </p>
   <div class="matchline__card" data-matchline-card>
     {next.plate && (
@@ -38,13 +38,14 @@ const no = String(next.no);
       </span>
     )}
     <span class="matchline__text">
-      <span class="matchline__tag t-label"><span class="t-code matchline__no">{no}</span><span aria-hidden="true"> · </span>{l.nextSheet}</span>
       <a class="matchline__title" href={next.href} data-v set:html={keepCompounds(next.title.text)} />
       {next.line && <span class="matchline__line" data-v>{next.line.text}</span>}
-      <span class="btn matchline__btn" aria-hidden="true">{fill(l.open, { no })}<Icon name="arrow-right" /></span>
+      <span class="matchline__foot">
+        <span class="btn matchline__btn" aria-hidden="true">{fill(l.open, { no })}<Icon name="arrow-right" /></span>
+        <a class="matchline__up t-label" href="/#index"><span class="matchline__uparrow" aria-hidden="true">↑</span> {l.toIndex}</a>
+      </span>
     </span>
   </div>
-  <a class="matchline__up t-label" href="/#index"><span class="matchline__uparrow" aria-hidden="true">↑</span> {l.toIndex}</a>
 </section>
 
 <style>
@@ -52,6 +53,10 @@ const no = String(next.no);
      compound never breaks at its hyphen */
   .matchline__title :global(.nobr) { white-space: nowrap; }
   .matchline { padding-block: var(--space-chapter) 0; display: grid; gap: var(--s-6); }
+  /* the foot: the drawn way in, and the way back to all work beside it (polish r1: the sheet no longer ends on an
+     orphan link under the card). "All work" is its own link, raised over the card's stretched link. */
+  .matchline__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-6); margin-block-start: var(--s-3); }
+  .matchline__foot .matchline__up { position: relative; z-index: calc(var(--z-raised) + 1); }
   .matchline__rule { display: flex; align-items: center; gap: var(--s-4); margin: 0; color: var(--ink-2); }
   .matchline__rk { flex: none; }
   .matchline__see { color: var(--rust); }
@@ -68,8 +73,6 @@ const no = String(next.no);
     .matchline__card:hover .matchline__plate :global(.matchline__cover) { box-shadow: var(--shadow-lift); }
   }
   .matchline__text { display: grid; gap: var(--s-3); justify-items: start; align-content: center; }
-  .matchline__tag { display: inline-flex; align-items: baseline; gap: var(--s-1); color: var(--ink-2); }
-  .matchline__no { color: var(--rust); }
   .matchline__title {
     font-family: var(--font-serif); font-size: var(--fs-lede-lg); font-weight: var(--wt-lede-lg);
     line-height: var(--lh-lede-lg); letter-spacing: var(--tr-lede-lg); text-wrap: balance;
@@ -81,7 +84,7 @@ const no = String(next.no);
   .matchline__title:focus-visible { outline: none; }
   .matchline__card:has(.matchline__title:focus-visible) { outline: 2px solid var(--focus); outline-offset: var(--s-3); }
   .matchline__line { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-body-md); line-height: var(--lh-body-md); color: var(--ink-2); max-inline-size: 34em; text-wrap: pretty; }
-  .matchline__btn { margin-block-start: var(--s-3); background-image: var(--hatch-blush); background-repeat: no-repeat; background-size: 0% 100%; transition: background-size var(--dur-3) var(--ease-pen), color var(--dur-1) var(--ease-ui); }
+  .matchline__btn { background-image: var(--hatch-blush); background-repeat: no-repeat; background-size: 0% 100%; transition: background-size var(--dur-3) var(--ease-pen), color var(--dur-1) var(--ease-ui); }
   .matchline__btn :global(.icon) { transition: transform var(--dur-2) var(--ease-ui); }
   @media (hover: hover) {
     .matchline__card:hover .matchline__title { color: var(--rust-deep); }

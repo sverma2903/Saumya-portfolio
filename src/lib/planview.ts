@@ -8,8 +8,10 @@
  * | insights                                                | keep, title + sub only (titlesOnly)                         |
  * | concept                                                 | keep, title + first image (firstOnly)                       |
  * | split                                                   | recurse; omitted if both sides are omitted                  |
- * | p, small                                                | skim if ≥1 <strong> with ≥3 non-space chars, else omit      |
- * | list                                                    | skim if any item has such a <strong> (+ N items omitted)    |
+ * | p, small                                                | skim if ≥1 <strong> with ≥3 non-space chars, else omit;     |
+ * |                                                         | KEEP whole when a kept bold piece is a question (polish r1) |
+ * | list                                                    | skim if any item has such a <strong> (+ N items omitted);   |
+ * |                                                         | an item whose bold asks a question is kept whole (answer)   |
  * | media                                                   | keep if first media block after the section start or an h  |
  * | stories, spacer                                         | omit                                                        |
  *
@@ -28,6 +30,8 @@ export interface PlanInfo {
   skim?: string[];
   /** list skim: for each kept item, its strong pieces (items without a qualifying strong are dropped) */
   skimItems?: string[][];
+  /** list skim: for each kept item, true when it is kept whole (its bold asks a question: her answer stays with it) */
+  answered?: boolean[];
   /** list skim: number of items dropped → "+ N items omitted" (chrome) */
   dropped?: number;
   /** cards: titles + kickers only · insights: title + sub only · feature: html/items hidden */
@@ -69,6 +73,15 @@ export function skimJoins(html: string | undefined): SkimJoin[] {
   });
 }
 
+/**
+ * polish r1: her bold question is kept with its answer. Plan view keeps her bold; when a kept bold piece is a question
+ * ("Should bucket integrations be a separate tab or inline…?"), the rest of that paragraph or list item is her answer —
+ * what she decided — so the paragraph / item is kept whole rather than left as an open question.
+ */
+export function answered(html: string | undefined): boolean {
+  return boldPieces(html).some((p) => /\?\s*$/.test(stripHtml(p)));
+}
+
 const wordsOf = (...htmls: (string | undefined)[]) => words(htmls.map((h) => stripHtml(h)).join(' '));
 
 interface State { firstMediaAfterH: boolean }
@@ -102,14 +115,21 @@ function planBlock(b: Block, st: State): PlanInfo {
     case 'p':
     case 'small': {
       const skim = boldPieces(b.html);
+      if (skim.length && answered(b.html)) return { mode: 'keep', words: wordsOf(b.html), figures: 0 };
       if (skim.length) return { mode: 'skim', skim, words: wordsOf(...skim), figures: 0 };
       return { mode: 'omit', omitted: { paragraph: 1 }, words: 0, figures: 0 };
     }
     case 'list': {
-      const per = b.items.map(boldPieces);
-      const kept = per.filter((p) => p.length);
+      const per = b.items.map((it) => ({ it, pieces: boldPieces(it), whole: answered(it) }));
+      const kept = per.filter((p) => p.pieces.length);
+      if (kept.length && kept.length === b.items.length && kept.every((k) => k.whole)) {
+        return { mode: 'keep', words: wordsOf(...b.items), figures: 0 };
+      }
       if (kept.length) {
-        return { mode: 'skim', skimItems: kept, dropped: b.items.length - kept.length, words: wordsOf(...kept.flat()), figures: 0 };
+        return {
+          mode: 'skim', skimItems: kept.map((k) => k.pieces), answered: kept.map((k) => k.whole), dropped: b.items.length - kept.length,
+          words: wordsOf(...kept.map((k) => (k.whole ? k.it : k.pieces.join(' ')))), figures: 0,
+        };
       }
       return { mode: 'omit', omitted: { list: 1 }, words: 0, figures: 0 };
     }

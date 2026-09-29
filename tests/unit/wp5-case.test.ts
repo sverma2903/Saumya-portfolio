@@ -22,7 +22,7 @@ describe('Decision schedule (SM5b)', () => {
   const expected: Record<string, string[]> = {
     cloudflare: ['Ideate', 'Ideate', 'Ideate', 'Ideate', 'Ideate'],
     pff: ['Research', 'Ideate', 'Ideate', 'Prototype', 'Reflection'],
-    csbs: ['Overview', 'Reflection', 'Prototype'],
+    csbs: ['Reflection', 'Prototype'],
     'u-up': ['Ideate', 'Overview', 'Overview'],
     orbit: ['Ideate', 'Reflection', 'Ideate'],
     educademy: ['Overview', 'Overview', 'Empathize'],

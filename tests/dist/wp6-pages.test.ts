@@ -94,7 +94,7 @@ describe('/fun · C-100', () => {
     expect(new Set(tags.map((t) => t.getAttribute('class')))).toHaveProperty('size', 1);
     expect(root.querySelector('.pin--conversense')!.outerHTML).not.toMatch(/award|badge|trophy|medal/i);
   });
-  test('the legend: her 5 × 6 grid (14 letters, 16 material tiles), labelled; Re-lay needs JS', () => {
+  test('the legend: her 5 × 6 grid (14 letters, 16 material tiles), labelled; no Re-lay control', () => {
     const { root } = load('fun');
     const grid = root.querySelector('[data-xw]')!;
     expect(grid.getAttribute('role')).toBe('img');
@@ -102,7 +102,7 @@ describe('/fun · C-100', () => {
     expect(grid.querySelectorAll('[data-xw-cell]')).toHaveLength(30);
     expect(grid.querySelectorAll('.xw__cell--letter').map((c) => c.text.trim()).join('')).toBe('DATAEISIGNERDS');
     expect(grid.querySelectorAll('.xw__cell--mat')).toHaveLength(16);
-    expect(root.querySelector('[data-xw-relay]')!.hasAttribute('data-js-only')).toBe(true);
+    expect(root.querySelector('[data-xw-relay]')).toBeNull(); // polish r1: no Re-lay control
     expect(root.querySelectorAll('[data-key-word] .legend__word').map((w) => w.text)).toEqual(['DATA', 'DESIGN', 'AI', 'NERDS']);
   });
 });

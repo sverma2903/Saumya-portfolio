@@ -45,7 +45,7 @@ export interface Readout {
   lines: ReadoutLine[];                      // 1 or 2
   sub?: VerbatimRef;                         // a verbatim sub-line
   bars?: { from: VerbatimRef; to: VerbatimRef; caption: VerbatimRef; ratio: [number, number] };  // PFF 15 : 6
-  cited: string[];                           // chrome "Cited from" parts, e.g. ['Home card', 'A-101 Overview', 'Update']
+  cited: string[];                           // chrome "From" parts: her level, then the block, e.g. ['Overview', 'Update'] (polish r1: no sheet codes, no "Home card")
 }
 
 export interface Sheet {
@@ -139,7 +139,7 @@ export const sheets: Sheet[] = [
     readout: {
       lines: [{ value: ref('site', 'Two', 'selected[0].text'), label: ref('site', ' of the gaps identified have since been shipped independently.', 'selected[0].text'), joined: true }],
       sub: ref('cloudflare', 'Cloudflare has since introduced bulk emptying and folder deletion.', 'overview › callout "Update"'),
-      cited: ['Home card', 'A-101 Overview', 'Update'],
+      cited: ['Overview', 'Update'],
     },
     plate: COVERS.cloudflare, accent: ACCENTS.cloudflare, card: card(0),
   },
@@ -156,7 +156,7 @@ export const sheets: Sheet[] = [
         caption: ref('pff', '15 minutes → ~6 minutes', 'overview › Results › stats[0].html'),
         ratio: [15, 6],
       },
-      cited: ['A-102', 'Overview', 'Results'],
+      cited: ['Overview', 'Results'],
     },
     plate: COVERS.pff, accent: ACCENTS.pff, card: card(1),
   },
@@ -170,7 +170,7 @@ export const sheets: Sheet[] = [
         { value: ref('csbs', '50%', 'reflection › Impact Stats › stats[0].v'), label: ref('csbs', 'reduction in navigation time across 10 common searches', 'reflection › Impact Stats › stats[0].html') },
         { value: ref('csbs', '~ 600 K', 'reflection › Impact Stats › stats[1].v'), label: ref('csbs', 'industry users impacted (state and federal Resource Center)', 'reflection › Impact Stats › stats[1].html') },
       ],
-      cited: ['A-103', 'Reflection', 'Impact Stats'],
+      cited: ['Reflection', 'Impact Stats'],
     },
     plate: COVERS.csbs, accent: ACCENTS.csbs, card: card(2),
   },
@@ -181,7 +181,7 @@ export const sheets: Sheet[] = [
     tags: sel(3).tags.map((t, j) => ref('site', t, `selected[3].tags[${j}]`)),
     readout: {
       lines: [{ value: ref('site', '1st', 'selected[3].text'), label: ref('site', ' Place + Social Innovation Prize at XHacks by Carnegie Mellon University', 'selected[3].text'), joined: true }],
-      cited: ['Home card'],
+      cited: [],
     },
     plate: COVERS['u-up'], accent: ACCENTS['u-up'], card: card(3),
   },
@@ -195,7 +195,7 @@ export const sheets: Sheet[] = [
         { value: ref('orbit', '8', 'empathize › Methods › stats[0].v'), label: ref('orbit', 'in-depth faculty interviews', 'empathize › Methods › stats[0].html') },
         { value: ref('orbit', '5', 'empathize › Methods › stats[1].v'), label: ref('orbit', 'participatory design sessions', 'empathize › Methods › stats[1].html') },
       ],
-      cited: ['A-105', 'Empathize', 'Methods'],
+      cited: ['Empathize', 'Methods'],
     },
     plate: COVERS.orbit, accent: ACCENTS.orbit,
   },
@@ -206,7 +206,7 @@ export const sheets: Sheet[] = [
     tags: [ref('educademy', 'Education X Personal Project', 'meta Context'), ref('educademy', 'AUG 2023', 'meta Timeline')],
     readout: {
       lines: [{ value: ref('educademy', '~ 320 M', 'overview › Problem › stats[0].v'), label: ref('educademy', 'learners and students in India adversely affected by the pandemic', 'overview › Problem › stats[0].html') }],
-      cited: ['A-106', 'Overview', 'Problem'],
+      cited: ['Overview', 'Problem'],
     },
     plate: COVERS.educademy, accent: ACCENTS.educademy,
   },
@@ -266,6 +266,11 @@ export const keyplanOverrides: Record<string, KeyplanOverride> = {
   'csbs.reflection': { stat: { v: ref('csbs', '50%', 'reflection › Impact Stats › stats[0].v'), html: ref('csbs', 'reduction in navigation time across 10 common searches', 'reflection › Impact Stats › stats[0].html') } },
   'u-up.reflection': { text: ref('u-up', 'Problem framing and ethics matter as much as features.', 'reflection › list[0]') },
   'orbit.define': { text: ref('orbit', 'The Wall Walk generated a wealth of innovative ideas that guided our visioning session.', 'define › Walk Walk › p') },
+  // polish r1 (hiring review): where the rule picked a list of feature names or a scene-setting line, her sentence
+  // that says what the level produced
+  'cloudflare.prototype': { text: ref('cloudflare', 'A new Integrations tab surfaces connected Workers, Queues, and other compute services with directional labels, a first across any storage dashboard.', 'prototype › feature W1 › html') },
+  'pff.research': { text: ref('pff', 'Beyond workflow pain points, we realized InCEP users have varying levels of tech literacy.', 'research › p') },
+  'orbit.prototype': { text: ref('orbit', 'AI Assistant suggests activities to log based on connected sources', 'prototype › feature 03 › items[0]') },
 };
 
 /** Every VerbatimRef in this file (for the substrings test and the owner review list). */

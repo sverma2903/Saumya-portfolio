@@ -6,7 +6,8 @@
  *    chrome + aria-hidden: the <ol> already numbers it for assistive tech), centred on her first line, hanging in the
  *    gutter at ≥ 1600px (where the gutter leaves it ≥ 16px clear of the sticky Levels rail), inset below that.
  *    Used by her Reflection lessons and Cloudflare's decision questions.
- *  - Plan view skim: only the items that carry her bold, as her <strong> pieces (data-v) joined by a clay ⋯; keynotes
+ *  - Plan view skim: only the items that carry her bold, as her <strong> pieces (data-v) joined by a clay ⋯ (an item
+ *    whose bold is a question is kept whole, with her answer: planview.ts `answered`, polish r1); keynotes
  *    keep their ORIGINAL numbers (01, 03…). Then "+ N items omitted" (chrome, ink-3). A list without her bold is
  *    omitted by the Chapter (omit run).
  */
@@ -14,7 +15,7 @@ import LeaderList from './LeaderList.astro';
 import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
-import { boldPieces, skimJoins } from '../../lib/planview';
+import { answered, boldPieces, skimJoins } from '../../lib/planview';
 import { rich } from '../../lib/rich';
 import { pad2 } from '../../lib/text';
 import { chrome, fill } from '../../data/chrome';
@@ -24,7 +25,7 @@ const skimmed = ctx.plan.mode === 'skim';
 const html = block.items.map((it) => rich(it));
 // Plan view: the kept items (with their original numbers) and their bold pieces
 const kept = skimmed
-  ? block.items.map((it, i) => ({ n: i + 1, pieces: boldPieces(it), joins: skimJoins(it) })).filter((k) => k.pieces.length > 0)
+  ? block.items.map((it, i) => ({ n: i + 1, pieces: boldPieces(it), joins: skimJoins(it), whole: answered(it) ? html[i] : null })).filter((k) => k.pieces.length > 0)
   : [];
 const dropped = skimmed ? block.items.length - kept.length : 0;
 const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : fill(chrome.wp4a.itemsOmitted, { n: dropped });
@@ -40,7 +41,9 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
         </ol>
         {skimmed && (
           <ol class="keynotes skim" role="list">
-            {kept.map((k) => (
+            {kept.map((k) => k.whole ? (
+              <li class="keynotes__i" data-v><span class="keynotes__tag" aria-hidden="true" data-chrome>{pad2(k.n)}</span><span set:html={k.whole} /></li>
+            ) : (
               <li class="keynotes__i"><span class="keynotes__tag" aria-hidden="true" data-chrome>{pad2(k.n)}</span>{k.pieces.map((s, j) => (
                 <>{j > 0 && (k.joins[j - 1] === 'gap' ? <span class="keynotes__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span> : k.joins[j - 1] === 'space' ? ' ' : null)}<strong data-v set:html={s} /></>
               ))}</li>
@@ -51,7 +54,7 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
     ) : (
       <>
         <LeaderList items={html} class={skimmed ? 'full' : undefined} />
-        {skimmed && <LeaderList pieces={kept.map((k) => k.pieces)} joins={kept.map((k) => k.joins)} class="skim" />}
+        {skimmed && <LeaderList pieces={kept.map((k) => k.pieces)} joins={kept.map((k) => k.joins)} whole={kept.map((k) => k.whole)} class="skim" />}
       </>
     )}
     {skimmed && dropped > 0 && <p class="list__dropped skim" data-chrome>{droppedLabel}</p>}

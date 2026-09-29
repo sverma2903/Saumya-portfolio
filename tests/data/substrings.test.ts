@@ -7,6 +7,7 @@ import fixture from '../fixtures/original-site.json';
 import { cases, labels } from '@/content/site';
 import { sheetRefs, keyplanOverrides } from '@/data/sheets';
 import { decisions, THREE_CHANGES } from '@/data/decisions';
+import { ROLE_ROWS } from '@/data/roles';
 import { corpus, findBlock, isVerbatim, ref, type CaseSlug } from '@/lib/verbatim';
 import { normalize } from '@/lib/text';
 
@@ -45,6 +46,16 @@ describe('decisions.ts (SM5b): both halves verbatim and anchored', () => {
     const strongs = corpus('cloudflare').flatMap((e) => [...e.raw.matchAll(/<strong>([\s\S]*?)<\/strong>/g)].map((m) => normalize(m[1])));
     for (const s of THREE_CHANGES) expect(strongs).toContain(s);
   });
+});
+
+describe('roles.ts (polish r1): her heading and her clauses, verbatim', () => {
+  for (const [slug, row] of Object.entries(ROLE_ROWS)) {
+    test(slug, () => {
+      const cs = cases.find((c) => c.slug === slug)!;
+      expect(cs.sections.some((s) => s.blocks.some((b) => b.t === 'h' && b.text === row.heading)), `${slug} heading`).toBe(true);
+      for (const x of row.parts) expect(isVerbatim(ref(slug as CaseSlug, x)), `${slug}: "${x}"`).toBe(true);
+    });
+  }
 });
 
 describe('site.ts labels are verbatim from her original pages', () => {

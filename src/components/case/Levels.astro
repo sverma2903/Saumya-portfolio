@@ -17,6 +17,8 @@
  * scripts/case/levels.ts moves the rust datum ▼ continuously (y = y_i + p_i·h_i at the 40% reading line), paints the
  * reading trace (a --hatch-acc strip left of the line, trace_i = max(trace_i, p_i), per session), marks the current
  * floor (rust label, aria-current="location") and emits sv:level. No JS: a plain nav of floors that still links.
+ * Polish r1: the elevations (±00:00, +07:18, END +12:32) are no longer printed (visitors read them as timestamps); the
+ * floors keep their proportion, and the head keeps the case's minutes.
  */
 import Glyphs from '../symbols/Glyphs.astro';
 import Datum from '../symbols/Datum.astro';
@@ -24,13 +26,11 @@ import MatchLine from '../symbols/MatchLine.astro';
 import Icon from '../symbols/Icon.astro';
 import type { CaseReading } from '../../lib/reading';
 import { chrome, fill } from '../../data/chrome';
-import { formatElevation } from '../../lib/text';
 import { keepCompounds } from '../../lib/typeset';
 import ViewToggle from './ViewToggle.astro';
 interface Props { reading: CaseReading; sheetNo: string; next: { href: string; no: string; title: string } }
 const { reading, sheetNo, next } = Astro.props;
 const l = chrome.wp5.levels;
-const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
 ---
 <div class="rail" data-rail>
   <nav class="levels" aria-label={l.title} data-levels-rail data-slug={reading.slug}>
@@ -43,13 +43,13 @@ const end = formatElevation(reading.sections.reduce((a, s) => a + s.sec, 0));
         {reading.sections.map((s, i) => (
           <li class="floor" style={`--_s: ${Math.max(1, s.sec)}`} data-floor={i}>
             <a class="floor__link" href={`#${s.id}`} data-level-link={i} data-elev={s.elev}>
-              <span class="floor__text"><span class="floor__label t-label" data-v>{s.label}</span><span class="floor__elev">{s.elev}</span></span>
+              <span class="floor__text"><span class="floor__label t-label" data-v>{s.label}</span></span>
             </a>
             <span class="floor__trace" aria-hidden="true"></span>
           </li>
         ))}
       </ol>
-      <p class="levels__base" aria-hidden="true"><span class="t-label">{l.end}</span> <span class="floor__elev">{end}</span></p>
+      <p class="levels__base" aria-hidden="true"><span class="t-label">{l.end}</span></p>
       <span class="levels__datum" aria-hidden="true" data-datum><Datum size={10} /></span>
     </div>
   </nav>

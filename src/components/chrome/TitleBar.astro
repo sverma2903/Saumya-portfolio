@@ -154,7 +154,10 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
   .titlebar {
     position: sticky; inset-block-start: 0; z-index: var(--z-bar);
     display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: stretch;
-    block-size: var(--bar); padding-inline: var(--m) 0;
+    /* the bar (its paper and rule) runs full-bleed; its cells sit on the page's shell, so above --maxw the brand, the
+       sheet number and the Sheet list line up with the content below them (the same side as .shell and the cover) */
+    --_side: calc(max(0px, (100% - var(--maxw)) / 2) + var(--m));
+    block-size: var(--bar); padding-inline: var(--_side) calc(var(--_side) - var(--m));
     background: var(--sheet); border-block-end: var(--lw-object) solid var(--line-2);
     /* its own group in the page cut (transitions.css): cut like the page, but above a morphing plate */
     view-transition-name: vt-titlebar;

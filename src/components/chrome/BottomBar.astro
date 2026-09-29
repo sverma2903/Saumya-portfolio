@@ -2,14 +2,17 @@
 /**
  * BottomBar · WP1. The thumb-reachable title bar below 1024px (SPEC §4.2):
  *   ▔▔▔▔▔▔▔ (2px rust scroll progress on its top edge)
- *   [ △○□ ] │ [ ▼ IDEATE  +07:18  ▴ ]  or  [ SHEETS ▴ ] │ [ A-101 ]
- * - the mark → / (cover sheet); the centre cell opens the Sheet drawer (Drawer.astro) — "SHEETS" on Home/About/Play/404,
- *   the current level + elevation on cases (live from WP5's `sv:level`; the first level until then);
- * - the sheet number (Plex Mono 18, view-transition-name: sheetno below 1024 — the title bar carries it above);
+ *   [ △○□ ] │ [ ▼ IDEATE  ▴ ]  or  [ MENU ▴ ] │ [ RESUME ↗ ]
+ * - the mark → / (cover sheet); the centre cell opens the drawer (Drawer.astro) — "MENU" on Home/About/Play/404,
+ *   the current level on cases (live from WP5's `sv:level`; the first level until then);
+ * - her Resume ↗ (polish r1; it replaced the sheet number, so the number rolls only in the title bar, ≥ 1024);
  * - every target ≥ 48 × 48; safe-area aware; the no-JS centre cell is a plain link to /#index.
  */
 import type { PageMeta } from '../../lib/page';
 import { chrome } from '../../data/chrome';
+import { labels, links } from '../../content/site';
+import { externalAttrs } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
 import Mark from '../symbols/Mark.astro';
 import Datum from '../symbols/Datum.astro';
 import Drawer from './Drawer.astro';
@@ -26,7 +29,6 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
       <span class="bottombar__level">
         <Datum size={10} />
         <span class="sr-only">{t.level} </span><span class="bottombar__label t-label-lg" data-level-label data-v>{first.label}</span>
-        <span class="bottombar__elev" data-level-elev>{first.elev}</span>
       </span>
     ) : (
       <span class="bottombar__sheets t-label-lg">{t.sheets}</span>
@@ -34,7 +36,7 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
     <svg class="bottombar__caret" width="9" height="6" viewBox="0 0 9 6" aria-hidden="true" focusable="false"><path d="M0.8 5.4 4.5 0.8l3.7 4.6" fill="none" stroke="currentColor" stroke-width="1.25" vector-effect="non-scaling-stroke" /></svg>
   </button>
   <a class="bottombar__centre bottombar__centre--nojs t-label-lg" href="/#index">{t.sheets}</a>
-  <span class="bottombar__sheet sheetno t-code">{page.sheet}</span>
+  <a class="bottombar__resume t-label-lg" href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" size={13} /></a>
 </nav>
 <Drawer page={page} />
 
@@ -58,14 +60,12 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
   narrow.addEventListener('change', paint);
   paint();
 
-  // the live level (cases): ▼ LABEL +MM:SS
+  // the live level (cases): ▼ LABEL
   const label = bar?.querySelector<HTMLElement>('[data-level-label]');
-  const elev = bar?.querySelector<HTMLElement>('[data-level-elev]');
-  if (label && elev) {
+  if (label) {
     listen('sv:level', (d) => {
       if (!d || typeof d.label !== 'string' || !d.label) return;
       if (label.textContent !== d.label) label.textContent = d.label;
-      if (typeof d.elev === 'string' && elev.textContent !== d.elev) elev.textContent = d.elev;
     });
   }
 </script>
@@ -107,23 +107,22 @@ const first = page.kind === 'case' ? page.levels?.[0] : undefined;
   .bottombar__level { display: inline-flex; align-items: center; gap: var(--s-2); min-inline-size: 0; }
   .bottombar__level :global(.sym-datum) { color: var(--rust); }
   .bottombar__label { overflow: hidden; text-overflow: ellipsis; }
-  .bottombar__elev {
-    font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: 1; color: var(--ink-2);
-    font-variant-numeric: tabular-nums; margin-inline-start: var(--lw-cut);
-  }
   .bottombar__caret { flex: none; color: var(--ink-2); }
   .bottombar__centre[aria-expanded='true'] .bottombar__caret { transform: rotate(180deg); }
 
-  .bottombar__sheet {
-    display: flex; align-items: center; padding-inline: var(--s-4) var(--m);
+  /* polish r1: the right cell is her Resume ↗ (what a recruiter looks for on a phone), where the sheet number repeated
+     what the mark's cell already links to */
+  .bottombar__resume {
+    display: flex; align-items: center; gap: var(--s-1); padding-inline: var(--s-4) var(--m); min-block-size: var(--s-7);
     border-inline-start: var(--lw-object) solid var(--line-2);
-    font-size: calc(var(--fs-code) * 1.5); letter-spacing: calc(var(--tr-code) / 2); color: var(--ink); /* Plex Mono 18 (§4.2) */
-    view-transition-name: sheetno;
+    color: var(--ink); text-decoration: none; white-space: nowrap;
   }
-  /* 320 (WCAG reflow): the level label takes the elevation's room (the drawer still lists every elevation) */
+  .bottombar__resume :global(.icon) { color: var(--ink-2); }
+  .bottombar__resume:hover { color: var(--rust-deep); }
+  .bottombar__resume:focus-visible { outline-offset: calc(-1 * var(--s-1)); }
   @media (max-width: 339.98px) {
-    .bottombar__elev { display: none; }
     .bottombar__centre { padding-inline: var(--s-3); gap: var(--s-2); }
+    .bottombar__resume { padding-inline: var(--s-3); }
   }
   @media (min-width: 1024px) { .bottombar { display: none; } }
   @media print { .bottombar { display: none; } }

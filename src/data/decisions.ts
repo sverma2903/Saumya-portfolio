@@ -38,8 +38,9 @@ export const decisions: Record<string, Decision[]> = {
   pff: [
     { considered: 'We planned to conduct primary interviews with emergency management staff, but a federal shutdown during our research phase made government employees inaccessible.',
       decided: "Instead, we worked from PFF's existing interview notes from prior client engagements." },
+    // polish r1: her sentence that applies the principle, not the principle's heading (the Key plan's Ideate line)
     { considered: "If AI auto-approved a mission assignment or auto-submitted a cost estimate, there's no accountable human in the chain, and that breaks the audit trail the entire system depends on.",
-      decided: 'Core Principle 1: AI informs, humans decide' },
+      decided: 'AI recommends funding lines based on expense descriptions but never fills them out for the user.' },
     { considered: "Testing showed a confidence score alone wasn't enough; users wanted to see which past missions the estimate came from, since they're the ones signing off on it.",
       decided: 'Each suggestion links to the source assignments, allowing the analyst to review the comparison before accepting.' },
     { considered: "The MVP was desktop-first, but field operators don't always have a desk.",
@@ -47,9 +48,8 @@ export const decisions: Record<string, Decision[]> = {
     { considered: 'AI is easiest to design when you stop asking "where can we add AI?" and start asking "where is a human doing work a machine should handle?"',
       decided: 'That reframe eliminated half our ideas and sharpened the rest. The features we cut were more important than the ones we kept.' },
   ],
+  // polish r1: the context / scope pairing (was D-01) is not a decision; the schedule starts at the detour
   csbs: [
-    { considered: 'Small companies face unique challenges in navigating NMLS licensing compared to larger institutions. Without dedicated staff, they often rely heavily on the call center for support.',
-      decided: 'The scope of this project was to shed light on their overall experience (especially in relation to larger companies), identify specific problems and areas for improvement, and offer potential recommendations to enhance on-demand self-service support.' },
     { considered: 'We started with a vague goal of improving self-service for small company users, paused, and shifted to understanding their pain points.',
       decided: 'That detour uncovered insights that shaped key decisions and informed tree testing for the new NMLS Resource Center information architecture.' },
     { considered: 'Replaced static PDFs with XML-based content.',

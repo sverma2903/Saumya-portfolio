@@ -132,7 +132,8 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
       expect(h2.tagName).toBe('H2');
       expect(h2.getAttribute('tabindex')).toBe('-1');
       expect(text(h2)).toBe(cs.sections[i].label);
-      expect(text(sec.querySelector('.section-mark__meta'))).toBe(`Level ${String(i + 1).padStart(2, '0')} · ${r.sections[i].elev} · ≈ ${r.sections[i].minutes} min`);
+      // polish r1: the level's minutes only (the level number is the bubble's; the elevation read as a timestamp)
+      expect(text(sec.querySelector('.section-mark__meta'))).toBe(`≈ ${r.sections[i].minutes} min`);
       for (const alias of aliasesFor(slug, sec.id)) expect(sec.querySelector(`#${alias}`), `${slug}#${alias}`).toBeTruthy();
       // the §6.1 rhythm is sibling-based: nothing but blocks, runs and the mark between blocks
       const kids = sec.childNodes.filter((n) => (n as HTMLElement).tagName) as HTMLElement[];
@@ -156,7 +157,8 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
     const next = nextCase(slug);
     const ml = page().querySelector('[data-matchline]')!;
     const card = ml.querySelector('[data-matchline-card]')!;
-    expect(card.querySelectorAll('a').map((a) => a.getAttribute('href'))).toEqual([`/${next}`]);
+    // the card is one link to the next case, plus "All work" in its foot (polish r1: the sheet no longer ends on it)
+    expect(card.querySelectorAll('a').map((a) => a.getAttribute('href'))).toEqual([`/${next}`, '/#index']);
     expect(card.querySelector('[data-plate]')?.getAttribute('style')).toContain(`view-transition-name: plate-${next}`);
     expect(hers(card)).toContain(stripHtml(sheetBySlug(next).title.text));
   });

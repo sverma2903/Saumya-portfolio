@@ -7,8 +7,8 @@
  *                      native size), or a <video> with our own controls (so pan/zoom works on it too)
  *   pan/zoom           panzoom on a native-size box: min = fit, max = max(2 × fit, 1:1); wheel zooms (no modifier),
  *                      pinch, drag, double-click toggles fit ↔ 1:1 at the pointer; a zoom chip bottom-left
- *   panel              FIG · n / N · her caption (cloned, verbatim) · file · native px · size + real format (magic
- *                      bytes, from the plate) · ORIGINAL FILE · UNALTERED · a back-link to the sheet and level
+ *   panel              FIG · n / N · her nearest heading · her caption (cloned, verbatim) · a back-link to the sheet
+ *                      and level · File info, folded: file · native px · size + real format (magic bytes, from the plate)
  *   keys               ← → prev/next (pan when zoomed) · + − · 0 fit · 1 1:1 · Space play/pause · Home/End · Esc
  *   opening            a 180 ms FLIP from the figure's rect when opened by pointer with Motion on; instant otherwise
  *   mobile             full screen; the panel is a 72px bottom sheet that expands to 50vh; swipe steps figures at fit
@@ -45,6 +45,8 @@ interface Item {
   cap: () => Node | null;
   capText: string;
   back: { href: string; text: string } | null;
+  /** her nearest heading above the figure in its chapter (polish r1): the panel's context line */
+  ctx?: string;
   poster: number;
   sound: boolean;
   zoom: string;
@@ -96,6 +98,18 @@ function levelOf(el: Element): { href: string; text: string } | null {
   return text ? { href: `#${(block ?? sec)!.id}`, text } : null;
 }
 
+/** Her nearest block heading (h3 of an `h` block) above the element, inside its chapter / section. */
+function headingOf(el: Element): string {
+  const sec = el.closest<HTMLElement>('section[id], article[id]');
+  if (!sec) return '';
+  let found = '';
+  for (const h of sec.querySelectorAll<HTMLElement>('h3[id]')) {
+    if (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) found = (h.textContent ?? '').trim();
+    else break;
+  }
+  return found;
+}
+
 function fromPlate(plate: HTMLElement): Item {
   const [w, h] = (plate.dataset.native ?? '0×0').split('×').map(Number);
   const fmt = plate.dataset.fmt ?? '';
@@ -120,6 +134,7 @@ function fromPlate(plate: HTMLElement): Item {
     },
     capText: (capSrc?.textContent ?? tplCap?.content.textContent ?? '').trim(),
     back: levelOf(plate),
+    ctx: headingOf(plate),
     poster: Number(plate.querySelector<HTMLElement>('img[data-gif]')?.dataset.poster ?? 0),
     sound: !!plate.querySelector('[data-mc-sound]'),
     zoom: plate.dataset.zoom ?? '',
@@ -376,7 +391,10 @@ function fillPanel(item: Item): void {
   const c = item.cap();
   if (c) cap.append(c);
   q('[data-dt-handle-fig]').textContent = item.fig || item.file;
-  q('[data-dt-handle-cap]').textContent = item.capText;
+  const ctx = q('[data-dt-ctx]');
+  ctx.textContent = item.ctx ?? '';
+  ctx.hidden = !item.ctx;
+  q('[data-dt-handle-cap]').textContent = item.capText || item.ctx || '';
   q('[data-dt-file]').textContent = item.file;
   q('[data-dt-native]').textContent = tpl('tPx', { w: item.w, h: item.h });
   q('[data-dt-size]').textContent = [item.size, item.fmt].filter(Boolean).join(' · ');

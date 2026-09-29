@@ -55,14 +55,17 @@ const m = chrome.wp4b.media;
           <h2 id="dt-fig" class="dt__fig" tabindex="-1" data-dt-fig></h2>
           <span class="dt__count" data-dt-count></span>
         </header>
+        <p class="dt__ctx" data-dt-ctx hidden></p>
         <div class="dt__cap" id="dt-cap" data-dt-cap></div>
-        <dl class="dt__facts">
-          <div class="dt__cell dt__cell--file"><dt>{d.file}</dt><dd class="dt__file" data-dt-file></dd></div>
-          <div class="dt__cell"><dt>{d.native}</dt><dd data-dt-native></dd></div>
-          <div class="dt__cell"><dt>{d.size}</dt><dd data-dt-size></dd></div>
-        </dl>
-        <p class="dt__orig">{d.original}</p>
         <a class="dt__back" data-dt-back href="#main"><Icon name="return" size={14} /><span data-dt-back-t></span></a>
+        <details class="dt__info">
+          <summary class="dt__info-s">{d.fileInfo}</summary>
+          <dl class="dt__facts">
+            <div class="dt__cell dt__cell--file"><dt>{d.file}</dt><dd class="dt__file" data-dt-file></dd></div>
+            <div class="dt__cell"><dt>{d.native}</dt><dd data-dt-native></dd></div>
+            <div class="dt__cell"><dt>{d.size}</dt><dd data-dt-size></dd></div>
+          </dl>
+        </details>
 
         <div class="dt__tools" role="group" aria-label={d.zoom}>
           <button type="button" class="dt__b" data-dt-act="fit"><Icon name="fit" size={15} />{d.fit}</button>

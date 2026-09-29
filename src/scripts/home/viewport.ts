@@ -112,6 +112,9 @@ export function initViewport(): void {
   const keyOf = (row: HTMLElement) => row.dataset.ix!;
   const linkOf = (row: HTMLElement) => row.querySelector<HTMLAnchorElement>('a')!;
   const plates = new Map($$<HTMLElement>('[data-vp-plate]', vp).map((p) => [p.dataset.vpPlate!, p]));
+  // the rows the Viewport previews: every sheet but the external ones (Architecture Portfolio ↗, Resume ↗), whose
+  // rows leave the Viewport on the last sheet it showed (they have no plate)
+  const seen = rows.filter((r) => plates.has(keyOf(r)));
   const panels = new Map($$<HTMLElement>('[data-vp-panel]', vp).map((p) => [p.dataset.vpPanel!, p]));
   const one = <T extends HTMLElement>(sel: string) => vp.querySelector<T>(sel)!;
   const stage = one('[data-vp-stage]');
@@ -399,15 +402,27 @@ export function initViewport(): void {
   const band = () => {
     if (!indexOnScreen || !desktop.matches || (pointerIn && !rest) || keyboardHolds()) return;
     const past = pad - section.getBoundingClientRect().top; // how far the index has scrolled beyond its landing place
-    let pick: HTMLElement | undefined = rows[0];
+    let pick: HTMLElement | undefined = seen[0];
     if (past > 1) {
-      const r0 = rows[0].getBoundingClientRect();
-      const line = Math.min(innerHeight * BAND, (r0.top + r0.bottom) / 2 + 2 * past);
-      // the last row the line has crossed: the row under the line, or — when the line falls in a group strip or the
-      // runway after a jump (End, a scrollbar drag, a restored scroll position) — the row a continuous scroll would
-      // have left active, so the Viewport never keeps a stale sheet
+      const r0 = seen[0].getBoundingClientRect();
+      let line = Math.min(innerHeight * BAND, (r0.top + r0.bottom) / 2 + 2 * past);
+      // the end of the list: the Viewport stays stuck only until the list's bottom reaches its own (there is no runway
+      // of empty paper under the index). Over the last `ramp` px of that travel the line runs on down to the last
+      // previewed row, so every sheet is read while the Viewport is still whole, and the last one is active when the
+      // Viewport starts to leave with the list.
+      const last = seen[seen.length - 1];
+      const listBottom = list.getBoundingClientRect().bottom;
+      if (!stuckTop) stuckTop = parseFloat(getComputedStyle(vp).top) || 0;
+      const vpBottom = stuckTop + vp.offsetHeight;
+      const d = listBottom - last.getBoundingClientRect().top; // constant while scrolling
+      const ramp = Math.max(0, vpBottom - d - innerHeight * BAND);
+      const left = listBottom - vpBottom;
+      line += Math.max(0, ramp - left);
+      // the last row the line has crossed: the row under the line, or — when the line falls in a group strip after a
+      // jump (End, a scrollbar drag, a restored scroll position) — the row a continuous scroll would have left
+      // active, so the Viewport never keeps a stale sheet
       pick = undefined;
-      for (const r of rows) {
+      for (const r of seen) {
         if (r.getBoundingClientRect().top > line) break;
         pick = r;
       }
@@ -443,7 +458,7 @@ export function initViewport(): void {
     py = e.clientY;
   }, { passive: true });
 
-  // J / K
+  // J / K move through every row (the external ones included: they are links like the others)
   const step = (dir: 1 | -1) => (e: KeyboardEvent) => {
     if (!indexOnScreen) return;
     e.preventDefault();
@@ -476,14 +491,12 @@ export function initViewport(): void {
   // panel (every panel is in flow in one cell), so switching sheets never resizes the plate. The Viewport always
   // fills its column, so the rest does not depend on the plate's width: one measurement settles it.
   const head = section.querySelector<HTMLElement>('.dix__head');
+  let stuckTop = 0; // where the Viewport sticks (its CSS top), read with the other measurements
   const fit = () => {
     if (!desktop.matches) return;
-    if (head) vp.style.setProperty('--_head', `${Math.ceil(head.offsetHeight)}px`);
+    if (head) vp.style.setProperty('--_head', `${Math.ceil(head.offsetHeight + parseFloat(getComputedStyle(head).marginBlockEnd || '0'))}px`);
     vp.style.setProperty('--_rest', `${Math.ceil(vp.offsetHeight - stage.offsetHeight)}px`);
-    // the runway under the list: the Viewport stays stuck (whole) until the last row has crossed the 45% line
-    const last = rows[rows.length - 1];
-    const need = parseFloat(getComputedStyle(vp).top) + vp.offsetHeight - innerHeight * BAND - last.offsetHeight / 2;
-    list.style.setProperty('--_runway', `${Math.ceil(need)}px`);
+    stuckTop = parseFloat(getComputedStyle(vp).top) || 0;
   };
   let fitRaf = 0;
   addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(() => { readPad(); fit(); band(); }); });

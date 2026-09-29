@@ -14,7 +14,9 @@
 import Glyphs from '../symbols/Glyphs.astro';
 import type { CaseStudy } from '../../lib/blocks';
 import type { CaseReading } from '../../lib/reading';
-import { blockId } from '../../lib/ids';
+import { blockId, headingId } from '../../lib/ids';
+import { stripHtml } from '../../lib/text';
+import { ROLE_ROWS } from '../../data/roles';
 import { chrome, fill } from '../../data/chrome';
 import RevDelta from '../symbols/RevDelta.astro';
 import { keepItems } from '../../lib/typeset';
@@ -27,6 +29,15 @@ for (const s of cs.sections) {
   });
 }
 const r = rev as { id: string; title: string; lede: string } | null;
+let role: { heading: string; parts: string[]; id: string } | null = null;
+const rr = ROLE_ROWS[cs.slug];
+if (rr) {
+  for (const sec of cs.sections) {
+    const at = sec.blocks.findIndex((b) => b.t === 'h' && stripHtml(b.text) === rr.heading);
+    const next = at >= 0 ? sec.blocks[at + 1] : undefined;
+    if (next && next.t === 'p' && rr.parts.every((x) => stripHtml(next.html).includes(x))) { role = { ...rr, id: headingId(sec.id, rr.heading) }; break; }
+  }
+}
 const c = chrome.wp5.case;
 // "A-101 · 6 LEVELS · ≈ 13 MIN" (caps, like every minutes value on the site), set as three atomic items so "≈" never parts from its minutes on a phone
 const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading.minutes }).split(' · ');
@@ -38,6 +49,16 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
       <dd class="titleblock__v" data-v set:html={keepItems(v)} />
     </div>
   ))}
+  {role && (
+    <div class="titleblock__row titleblock__row--role">
+      <dt class="titleblock__k t-label" data-v>{role.heading}</dt>
+      <dd class="titleblock__v">
+        <a class="titleblock__role" href={`#${role.id}`} data-cite-link>
+          {role.parts.map((x, i) => <>{i > 0 && <span class="titleblock__join" aria-hidden="true" data-chrome>{'\u00a0· '}</span>}<span data-v>{x}</span></>)}<span class="titleblock__go" aria-hidden="true">{' ↓'}</span>
+        </a>
+      </dd>
+    </div>
+  )}
   {r && (
     <div class="titleblock__row titleblock__row--rev">
       <dt class="titleblock__k t-label">{c.rev}</dt>
@@ -98,6 +119,19 @@ const sheetInfo = fill(c.sheetInfo, { no: sheetNo, n: reading.levels, m: reading
   @media (hover: hover) {
     .titleblock__rev:hover .titleblock__revl { color: var(--rust-deep); text-decoration-color: currentColor; }
   }
+
+  /* MY CONTRIBUTION — her clauses, one link to the paragraph they come from */
+  .titleblock__role { color: var(--ink); text-decoration: none; }
+  .titleblock__join { color: var(--clay); }
+  .titleblock__go { font-family: var(--font-sans); color: var(--ink-2); }
+  @media (hover: hover) {
+    .titleblock__role:hover { color: var(--rust-deep); }
+    .titleblock__role:hover .titleblock__go { color: currentColor; }
+  }
+  /* her heading is the key, and "MY CONTRIBUTION" is wider than the 96px key column: this row stacks, key over value */
+  .titleblock__row--role { grid-template-columns: minmax(0, 1fr); background: none; }
+  .titleblock__row--role .titleblock__k { padding-block-end: 0; }
+  .titleblock__row--role .titleblock__v { padding-inline-start: var(--s-3); padding-block-start: var(--s-1); }
 
   @media (max-width: 479.98px) { .titleblock__v { padding-inline: var(--s-3); } }
   .titleblock__v.titleblock__sheet { font-size: var(--fs-code); line-height: var(--lh-code); color: var(--ink-2); padding-block: var(--titleblock-pad-sheet, var(--s-3)); text-transform: uppercase; }

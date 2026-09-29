@@ -1,6 +1,7 @@
 ---
 /**
- * ViewToggle · WP5. Section · full text / Plan · bold only, each with its minutes (SPEC SM5c).
+ * ViewToggle · WP5. Full story / Skim · bold only (polish r1; were Section · full text / Plan · bold only), each with
+ * its minutes (SPEC SM5c).
  * A radiogroup of two role="radio" buttons (roving tabindex, arrows move and select, Space/Enter select); hidden
  * without JS (data-js-only). Used in the case header, the Levels rail (variant "stack") and WP1's drawer
  * (class "drawer__view"). Behaviour lives in scripts/case/planview.ts, which binds every [data-view-value] on the
@@ -26,7 +27,7 @@ const opts = [
 <div class:list={['viewtoggle', `viewtoggle--${variant}`, cls]} role="radiogroup" aria-label={v.label} data-js-only data-viewtoggle>
   {opts.map((o) => (
     <button type="button" role="radio" class="viewtoggle__opt" aria-checked={o.value === 'section' ? 'true' : 'false'} tabindex={o.value === 'section' ? 0 : -1} data-view-value={o.value}>
-      <span class="viewtoggle__label"><span class="viewtoggle__name">{o.parts[0]}</span><span class="viewtoggle__sep" aria-hidden="true"> · </span><span class="viewtoggle__desc">{o.parts[1]}</span></span>
+      <span class="viewtoggle__label"><span class="viewtoggle__name">{o.parts[0]}</span>{o.parts[1] && <><span class="viewtoggle__sep" aria-hidden="true"> · </span><span class="viewtoggle__desc">{o.parts[1]}</span></>}</span>
       <span class="viewtoggle__min"><Glyphs text={fill(chrome.wp3.index.minutes, { n: o.m })} /></span>
     </button>
   ))}

@@ -29,9 +29,14 @@ const rows = resolveDecisions(cs);
     <div class="decisions__head">
       <h2 id="decisions-h" class="decisions__h">
         <span class="decisions__title t-label-lg">{d.title}</span>
-        <span class="decisions__sub">{d.sub}</span>
+        {d.sub && <span class="decisions__sub">{d.sub}</span>}
       </h2>
     </div>
+    <details class="decisions__disc" data-decisions-disc>
+    <summary class="decisions__sum">
+      <span class="decisions__count t-label">{fill(d.summary, { n: rows.length })}</span>
+      <span class="decisions__tog t-label" aria-hidden="true"><span class="decisions__show">{d.show}</span><span class="decisions__hide">{d.hide}</span><span class="decisions__chev">↓</span></span>
+    </summary>
     <table class="decisions__t" role="table">
       <thead class="decisions__thead" role="rowgroup">
         <tr role="row">
@@ -71,6 +76,7 @@ const rows = resolveDecisions(cs);
         })}
       </tbody>
     </table>
+    </details>
   </section>
 )}
 
@@ -79,9 +85,30 @@ const rows = resolveDecisions(cs);
     --_ret: var(--s-6);    /* the hanging gutter for ↳ in the DECIDED column */
     --_no: var(--s-9);     /* NO. column: "D-01" and its gutter */
     --_lv: var(--s-10);    /* LEVEL column: her longest label ("Reflection ↓") on one line */
-    padding-block: var(--s-8) 0;
+    padding-block: var(--s-7) 0;
   }
   .decisions__head { padding-block-end: var(--s-3); }
+  /* polish r1: folded by default — one ruled line with the count; open, the line heads the table */
+  .decisions__sum {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+    min-block-size: var(--hit); padding-block: var(--s-2);
+    border-block: var(--lw-border) solid var(--ink); cursor: pointer; list-style: none;
+    color: var(--ink-2); transition: background-color var(--dur-1) var(--ease-ui), color var(--dur-1) var(--ease-ui);
+  }
+  .decisions__sum::-webkit-details-marker { display: none; }
+  .decisions__sum:focus-visible { outline-offset: var(--s-1); }
+  .decisions__count { text-transform: none; letter-spacing: .02em; font-size: var(--fs-label-lg); font-weight: var(--wt-ui); }
+  .decisions__tog { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink); }
+  .decisions__chev { font-family: var(--font-sans); transition: transform var(--dur-2) var(--ease-ui); }
+  .decisions__hide, .decisions__disc[open] .decisions__show { display: none; }
+  .decisions__disc[open] .decisions__hide { display: inline; }
+  .decisions__disc[open] .decisions__chev { transform: rotate(180deg); }
+  .decisions__disc[open] .decisions__t { border-block-start: 0; }
+  @media (hover: hover) {
+    .decisions__sum:hover { background: var(--paper-2); color: var(--ink); }
+    .decisions__sum:hover .decisions__tog { color: var(--rust-deep); }
+  }
+  @media print { .decisions__sum { display: none; } .decisions__disc[open] .decisions__t { border-block-start: var(--lw-border) solid var(--ink); } }
   .decisions__h { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); margin: 0; font: inherit; }
   .decisions__title { color: var(--ink); }
   .decisions__sub {

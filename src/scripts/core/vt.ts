@@ -50,7 +50,7 @@ function draftTimeAt(p: number): number {
 }
 /** The fraction of --dur-4 at which the line reaches the (rendered) sheet number's leading edge, or null. */
 function sheetnoAt(back: boolean): number | null {
-  const el = Array.from(document.querySelectorAll<HTMLElement>('.titlebar .sheetno, .bottombar__sheet'))
+  const el = Array.from(document.querySelectorAll<HTMLElement>('.titlebar .sheetno'))
     .find((x) => getComputedStyle(x).viewTransitionName === 'sheetno' && x.getClientRects().length > 0);
   if (!el) return null;
   const r = el.getBoundingClientRect();
@@ -86,12 +86,22 @@ addEventListener('pagereveal', (e) => {
   const back = root.dataset.page === 'home';
   const orphans = (old ?? []).filter((o) => /^plate-[\w-]+$/.test(o?.n) && Number.isFinite(o.l) && Number.isFinite(o.w) && !paired.has(o.n));
   let sheet: HTMLStyleElement | null = null;
-  if (orphans.length) {
+  // polish r1: a paired plate waits for the cut. It holds its old rect (fill-mode both) until the cut line reaches its
+  // leading edge (forward: its left edge; back: its right edge), then morphs over what is left of the cut on the same
+  // curve, so it never floats over the old sheet while the new one is still hidden behind the line
+  const vw0 = innerWidth;
+  const waits = (old ?? []).filter((o) => /^plate-[\w-]+$/.test(o?.n) && Number.isFinite(o.l) && Number.isFinite(o.w) && paired.has(o.n)).map((o) => {
+    const edge = (back ? vw0 - (o.l + o.w) : o.l) / vw0;
+    const at = Math.min(0.85, draftTimeAt(Math.min(1, Math.max(0, edge))));
+    const timing = `animation-delay:calc(var(--dur-4) * ${at.toFixed(3)});animation-duration:calc(var(--dur-4) * ${(1 - at).toFixed(3)})`;
+    return `::view-transition-group(${o.n}),::view-transition-old(${o.n}),::view-transition-new(${o.n}){${timing}}`;
+  });
+  if (orphans.length || waits.length) {
     // the cut's leading edge is at p·vw (forward: the new sheet shows left of it) or (1 − p)·vw (back: right of it);
     // in the plate's own box that edge is an inset that moves linearly, so these keyframes ride the same curve
     const vw = innerWidth;
     sheet = document.createElement('style');
-    sheet.textContent = orphans.map((o, i) => {
+    sheet.textContent = waits.join('') + orphans.map((o, i) => {
       const k = `vt-orphan-${i}`;
       const [a, b] = back
         ? [`inset(0 ${o.l + o.w - vw}px 0 0)`, `inset(0 ${o.l + o.w}px 0 0)`]

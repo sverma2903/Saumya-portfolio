@@ -92,7 +92,10 @@ const sub = nb(home.sub, 'front-end');
     /* SM1's 100svh − bar − 140px, less 4px of the cover's own bottom air (integration): the index header, its first
        strip, the A-101 title and BOTH lines of its outcome then end above the fold at 1440 × 900 and 1536 × 864 (at
        140px the second line's descenders crossed it by 2px; WP3 notes, deviation 2). */
-    --_h: clamp(620px, calc(100svh - var(--bar) - 144px), 820px);
+    /* polish r1: the cover leaves 200px of the first screen to the index (its own --s-6 of air, the header, the first
+       strip, A-101's title and outcome, the top of its plate), where it left 144px with the index header crowded on
+       the cover's edge; on short windows (≤ 760px) the cover is the first screen, and only the index title shows */
+    --_h: clamp(560px, calc(100svh - var(--bar) - 200px), 780px);
     --_gl-gain: 1;
     position: relative;
     isolation: isolate;
@@ -183,7 +186,9 @@ const sub = nb(home.sub, 'front-end');
       padding-block: var(--s-7) calc(var(--_h) * 0.14 - var(--s-2) - var(--s-7));
       container-type: inline-size;
     }
-    .cover__h { font-size: min(var(--fs-cover), var(--_fs-fit)); }
+    /* …and never taller than the window allows: 7.2svh caps it on laptop-height windows (57px at 790, 52px at 720),
+       above ≈ 850px the column's measure is the smaller */
+    .cover__h { font-size: min(var(--fs-cover), var(--_fs-fit), 7.2svh); }
     .cover__ctas { min-block-size: var(--s-7); }
     .cover__drawing { grid-column: 6 / span 7; grid-row: 1; display: block; }
     .cover__hint { position: absolute; inset-inline-end: 0; inset-block-start: max(var(--s-3), calc(8% - var(--s-6))); margin: 0; }
@@ -196,6 +201,14 @@ const sub = nb(home.sub, 'front-end');
        the 30px scales with it as a share of the canonical 764.67px column */
     .cover__drawing { container-type: inline-size; --_spf-top: calc(100cqi * 30 / 764.67); }
     .cover__fallback { position: absolute; inset-inline: 0; inset-block-start: calc(8% - var(--_spf-top)); }
+  }
+
+  @media (min-width: 1024px) and (max-height: 820px) {
+    .cover__text { padding-block-start: var(--s-5); }
+    .cover__eyebrow { margin-block-end: var(--s-4); }
+  }
+  @media (min-width: 1024px) and (max-height: 760px) {
+    .cover { --_h: max(480px, calc(100svh - var(--bar) - var(--s-6) - 40px)); }
   }
 
   /* ── live vs static: the fallback shows unless the head script (or the hero) says WebGL is on ── */

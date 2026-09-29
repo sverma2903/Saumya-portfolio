@@ -102,10 +102,21 @@
     margin: 0; font-family: var(--font-mono); font-size: var(--fs-code); letter-spacing: var(--tr-code);
     line-height: var(--lh-code); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere;
   }
-  .detail .dt__orig {
+  /* polish r1: where the figure sits — her nearest heading above it — leads the panel with the figure number */
+  .detail .dt__ctx { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body-md); line-height: var(--lh-lede-sm); color: var(--ink); text-wrap: balance; }
+  .detail .dt__ctx[hidden] { display: none; }
+  /* the file's facts, folded under one quiet row (open on demand) */
+  .detail .dt__info { border-block-start: var(--lw-object) solid var(--line-2); padding-block-start: var(--s-2); }
+  .detail .dt__info-s {
+    display: flex; align-items: center; gap: var(--s-2); min-block-size: var(--s-6); cursor: pointer; list-style: none;
     font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
-    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--rust);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--ink-2);
   }
+  .detail .dt__info-s::-webkit-details-marker { display: none; }
+  .detail .dt__info-s::before { content: '▸' / ''; font-family: var(--font-mono); transition: transform var(--dur-2) var(--ease-ui); }
+  .detail .dt__info[open] .dt__info-s::before { transform: rotate(90deg); }
+  .detail .dt__info-s:hover { color: var(--rust-deep); }
+  .detail .dt__info .dt__facts { margin-block-start: var(--s-2); }
   .detail .dt__back {
     display: inline-flex; align-items: center; gap: var(--s-2); align-self: flex-start;
     font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg); letter-spacing: var(--tr-label-lg);

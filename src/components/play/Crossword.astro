@@ -2,8 +2,9 @@
 /**
  * Crossword · WP6 (SPEC §5.4). LEGEND · DATA / DESIGN / NERDS — her tile grid from her original home page, moved here
  * as the sheet's legend: her letters on outline / solid tiles, every other tile a drafting material in her colours,
- * and beside it the two keys the grid reads by (tiles.ts): WORDS (what her letters spell, → across / ↓ down, as a
- * crossword's) and MATERIALS (what the other tiles are drawn in).
+ * and beside it the key the grid reads by (tiles.ts): WORDS (what her letters spell, → across / ↓ down, as a
+ * crossword's). Polish r1: the MATERIALS key and "Re-lay tiles" are gone from the sheet (they explained the frame
+ * rather than her work); the materials list stays in the DOM, hidden, as the palette a pressed tile cycles through.
  *   ≥ 1280px   grid │ words │ materials on the board's 12 columns
  *   768–1279   the panel still runs the sheet's width: grid │ words │ materials when they fit (panel ≥ 760px),
  *              else grid │ words over materials
@@ -45,10 +46,6 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
   <div class="legend__panel">
     <div class="legend__head">
       <h2 id="legend-h" class="legend__h t-label-lg">{p.legend}</h2>
-      <button type="button" class="btn legend__relay" data-xw-relay data-js-only>
-        <svg class="legend__relay-i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 9.5h13l-4-4M20.5 14.5h-13l4 4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" vector-effect="non-scaling-stroke" /></svg>
-        <span>{p.relay}</span>
-      </button>
     </div>
     <div class="legend__body">
       <div class="xw" role="img" aria-label={p.gridLabel} data-xw style={`--_ink: ${HER.rust}; --_solid: ${HER.oxblood}`}>
@@ -81,7 +78,9 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
             ))}
           </ul>
         </div>
-        <div class="legend__key">
+        <!-- polish r1: the MATERIALS key is not drawn (it explained the frame, not her work); it stays in the DOM, hidden,
+             as the list of her five colours crossword.ts cycles a tile through -->
+        <div class="legend__key" hidden>
           <p class="legend__kh t-label">{p.materialsTitle}</p>
           <ul class="legend__list" role="list">
             {mats.map((m) => (
@@ -125,8 +124,7 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     border-block-end: var(--lw-object) solid var(--line-2);
   }
   .legend__h { color: var(--ink-2); }
-  .legend__relay { transition: color var(--dur-1) var(--ease-ui); }
-  .legend__relay-i { flex: none; }
+  .legend__key[hidden] { display: none; }
   .legend__body {
     display: flex;
     flex-wrap: wrap;
@@ -279,24 +277,24 @@ const words = wordsOf().map((w) => ({ ...w, at: w.cells.map(([r, c]) => `${r}.${
     .legend__key { min-inline-size: 0; }
     /* ... side by side as soon as they fit, so the WORDS column fills the space under the grid's first rows */
     @container legend (min-width: 760px) {
-      .legend__body { grid-template-columns: max-content minmax(max-content, 1fr) minmax(max-content, 1fr); }
-      .legend__keys { grid-column: 2 / -1; display: grid; grid-template-columns: subgrid; column-gap: var(--s-5); }
+      .legend__body { grid-template-columns: max-content minmax(max-content, 22rem); }
     }
   }
   @media (min-width: 1280px) {
-    /* the whole sheet width, on the pin board's twelve columns: the grid in 1–4, WORDS in 5–8, MATERIALS in 9–12
-       (the panel's padding is taken out of the first and last columns, so the inner column lines are the board's) */
+    /* a legend, not a band (polish r1): the panel takes the pin board's first eight columns — the grid in 1–4, WORDS
+       in 5–8 — so its right edge still falls on a board column line (the panel's padding is taken out of the first
+       and last columns, so the inner column lines are the board's) */
+    .legend__panel { inline-size: calc((100% + var(--g)) * 8 / 12 - var(--g)); }
     .legend__body {
       display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       column-gap: var(--g);
       padding-inline: var(--s-5);
     }
     .xw { grid-column: 1 / span 4; }
     .legend__keys { grid-column: 5 / -1; display: grid; grid-template-columns: subgrid; }
     .legend__key { min-inline-size: 0; }
-    .legend__key:first-child { grid-column: 1 / span 4; }
-    .legend__key:last-child { grid-column: 5 / -1; }
+    .legend__key:first-child { grid-column: 1 / -1; }
   }
 
   @media (max-width: 767.98px) {

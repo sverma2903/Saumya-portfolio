@@ -14,8 +14,8 @@
 :root {
   --fs-cover: clamp(2.5rem, 1.664rem + 3.429vw, 4.75rem);           --lh-cover: 1.02;    --tr-cover: -0.022em;  --wt-cover: 320;
   --fs-title: clamp(2.375rem, 1.679rem + 2.857vw, 4.25rem);         --lh-title: 1.02;    --tr-title: -0.02em;   --wt-title: 340;
-  --fs-chapter: clamp(2.75rem, 1.543rem + 4.952vw, 6rem);           --lh-chapter: 0.95;  --tr-chapter: -0.03em; --wt-chapter: 300;
-  --fs-h: clamp(1.5625rem, 1.4rem + 0.667vw, 2rem);                 --lh-h: 1.12;        --tr-h: -0.01em;       --wt-h: 440;
+  --fs-chapter: clamp(1.875rem, 1.4571rem + 1.7143vw, 3rem);        --lh-chapter: 1.05;  --tr-chapter: -0.018em; --wt-chapter: 330; /* polish r1: a chapter's process label stays under the case title (68) and just over her own headings */
+  --fs-h: clamp(1.5625rem, 1.3304rem + 0.9524vw, 2.25rem);          --lh-h: 1.12;        --tr-h: -0.01em;       --wt-h: 440;   /* polish r1: 25 → 35 (36 from 1520): her headings carry the case's hierarchy */
   --fs-index: clamp(1.375rem, 1.236rem + 0.571vw, 1.75rem);         --lh-index: 1.15;    --tr-index: -0.01em;   --wt-index: 420;
   --fs-lede-lg: clamp(1.75rem, 1.379rem + 1.524vw, 2.75rem);        --lh-lede-lg: 1.12;  --tr-lede-lg: -0.015em; --wt-lede-lg: 330;
   --fs-lede: clamp(1.3125rem, 1.127rem + 0.762vw, 1.8125rem);       --lh-lede: 1.3;      --tr-lede: -0.005em;   --wt-lede: 380;
@@ -120,6 +120,8 @@
   /* vertical rhythm for the case body */
   --flow-xs: 8px; --flow-s: 16px; --flow-m: 24px; --flow-l: 40px; --flow-xl: 64px; --flow-xxl: 96px;
   --space-chapter: clamp(96px, 10vw, 160px);
+  /* polish r1: THE space between a sheet's last block and the end sheet, on every page (main's last child ends flush) */
+  --space-end: clamp(96px, 9vw, 144px);
   /* radii — drafting is square */
   --r-0: 0; --r-1: 2px; --r-frame: 6px; --r-dot: 999px;
   /* WP4b: the minimum touch target (WCAG 2.5.5): coarse-pointer buttons, and the hit area around small fine-pointer ones */

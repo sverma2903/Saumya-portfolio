@@ -8,6 +8,14 @@ import { initLevels } from './levels';
 import { initPlanview } from './planview';
 import { initSizes } from './sizes';
 
+// polish r1: the Decision schedule is a closed disclosure on screen; paper gets it open (and closed again after)
+const disc = document.querySelector<HTMLDetailsElement>('[data-decisions-disc]');
+if (disc) {
+  let was = false;
+  addEventListener('beforeprint', () => { was = disc.open; disc.open = true; });
+  addEventListener('afterprint', () => { disc.open = was; });
+}
+
 initCite();
 initPlanview();
 initLevels();

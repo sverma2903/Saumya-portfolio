@@ -122,7 +122,7 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
 
 <style>
   .endsheet {
-    margin-block-start: var(--space-chapter);
+    margin-block-start: var(--space-end);
     background: var(--sheet); border-block-start: var(--lw-border) solid var(--ink);
   }
   .endsheet__in { padding-block: var(--s-8) var(--s-5); display: grid; gap: var(--s-6); }
@@ -130,7 +130,7 @@ const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy
   /* her line: Newsreader 300, 40 → 72 */
   .endsheet__h {
     max-inline-size: 18ch; margin: 0; /* ≥ 1024 her line takes the band (below) */
-    font-family: var(--font-serif); font-size: var(--fs-cover); font-weight: var(--wt-chapter);
+    font-family: var(--font-serif); font-size: var(--fs-cover); font-weight: var(--wt-cover);
     line-height: var(--lh-cover); letter-spacing: var(--tr-cover); color: var(--ink); text-wrap: balance;
   }
 

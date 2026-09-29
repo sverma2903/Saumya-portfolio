@@ -44,7 +44,9 @@ const v = chrome.wp3.viewport;
 const keyOf = (s: Sheet) => s.slug ?? (s.kind === 'external' ? (s.href.includes('issuu') ? 'architecture' : 'resume') : s.kind);
 const initial = Astro.props.initial ?? keyOf(sheets[0]);
 
-const items = sheets.map((s) => {
+// External sheets (Architecture Portfolio ↗, Resume ↗) have no preview: their rows never retarget the Viewport, which
+// keeps the last sheet it showed (polish r1: an empty "external" drafting X read as a broken image at the end of Home)
+const items = sheets.filter((s) => !s.external).map((s) => {
   const key = keyOf(s);
   const cs = s.slug ? cases.find((c) => c.slug === s.slug) : undefined;
   const A = s.plate?.aspect ?? 1.6;
@@ -75,8 +77,9 @@ const items = sheets.map((s) => {
     logo,
     quote: s.kind === 'about' ? about.headline : s.kind === 'play' ? play.headline : undefined,
     quoteSub: s.kind === 'play' ? play.sub : undefined,
-    citedParts: s.readout?.cited ?? (s.kind === 'about' || s.kind === 'play' ? [String(s.no), s.title.text] : undefined),
-    openLabel: s.external ? v.openExternal : fill(v.open, { no: String(s.no) }),
+    /** "From Reflection · Impact Stats": where her numbers sit in the case (none for About / Play, or a home-card line) */
+    citedParts: s.readout?.cited.length ? s.readout.cited : undefined,
+    openLabel: s.kind === 'case' ? fill(v.open, { no: String(s.no) }) : fill(chrome.wp3.index.visit, { title: s.title.text }),
     /** a --paper-2 stage (B-100) is invisible on the textured paper: that plate draws its edge like the others' */
     edge: !!s.plate?.stage?.includes('--paper-2'),
   };
@@ -85,12 +88,8 @@ const first = items.find((i) => i.active) ?? items[0];
 ---
 <aside class="vp" aria-hidden="true" data-vp data-active={first.key}>
  <div class="vp__view" inert>
-  <div class="vp__head">
-    <p class="vp__id t-label"><span>{v.viewport}</span><span class="vp__dot"> · </span><span class="vp__no t-code" data-vp-no>{first.no === '↗' ? v.external : first.no}</span></p>
-    <p class="vp__dims t-code-sm" data-vp-dims>{first.dims}</p>
-  </div>
-
   <div class="vp__stage" data-vp-stage>
+    <p class="vp__tag t-code"><span class="vp__no" data-vp-no>{first.no}</span><span class="vp__dims t-code-sm" data-vp-dims>{first.dims}</span></p>
     {items.map((it) =>
       it.s.plate ? (
         <span
@@ -131,14 +130,7 @@ const first = items.find((i) => i.active) ?? items[0];
             })}
           </span>
         </span>
-      ) : (
-        <span class="vp__plate vp__plate--x" data-vp-plate={it.key} data-href={it.s.href} data-ext data-no={v.external} hidden={!it.active}>
-          <span class="vp__box vp__box--x">
-            <svg class="vp__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
-            <span class="vp__xl t-code-sm">{v.external} · {it.s.domain}<Icon name="arrow-up-right" size={12} /></span>
-          </span>
-        </span>
-      ),
+      ) : null,
     )}
     <span class="vp__ph" data-vp-ph hidden>
       <svg class="vp__x" viewBox="0 0 16 10" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0L16 10M16 0L0 10" /></svg>
@@ -166,12 +158,6 @@ const first = items.find((i) => i.active) ?? items[0];
           </div>
         )}
         {it.s.readout && <Readout readout={it.s.readout} variant="viewport" />}
-        {it.s.external && (
-          <div class="vp__mid vp__ext">
-            <p class="vp__xt" data-v>{it.s.title.text}</p>
-            <div class="vp__tb"><dl class="vp__dl"><div class="vp__row"><dt class="t-label">{v.external}</dt><dd class="vp__xd t-code">{it.s.domain}<Icon name="arrow-up-right" size={12} /></dd></div></dl></div>
-          </div>
-        )}
         {it.quote && (
           <div class="vp__mid vp__quote">
             <p class="vp__q" data-v set:html={it.quote} />
@@ -182,7 +168,7 @@ const first = items.find((i) => i.active) ?? items[0];
           {it.citedParts && (
             <p class="vp__cited t-label"><span class="vp__ck">{v.citedFrom}</span>{it.citedParts.map((c) => <> <span class="vp__ci">{c}</span></>)}</p>
           )}
-          <span class="btn vp__open">{it.openLabel}<Icon name={it.s.external ? 'arrow-up-right' : 'arrow-right'} /></span>
+          <span class="btn vp__open">{it.openLabel}<Icon name="arrow-right" /></span>
         </div>
       </div>
     ))}
@@ -190,9 +176,8 @@ const first = items.find((i) => i.active) ?? items[0];
   <svg class="vp__cut" data-vp-cut aria-hidden="true" focusable="false"><line x1="50%" y1="0" x2="50%" y2="100%" /></svg>
  </div>
  <div class="vp__ctl">
-  <a class="vp__hit" href={first.s.href} tabindex="-1" data-vp-hit {...(first.s.external ? { target: '_blank', rel: 'noopener' } : {})}></a>
-  <button class="vp__enl" type="button" tabindex="-1" data-vp-enlarge title={v.enlarge} data-js-only hidden={!first.s.plate}><Icon name="enlarge" size={16} /></button>
-  <span class="vp__cplate"><button class="vp__pause t-label" type="button" tabindex="-1" data-vp-pause data-js-only hidden data-pause={v.pause} data-play={v.play}><Icon name="pause" size={12} class="vp__pi vp__pi--pause" /><Icon name="play" size={12} class="vp__pi vp__pi--play" /><span data-vp-pause-l>{v.pause}</span></button></span>
+  <a class="vp__hit" href={first.s.href} tabindex="-1" data-vp-hit></a>
+  <span class="vp__cplate"><button class="vp__enl" type="button" tabindex="-1" data-vp-enlarge title={v.enlarge} data-js-only hidden={!first.s.plate}><Icon name="enlarge" size={16} /></button><button class="vp__pause t-label" type="button" tabindex="-1" data-vp-pause data-js-only hidden data-pause={v.pause} data-play={v.play}><Icon name="pause" size={12} class="vp__pi vp__pi--pause" /><Icon name="play" size={12} class="vp__pi vp__pi--play" /><span data-vp-pause-l>{v.pause}</span></button></span>
  </div>
 </aside>
 
@@ -229,30 +214,26 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__view { position: relative; display: grid; row-gap: var(--_gap); align-content: start; }
   .vp__ctl {
     position: relative; z-index: var(--z-raised);
-    display: grid; grid-template-rows: var(--_strip, var(--s-5)) auto 1fr; row-gap: var(--_gap);
+    display: grid; grid-template-rows: auto 1fr; row-gap: var(--_gap);
     pointer-events: none;
   }
   .vp__hit { grid-area: 1 / 1 / -1 / -1; pointer-events: auto; }
-  .vp__cplate { grid-area: 2 / 1; display: grid; aspect-ratio: 1.6; inline-size: var(--_pw, 100%); justify-self: center; }
+  .vp__cplate { grid-area: 1 / 1; display: grid; aspect-ratio: 1.6; inline-size: var(--_pw, 100%); justify-self: center; }
 
-  /* header strip — shares its baseline with the list's first strip */
-  .vp__head {
-    display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--_strip, var(--s-5)); color: var(--ink-2);
-    padding-inline-end: calc(var(--s-5) - var(--s-1) + var(--s-3)); /* room for ⤢ (control layer) */
+  /* the sheet's tag, drawn on the plate like a drawing's label (polish r1: it no longer shares the index's first
+     strip): its number in rust on a --sheet chip; on hover it takes the file's dimensions */
+  .vp__tag {
+    position: absolute; z-index: calc(var(--z-raised) + 2); inset-block-start: var(--s-3); inset-inline-start: var(--s-3);
+    display: inline-flex; align-items: baseline; gap: var(--s-2); margin: 0; padding: var(--s-1) var(--s-2);
+    background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); white-space: nowrap;
   }
-  .vp__id { display: flex; align-items: baseline; white-space: nowrap; }
-  .vp__dot { white-space: pre; color: var(--ink-3); }
   .vp__no { color: var(--rust); }
-  .vp__dims {
-    margin-inline-start: auto; color: var(--ink-3); white-space: nowrap;
-    opacity: 0; transition: opacity var(--dur-3) var(--ease-ui);
-  }
-  .vp:has(.vp__hit:hover) .vp__dims { opacity: 1; }
+  .vp__dims { color: var(--ink-3); display: none; }
+  .vp:has(.vp__hit:hover) .vp__dims:not(:empty) { display: inline; }
   .vp__enl {
-    grid-area: 1 / 1; justify-self: end; align-self: center; pointer-events: auto;
-    display: inline-grid; place-items: center; inline-size: var(--s-5); block-size: var(--s-5);
-    margin-block: calc(-1 * var(--s-1)); margin-inline-end: calc(-1 * var(--s-1));
-    color: var(--ink-2); border-radius: var(--r-1);
+    grid-area: 1 / 1; justify-self: end; align-self: start; pointer-events: auto; margin: var(--s-3);
+    display: inline-grid; place-items: center; inline-size: var(--s-6); block-size: var(--s-6);
+    color: var(--ink-2); background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2);
     transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
   }
   .vp__enl:hover { color: var(--rust); background: var(--paper-2); }
@@ -269,9 +250,9 @@ const first = items.find((i) => i.active) ?? items[0];
   /* B-100's --paper-2 stage does not show on the textured paper: its plate draws its edge, as the others' stages do */
   .vp__box--edge { box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
 
-  /* drafting X: external sheets, and the loading placeholder (dims · format · size) */
+  /* drafting X: the loading placeholder (dims · format · size) */
   /* our drawing, not her print: on --sheet (dark in Dusk), not the always-light --plate */
-  .vp__box--x, .vp__ph { display: grid; place-items: center; background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
+  .vp__ph { display: grid; place-items: center; background: var(--sheet); box-shadow: inset 0 0 0 var(--lw-object) var(--line-2); }
   .vp__ph { position: relative; z-index: var(--z-raised); }
   .vp__x { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
   .vp__x path { fill: none; stroke: var(--line-2); stroke-width: var(--lw-object); vector-effect: non-scaling-stroke; }
@@ -283,7 +264,7 @@ const first = items.find((i) => i.active) ?? items[0];
   /* the section cut that rides the wipe's leading edge (2px rust, long–short dash): the plate and the panel wipe
      together, so it runs from just above the plate down through the panel to the foot */
   .vp__cut {
-    --_from: calc(var(--_strip, var(--s-5)) + var(--_gap) - var(--s-3));
+    --_from: calc(-1 * var(--s-3));
     position: absolute; z-index: var(--z-sticky); inset-block-start: var(--_from); inset-inline-start: calc(var(--lw-cut) / -2);
     inline-size: var(--lw-cut); block-size: calc(100% - var(--_from)); pointer-events: none; opacity: 0; overflow: visible;
   }
@@ -291,7 +272,7 @@ const first = items.find((i) => i.active) ?? items[0];
 
   /* pause for the moving plates (C-100 video, A-103 GIF); the Motion switch in the end sheet is the keyboard path */
   .vp__pause {
-    justify-self: end; align-self: end; margin: var(--s-3); pointer-events: auto;
+    grid-area: 1 / 1; justify-self: end; align-self: end; margin: var(--s-3); pointer-events: auto;
     display: inline-flex; align-items: center; gap: var(--s-2);
     min-block-size: var(--s-6); padding: 0 var(--s-3);
     color: var(--ink); background: var(--sheet); border: var(--lw-object) solid var(--line-3);
@@ -342,9 +323,6 @@ const first = items.find((i) => i.active) ?? items[0];
   .vp__panel--also .vp__foot { margin-block-start: 0; }
   .vp__quote { display: grid; row-gap: var(--s-4); }
   .vp__q { font-size: var(--fs-lede-lg); font-weight: var(--wt-lede-lg); line-height: var(--lh-lede-lg); letter-spacing: var(--tr-lede-lg); text-wrap: balance; }
-  .vp__ext { display: grid; row-gap: var(--s-4); }
-  .vp__xt { font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index); line-height: var(--lh-index); letter-spacing: var(--tr-index); }
-  .vp__xd { display: inline-flex; align-items: center; gap: var(--s-1); text-transform: none; }
   .vp__qs { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink-2); max-inline-size: calc(var(--measure) * 0.6); }
 
   /* foot: where the numbers come from, and the way in */
@@ -384,7 +362,7 @@ const first = items.find((i) => i.active) ?? items[0];
   }
 
   @media (forced-colors: active) {
-    .vp__box--x, .vp__ph { border: 1px solid CanvasText; }
+    .vp__ph { border: 1px solid CanvasText; }
   }
   /* short windows (1280 × 720; a 1440 × 900 laptop's ≈ 790px browser): SM2's Skills row hidden and sub-line clamped;
      tighter gaps, a narrower logo cell, and the Viewport sticks 8px higher (it rises that much after landing) */

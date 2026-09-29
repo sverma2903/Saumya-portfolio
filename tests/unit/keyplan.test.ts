@@ -3,20 +3,21 @@ import { cases } from '@/content/site';
 import { keyplan } from '@/lib/keyplan';
 import { isVerbatim } from '@/lib/verbatim';
 
-// SPEC SM5a "The resulting Key plans" — exact.
+// SPEC SM5a "The resulting Key plans" — exact, with polish r1's three audited overrides (cloudflare/orbit Prototype,
+// PFF Research: her sentence of what the level produced, where the rule gave feature names or a scene-setting line).
 const TABLE: Record<string, string[]> = {
   cloudflare: [
     "R2's core strengths (zero egress fees, S3 compatibility, and deep platform integration) create an opportunity to make the dashboard as strong as the infrastructure behind it.",
     'I conducted semi-structured interviews with 4 users to understand their daily workflows, dashboard usage patterns, and friction points.',
     'Connecting a bucket to Workers and Queues required leaving R2 entirely, with no way to verify the connection.',
     'I condensed four steps into two by surfacing integrations inside the bucket.',
-    'Internal Configuration · External Configuration · Management · Monitoring',
+    'A new Integrations tab surfaces connected Workers, Queues, and other compute services with directional labels, a first across any storage dashboard.',
     'Design decisions must be rooted in data before any screen is opened.',
   ],
   pff: [
     'For their emergency management clients, we redesigned InCEP, a legacy budget planning platform, into Treasora, an AI-assisted system that streamlines how mission assignments, cost estimates, and transactions move through a multi-role approval chain.',
     'Instead of manually transcribing every field, the analyst uploads the source document and reviews what the system extracts.',
-    'Changing a legacy system is never easy.',
+    'Beyond workflow pain points, we realized InCEP users have varying levels of tech literacy.',
     'Core Principle 1: AI informs, humans decide',
     'We built a comprehensive design system from scratch in Figma with 85+ reusable components, including buttons, tables, navigation, and form elements, so that every screen across web and mobile inherited a shared visual language.',
     'Testing focused on 4 tasks that mirror the full approval chain: create a Mission Assignment, create a Cost Estimate, approve the estimate, and create and approve a Transaction.',
@@ -43,7 +44,7 @@ const TABLE: Record<string, string[]> = {
     'We conducted semi-structured interviews with 8 faculty members to understand their routines, delegation strategies, goals, and tools for promotion planning.',
     'The Wall Walk generated a wealth of innovative ideas that guided our visioning session.',
     'We conducted an ideation session and produced five initial design concepts.',
-    'Workload Balance Dashboard · Target Setting · All Activities · Add Activities to Report · Reports',
+    'AI Assistant suggests activities to log based on connected sources',
     "Participatory design surfaces what interviews can't: Leading the participatory design sessions was a turning point.",
   ],
   educademy: [
@@ -56,11 +57,11 @@ const TABLE: Record<string, string[]> = {
   ],
 };
 const RULES: Record<string, (number | 'override')[]> = {
-  cloudflare: [1, 1, 1, 1, 2, 4],
-  pff: ['override', 3, 1, 1, 4, 4, 4],
+  cloudflare: [1, 1, 1, 1, 'override', 4],
+  pff: ['override', 3, 'override', 1, 4, 4, 4],
   csbs: ['override', 1, 'override', 6, 1, 'override'],
   'u-up': [1, 1, 1, 4, 1, 'override'],
-  orbit: [1, 1, 'override', 1, 2, 4],
+  orbit: [1, 1, 'override', 1, 'override', 4],
   educademy: [1, 1, 7, 8, 3, 1],
 };
 

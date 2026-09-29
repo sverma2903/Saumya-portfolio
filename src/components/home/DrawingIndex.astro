@@ -114,15 +114,17 @@ const summaryParts = summary.split(' · ').map((seg, i, all) => (i < all.length 
     /* the cover (SM1) leaves 144px above the fold at 1440 × 900 and already ends in ≥ 39px of its own air: the index
        starts right away, and its first strip is one --s-4 line, so the header, the first strip, the A-101 title and
        both lines of its outcome are on screen */
-    .dix { padding-block: 0 var(--s-6); }
+    /* polish r1: the index has its own air under the cover (the cover is shorter by as much, CoverSheet), and a
+       --s-4 gap under its rule, so the header, the first strip and the bubble never pile up; the section ends with its
+       last row (no runway: the Viewport leaves with the list, viewport.ts runs the reading line on to the last row) */
+    .dix { padding-block: var(--s-6) 0; }
+    .dix:not(.dix--compact) .dix__head { margin-block-end: var(--s-4); }
     .dix__grid {
       grid-template-columns: repeat(12, minmax(0, 1fr));
       column-gap: var(--g);
     }
     .dix__head { grid-column: 1 / -1; grid-row: 1; }
-    /* room under the last row, so the sticky Viewport stays whole while the last rows cross the 45% band:
-       its top + its height − 45% of the window − half the last row (viewport.ts measures it as --_runway) */
-    .dix__list { grid-column: 1 / span 6; grid-row: 2; padding-block-end: max(20svh, var(--_runway, 0px)); }
+    .dix__list { grid-column: 1 / span 6; grid-row: 2; }
     .dix :global(.vp) { grid-column: 7 / span 6; grid-row: 2; align-self: start; }
     /* the list's strips sit to the right of the hanging bubble, on the titles' left edge; READ ends on the minutes */
     .dix__gh { padding-inline: calc(var(--_no) + var(--s-4)) var(--s-2); }

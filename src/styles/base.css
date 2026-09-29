@@ -83,11 +83,17 @@ html {
 }
 
 /* ---------- the page: vellum + fibre, graphite ink, Newsreader ---------- */
+/* polish r1: the fibre is its own fixed layer under everything (painted once for the window and composited on scroll),
+   not a body background: tiled on the page's whole height through background-blend-mode, the filter texture shared
+   the body's huge raster layer, and GL compositors were seen to ghost stale tiles of it after a view transition. Its
+   grain is ink-coloured at ≈7% alpha, so plain compositing on --paper reads as the multiply did. */
+html::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: var(--paper-texture);
+}
 body {
   min-block-size: 100svh;
   background-color: var(--paper);
-  background-image: var(--paper-texture);
-  background-blend-mode: multiply;
   color: var(--ink);
   font-family: var(--font-serif);
   font-size: var(--fs-body);
@@ -158,6 +164,8 @@ a:hover { color: var(--rust); text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 /* the skip-link target (tabindex=-1) takes programmatic focus only; no ring around the whole page */
 main:focus { outline: none; }
+/* polish r1: every sheet ends flush on its last block; the end sheet's --space-end is the one space before it */
+#main > :nth-last-child(1 of :not(script, style, template)) { margin-block-end: 0; padding-block-end: 0; }
 /* so does a content block landed on by a citation (the case's schedule / REV. / Sheet list); its bracket (.is-cited)
    marks the landing, not a ring around the block and its notes column */
 .blk[tabindex='-1']:focus { outline: none; }
@@ -251,5 +259,6 @@ html:not([data-view="plan"]) .omit-run > .breakline { display: none; }
 
 /* ---------- print: the texture never prints (print.css, WP1, does the rest) ---------- */
 @media print {
+  html::before { display: none; }
   body { background: #fff; }
 }

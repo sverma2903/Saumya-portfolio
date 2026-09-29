@@ -21,7 +21,9 @@
 import type { CaseStudy } from '../../lib/blocks';
 import type { CaseReading } from '../../lib/reading';
 import type { CoverPlate } from '../../data/sheets';
-import { plateLayers } from '../../data/sheets';
+import { plateLayers, sheetBySlug } from '../../data/sheets';
+import type { CaseSlug } from '../../lib/verbatim';
+import Readout from '../home/Readout.astro';
 import { chrome, fill } from '../../data/chrome';
 import { alt } from '../../data/alt';
 import { externalAttrs, isExternal } from '../../lib/rich';
@@ -38,13 +40,22 @@ const firstCta = cs.sections[0]?.blocks.find((b) => b.t === 'cta');
 const ctas = firstCta && firstCta.t === 'cta' ? firstCta.items : [];
 const [primary, secondary] = ctas;
 const layers = plateLayers(cover);
+/** polish r1: her outcome in the first screen — the sheet's readout (the numbers the home Viewport shows, verbatim),
+ *  under the cover, keeping only the figures her deck just above does not already state (A-101 "Two" and A-104 "1st"
+ *  are in theirs, so they show none; A-103 shows "~ 600 K" beside a deck that opens with its 50%) */
+const readout = sheetBySlug(cs.slug as CaseSlug).readout;
+const said = deck.replace(/\s+/g, ' ');
+const inDeck = (v: string) => new RegExp(`(^|[^\\w~])${v.replace(/\s+/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'i').test(said);
+const outLines = readout ? readout.lines.map((l, i) => (inDeck(l.value.text) ? -1 : i)).filter((i) => i >= 0) : [];
 const top = cover.layers[cover.layers.length - 1].file;
 // presentation-only: the noun phrases of her titles that a line should not split (lib/typeset.ts keepPhrases; exact
 // substrings, textContent unchanged — a phrase no longer in her title is simply ignored)
 const TITLE_PHRASES: Record<string, readonly string[]> = {
   cloudflare: ['Cloudflare R2', 'Object Storage'],
   pff: ['approval chain', 'federally funded', 'emergency spending'],
-  'u-up': ['Connecting People', 'Shared Experience'],
+  // polish r1: not "Connecting People" — kept whole, it left "Through" alone on a line at 1280–1920; balance now sets
+  // "Connecting / People Through / Shared Experience"
+  'u-up': ['Shared Experience'],
   orbit: ['Faculty Workload'],
 };
 ---
@@ -52,8 +63,9 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
   <div class="case-head__grid shell">
     <a class="case-head__back t-label" href="/#index"><Icon name="arrow-left" size={14} /><span>{c.back}</span></a>
     <p class="case-head__eyebrow t-label-lg" data-v>{cs.eyebrow}</p>
-    <h1 class:list={['case-head__title', 't-title', { 'case-head__title--long': cs.title.length > 44 }]} data-v set:html={keepPhrases(cs.title, TITLE_PHRASES[cs.slug] ?? [])} />
+    <h1 class:list={['case-head__title', 't-title', { 'case-head__title--long': cs.title.length > 40 }]} data-v set:html={keepPhrases(cs.title, TITLE_PHRASES[cs.slug] ?? [])} />
     <p class="case-head__deck t-deck" data-v>{deck}</p>
+    <div class="case-head__side">
     <figure class="case-head__plate">
       <Plate
         layers={layers}
@@ -72,6 +84,8 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
         <span class="case-head__cap-t t-label">{c.cover}</span>
       </figcaption>
     </figure>
+    {readout && outLines.length > 0 && <div class="case-head__out"><Readout readout={readout} variant="header" lines={outLines} /></div>}
+    </div>
     <TitleBlock cs={cs} sheetNo={sheetNo} reading={reading} />
     <div class="case-head__actions">
       {primary && (
@@ -124,12 +138,14 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
      inline-block, which still wraps inside itself when a phrase is wider than the line, so nothing overflows) */
   .case-head__title :global(.nobr) { white-space: nowrap; }
   .case-head__title :global(.keep) { display: inline-block; }
-  /* a long title (PFF's is 63 characters) steps the title token down a size, so it sets in three or four lines, not
-     five, beside the plate */
+  /* a long title (PFF's 64 characters, U-Up's 43) steps the title token down a size, so it sets in three or four
+     lines, not five, and never leaves one short word alone on a line beside the plate */
   .case-head__title--long { font-size: calc(var(--fs-title) * .82); line-height: 1.04; max-inline-size: calc(10.804em - 21.6px); /* 18ch, as above */ }
   .case-head__deck { color: var(--ink-2); margin-block-start: var(--s-4); max-inline-size: 30em; text-wrap: pretty; }
 
+  .case-head__side { min-inline-size: 0; }
   .case-head__plate { margin-block: var(--s-6) 0; min-inline-size: 0; }
+  .case-head__out { margin-block-start: var(--s-5); }
   /* the plate sits on the paper like a print: its stage runs to the edge, a hairline and the plate shadow lift it */
   .case-head__plate :global(.case-head__cover) { box-shadow: var(--shadow-plate); outline: var(--lw-object) solid var(--line-1); }
   .case-head__cap {
@@ -185,7 +201,8 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
     .case-head__back { grid-column: 1 / -1; }
     /* the plate is centred on the text column (eyebrow to actions), as in the prototype, so neither track ends in an
        empty quadrant; when the plate is the taller of the two, the last row absorbs it and it fills its area */
-    .case-head__plate { grid-column: 2; grid-row: 2 / -1; margin: 0; align-self: center; }
+    .case-head__side { grid-column: 2; grid-row: 2 / -1; align-self: center; }
+    .case-head__plate { margin: 0; }
     .case-head__title { max-inline-size: none; }
     .case-head__deck { max-inline-size: none; }
   }

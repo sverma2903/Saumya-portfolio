@@ -6,7 +6,7 @@
  *   ▨▨▨|▨▨▨▨▨▨▨|▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨▨|▨▨▨▨▨▨▨▨▨▨▨▨|▨▨▨▨▨|▨▨▨        ← the key plan proper: the whole case as a strip,
  *   01   02      03                04           05    06            segments ∝ minutes, the level you are in hatched
  *   ─────────────────────────────────────────────────────────────     in the case accent (scripts/case/levels.ts)
- *   01 OVERVIEW   02 EMPATHIZE   …        one stop per level: her label, the italic elevation, ONE of her sentences
+ *   01 OVERVIEW   02 EMPATHIZE   …        one stop per level: her label, its minutes, ONE of her sentences
  *   ±00:00        +00:36                  (lib/keyplan.ts: a deterministic rule + audited overrides), "Go ↓"
  *   R2's core …   I conducted …
  *   GO ↓          GO ↓
@@ -19,7 +19,7 @@
  * The level you are in (scripts/case/levels.ts) is hatched on the strip and carries an accent rule over its stop, so the
  * two register; hovering a stop (or focusing its Go ↓) lights its segment, and a pointer can take a segment as a
  * shortcut to its level (the Go ↓ links stay the keyboard and screen-reader control; the strip is aria-hidden).
- * Words: her labels and sentences (data-v). Chrome: the title, sub-label, numbers, elevations, "Go ↓", " · " joiners.
+ * Words: her labels and sentences (data-v). Chrome: the title, numbers, minutes, "Go ↓", " · " joiners.
  */
 import type { KeyStop } from '../../lib/keyplan';
 import { chrome, fill } from '../../data/chrome';
@@ -41,7 +41,7 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   <div class="keyplan__head">
     <h2 id="keyplan-h" class="keyplan__h">
       <span class="keyplan__title t-label-lg">{k.title}</span>
-      <span class="keyplan__sub t-label">{k.sub}</span>
+      {k.sub && <span class="keyplan__sub t-label">{k.sub}</span>}
     </h2>
     <p class="keyplan__meta t-label"><span class="t-code">{sheetNo}</span> · <Glyphs text={fill(chrome.wp3.index.minutes, { n: minutes })} /></p>
   </div>
@@ -62,8 +62,8 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
           <p class="keyplan__label">
             <span class="keyplan__no t-code" aria-hidden="true">{pad2(i + 1)}</span>
             <span class="t-label" data-v>{s.label}</span>
+            <span class="keyplan__min t-label"><Glyphs text={fill(chrome.wp3.index.minutes, { n: s.minutes })} /></span>
           </p>
-          <p class="keyplan__elev">{s.elev}</p>
           <p class="keyplan__line">
             {s.kind === 'html' && s.html && <span data-v set:html={rich(s.html)} />}
             {s.kind === 'text' && <span data-v>{s.text}</span>}
@@ -169,10 +169,8 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
   .keyplan__no { color: var(--ink-3); font-size: var(--fs-code-sm); transition: color var(--dur-1) var(--ease-ui); }
   .keyplan__stop:is(.is-hover, .is-focus) .keyplan__no { color: var(--ink); font-weight: var(--wt-code); }
   .keyplan__stop.is-current .keyplan__no { color: var(--acc); font-weight: var(--wt-code); }
-  .keyplan__elev {
-    margin: 0; font-style: italic; font-size: var(--fs-caption); line-height: 1.2; color: var(--ink-2);
-    font-variant-numeric: tabular-nums;
-  }
+  /* the level's reading time, set like every minutes value on the site, at the end of its label line */
+  .keyplan__min { margin-inline-start: auto; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .keyplan__line {
     margin: var(--s-2) 0 0; font-size: var(--fs-body-sm); line-height: 1.45; color: var(--ink);
     max-inline-size: var(--measure); text-wrap: pretty; hyphens: manual;
@@ -216,16 +214,21 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
     .keyplan__segno { forced-color-adjust: auto; }
   }
 
-  /* one column (a vertical list): number + label with the elevation on the right, then her sentence */
+  /* phones (a band under 44rem): one stop per card on a horizontal strip that snaps card by card, the next card
+     peeking at the edge, so the whole case stays one swipe deep instead of three screens of stacked text. The strip
+     bleeds into the shell's margins and keeps them as scroll padding, so a card snaps on the text's left edge. */
   @container keyplan (max-width: 43.99rem) {
     .keyplan__segno { display: none; }
-    .keyplan__stops { margin-block-start: var(--s-5); }
-    .keyplan__stop {
-      display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-3);
-      padding: var(--s-4) 0; border-inline-start: 0;
+    .keyplan__stops {
+      display: flex; margin-block-start: var(--s-5); margin-inline: calc(-1 * var(--m)); padding-inline: var(--m);
+      overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--m);
+      scrollbar-width: none; border-block-end: var(--lw-object) solid var(--line-2);
     }
-    .keyplan__elev { align-self: baseline; }
-    .keyplan__line, .keyplan__go { grid-column: 1 / -1; }
+    .keyplan__stops::-webkit-scrollbar { display: none; }
+    .keyplan__stop { flex: 0 0 min(82%, 20rem); scroll-snap-align: start; border-block-end: 0; }
+    .keyplan__stop:first-child { border-inline-start: 0; padding-inline-start: 0; flex-basis: calc(min(82%, 20rem) - var(--_pad)); }
+    /* the last card closes the strip: room after it for its right padding to show */
+    .keyplan__stops::after { content: ''; flex: 0 0 var(--s-1); }
   }
   /* columns by measure: 2 from 44rem (704px); ≤ 6 levels take 3 from 55rem (880px), 7 levels 4 from 72rem (1152px) —
      each keeps a column's text ≥ 27ch; one row of six never does (≤ 22ch even at the 1440px max width) */
