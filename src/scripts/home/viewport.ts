@@ -32,6 +32,7 @@ import { emit } from '../core/bus';
 import { registerShortcut } from '../core/keys';
 import { observe, onVisibility } from '../core/io';
 import { on as onPref, get as getPref } from '../core/prefs';
+import { saveData } from '../core/dom';
 
 type Mode = 'anim' | 'instant';
 type Media = HTMLImageElement | HTMLVideoElement;
@@ -52,6 +53,8 @@ type DecoderCtor = new (init: { data: ReadableStream<Uint8Array>; type: string }
 const poster = async (img: HTMLImageElement): Promise<boolean> => {
   const prev = img.nextElementSibling as HTMLElement | null;
   if (prev?.dataset.poster != null) { prev.hidden = false; return true; }
+  // Save-Data: no poster decode (it costs the file's bytes up to its frame): the drafting X and the file's facts stay
+  if (saveData()) return false;
   const ID = (window as unknown as { ImageDecoder?: DecoderCtor }).ImageDecoder;
   if (!ID || !img.dataset.src) return false;
   try {
@@ -81,9 +84,10 @@ const isGif = (el: Element): el is HTMLImageElement => el.hasAttribute('data-gif
 /**
  * Card plates (< 1024; SM2 "Loading"): a card's stills get their src only once the card itself is on screen (not the
  * browser's lazy margin, which would fetch every cover on a tablet). A card is a link, so it can carry no pause
- * control: the CSBS GIF is never mounted there. Once its card is on screen it shows the GIF's staging poster frame
- * (ImageDecoder, the download stopped once that frame is decoded), with the drafting X and its file facts meanwhile,
- * or for good where ImageDecoder is missing. The moving original lives on the Viewport (≥ 1024) and the case page.
+ * control: the CSBS GIF is never mounted there. Once its card is on screen it shows the GIF's staging `still` frame
+ * (polish r1: frame 17, the complete "Before" hold, 31 % into the file — the "After" poster sat at 79 %, so a phone
+ * spent 4–5 MB on one thumbnail), decoded with ImageDecoder and the download stopped there, with the drafting X and its
+ * file facts meanwhile, or for good where ImageDecoder is missing or under Save-Data. The moving original lives on the Viewport (≥ 1024) and the case page.
  * At ≥ 1024 the card plates are display:none and never intersect.
  */
 export function initCards(): void {
@@ -137,7 +141,8 @@ export function initViewport(): void {
   let run = 0;                     // activation counter: a newer activation supersedes an older one
   let anims: Animation[] = [];
   let wiping = '';                 // the plate a running wipe is bringing in
-  let userPaused = false;
+  // Save-Data: the Viewport's GIF and video wait for Play (its Pause button starts as Play)
+  let userPaused = saveData();
   let pointerIn = false;
   let dwell = 0;
   let fastUntil = 0;
@@ -201,7 +206,7 @@ export function initViewport(): void {
         if (isVideo(el)) {
           if (isActive) {
             hasMoving = true;
-            mount(el);
+            if (moving() || !saveData()) mount(el);
             if (moving()) el.play().catch(() => undefined); else el.pause();
           } else el.pause();
         } else if (isGif(el) && isActive) {

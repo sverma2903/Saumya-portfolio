@@ -11,13 +11,19 @@
  * cache, no re-encode. The moment Pause is pressed the motion stops: the canvas takes the frame drawImage hands over
  * (the GIF's first) until the poster replaces it a moment later. Without ImageDecoder, paused is the drafting X +
  * "Paused" + Play. The GIF is never decoded whole in JS, and never re-encoded.
+ *
+ * Save-Data (html[data-save], polish r1): every GIF starts paused (choice 'pause'), and no poster is decoded unless its
+ * bytes are already here: the drafting X with the file's size and Play stand in; an explicit Play loads the original.
+ * A poster decode never starts a second download of a file another part of the page is fetching (media/bytes.ts), and
+ * its own request stops at the poster frame.
  */
 import { observe, viewportMargin } from '../core/io';
-import { motionOK } from '../core/dom';
+import { motionOK, saveData } from '../core/dom';
 import { on as onPref } from '../core/prefs';
 import { chrome } from '../../data/chrome';
 import { phNote, setState } from './state';
 import { isHeld, onHold } from './hold';
+import { frameStream, peek } from './bytes';
 
 const LARGE = 400_000;
 const MAX_LARGE = 2;
@@ -52,10 +58,12 @@ const Decoder = (): DecoderCtor | undefined => (window as unknown as { ImageDeco
 export async function decodePoster(src: string, frame: number, canvas: HTMLCanvasElement, w: number, aspect: number): Promise<boolean> {
   const D = Decoder();
   if (!D) return false;
+  // the bytes: the shared download when one exists (bytes.ts: the player's warm-up, never a second request), else a
+  // request of its own that stops once the frame is decoded
+  const s = await frameStream(src);
+  if (!s) return false;
   try {
-    const res = await fetch(src);
-    if (!res.ok || !res.body) return false;
-    const dec = new D({ data: res.body, type: 'image/gif' });
+    const dec = new D({ data: s.body, type: 'image/gif' });
     const { image } = await dec.decode({ frameIndex: frame });
     const cw = Math.max(1, Math.round(w));
     const ch = Math.max(1, Math.round(cw / (aspect || 1)));
@@ -67,6 +75,8 @@ export async function decodePoster(src: string, frame: number, canvas: HTMLCanva
     return true;
   } catch {
     return false;
+  } finally {
+    s.done();
   }
 }
 
@@ -104,12 +114,17 @@ export function posterPlate(plate: HTMLElement): Promise<boolean> {
   };
   const have = Number(canvas.dataset.pw ?? 0);
   if (have && w <= have * 1.25) return Promise.resolve(reveal(true));
+  // Save-Data: a poster costs the file's bytes up to its frame; none is decoded unless those bytes are already here
+  // (the drafting X with the file's facts and Play stand in; an explicit Play still loads the original)
+  if (saveData() && !peek(img.dataset.src ?? img.src)) return Promise.resolve(false);
   let job = jobs.get(canvas);
   if (!job) {
     const src = img.dataset.src ?? img.src;
     // a still plate has no Play to offer, so without ImageDecoder it shows the file's first frame, never the void
     const still = plate.hasAttribute('data-still');
-    job = decodePoster(src, Number(img.dataset.poster ?? 0), canvas, w, nw / nh).then((ok) => ok || (still && firstFrame(src, canvas, w, nw / nh))).then((ok) => {
+    // a still plate (a link's thumbnail: the next-project teaser) shows the GIF's `still` frame where it has one
+    const frame = Number((still && img.dataset.stillFrame) || img.dataset.poster || 0);
+    job = decodePoster(src, frame, canvas, w, nw / nh).then((ok) => ok || (still && firstFrame(src, canvas, w, nw / nh))).then((ok) => {
       jobs.delete(canvas);
       if (ok) canvas.dataset.pw = String(canvas.width);
       return ok;
@@ -246,7 +261,8 @@ export function manageGif(img: HTMLImageElement, plate: HTMLElement): void {
     canvas: plate.querySelector<HTMLCanvasElement>('canvas.plate__poster'),
     near: false, far: false, ratio: 0, autoPaused: false,
     still: plate.hasAttribute('data-still'),
-    choice: plate.hasAttribute('data-still') ? 'pause' : 'auto',
+    // Save-Data: nothing plays by itself (an explicit Play still does)
+    choice: plate.hasAttribute('data-still') || saveData() ? 'pause' : 'auto',
   };
   gifs.set(plate, g);
   img.addEventListener('load', () => onLoad(g));
@@ -295,4 +311,4 @@ export function mountAllForPrint(): void {
 
 // the Motion switch is a fresh, site-wide choice: it resets every per-GIF choice (a still plate stays still)
 onHold(() => schedule());
-onPref('motion', () => { for (const g of gifs.values()) g.choice = g.still ? 'pause' : 'auto'; schedule(); });
+onPref('motion', () => { for (const g of gifs.values()) g.choice = g.still || saveData() ? 'pause' : 'auto'; schedule(); });

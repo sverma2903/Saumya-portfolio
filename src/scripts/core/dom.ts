@@ -32,6 +32,17 @@ export function rafThrottle<A extends unknown[]>(fn: (...a: A) => void): (...a: 
 export const motionOK = (): boolean => document.documentElement.dataset.motion !== 'reduce';
 
 /**
+ * Save-Data (polish r1): the reader asked the browser to save data, or the link is 2g / slow-2g. Detected once by the
+ * head script (html[data-save]); every media manager honours it: no GIF, video or warm-up downloads until an explicit
+ * Play, no poster decodes, no WebGL hero. The drafting X with the file's facts stands in for each file.
+ */
+export const saveData = (): boolean => document.documentElement.hasAttribute('data-save');
+
+/** Too slow for speculative downloads (the Highlights warm-up): Save-Data, or an effective type of 3g or slower. */
+export const slowLink = (): boolean =>
+  saveData() || /^(slow-2g|2g|3g)$/.test((navigator as Navigator & { connection?: { effectiveType?: string } }).connection?.effectiveType ?? '');
+
+/**
  * Scroll an element into view. Pointer-initiated → smooth when motion is on; keyboard-initiated → always instant (§4.9).
  */
 export function scrollToEl(el: Element, opts: { keyboard?: boolean; block?: ScrollLogicalPosition } = {}): void {

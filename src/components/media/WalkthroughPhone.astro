@@ -20,6 +20,7 @@ import { STAGES } from '../../data/sheets';
 import { alt } from '../../data/alt';
 import Plate from './Plate.astro';
 import MediaControls from './MediaControls.astro';
+import LegacyAnchors from '../case/LegacyAnchors.astro';
 
 interface Props { blocks: Extract<Block, { t: 'feature' }>[]; ctxs: BlockCtx[] }
 const { blocks, ctxs } = Astro.props;
@@ -44,7 +45,7 @@ const firstSecs = stagingOf(first).gif?.secs ?? 10;
         return (
           <li {...blkAttrs('feature', ctx, 'wkp__step')} data-walk-step={i} aria-current={i === 0 ? 'step' : undefined}>
             <div class="wkp__text" id={textId}>
-              {b.title && <Tag class="wkp__title" id={titleId} data-v set:html={rich(b.title)} />}
+              {b.title && <Tag class="wkp__title" id={titleId} data-v><LegacyAnchors inline slug={ctx.slug} sectionId={titleId!} /><Fragment set:html={rich(b.title)} /></Tag>}
               {b.lede && <p class="wkp__lede" data-v set:html={rich(b.lede)} />}
               {b.html && <p class="wkp__html plan-hide" data-v set:html={rich(b.html)} />}
             </div>

@@ -26,6 +26,7 @@ import Plate from '../media/Plate.astro';
 import Compare from '../media/Compare.astro';
 import Icon from '../symbols/Icon.astro';
 import { enlargeable } from '../media/media-lib';
+import LegacyAnchors from '../case/LegacyAnchors.astro';
 
 interface Props { block: Extract<Block, { t: 'feature' }>; ctx: BlockCtx; renderer?: SingleRenderer }
 const { block, ctx, renderer } = Astro.props;
@@ -52,7 +53,7 @@ const hasText = !!(block.kicker || block.n || block.title || block.lede || block
             {block.n && <span class="feature__n" data-v>{block.n}</span>}
           </p>
         )}
-        {block.title && <Tag class="feature__title" id={titleId} data-v set:html={rich(block.title)} />}
+        {block.title && <Tag class="feature__title" id={titleId} data-v><LegacyAnchors inline slug={ctx.slug} sectionId={titleId!} /><Fragment set:html={rich(block.title)} /></Tag>}
         {block.lede && <p class="feature__lede" data-v set:html={rich(block.lede)} />}
         {block.html && <p class="feature__html plan-hide" data-v set:html={rich(block.html)} />}
         {block.items && block.items.length > 0 && (

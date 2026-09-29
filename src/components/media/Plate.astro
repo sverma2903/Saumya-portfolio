@@ -212,6 +212,9 @@ const rootAttrs = {
       <div class="plate__mat" style={matStyle}>
         <div class="plate__view" style={viewStyle} data-ph-host={devInStage ? undefined : ''} data-state={moving && !devInStage ? 'idle' : undefined}>
           {showPh && <Placeholder media={top} />}
+          {/* the LCP GIF (a cover on its own stage) has no drafting X — its stage stands in while it paints — except under
+              Save-Data, where it waits for Play: then the X with the file's facts says what Play will load */}
+          {!showPh && lcpGif && <Placeholder media={top} class="ph--save" />}
           {layers.map((layer, i) => {
             const f = facts(layer);
             const k = kinds[i];
@@ -246,11 +249,12 @@ const rootAttrs = {
                   {lcpGif && isTop ? (
                     <Fragment>
                       <img class="plate__media" style={style} width={f.w} height={f.h} data-gif src={f.src} alt={la} decoding="async" fetchpriority="high" data-poster={st.gif?.poster} data-frames={st.gif?.frames} aria-describedby={desc} />
-                      {/* motion off: hold the LCP GIF still before it can paint (the preload has fetched it; the manager shows its poster) */}
-                      <script is:inline>(function(){var i=document.currentScript.previousElementSibling;if(document.documentElement.dataset.motion==='reduce'&&i){i.dataset.src=i.getAttribute('src');i.removeAttribute('src')}})()</script>
+                      {/* motion off or Save-Data: hold the LCP GIF still before it can paint (the manager shows its poster, or under
+                          Save-Data the drafting X; removing the src also lets the browser drop the download where nothing else holds it) */}
+                      <script is:inline>(function(){var i=document.currentScript.previousElementSibling,d=document.documentElement;if(i&&(d.dataset.motion==='reduce'||d.hasAttribute('data-save'))){i.dataset.src=i.getAttribute('src');i.removeAttribute('src')}})()</script>
                     </Fragment>
                   ) : (
-                    <img class="plate__media" style={style} width={f.w} height={f.h} data-gif data-src={f.src} alt={la} decoding="async" data-poster={st.gif?.poster} data-frames={st.gif?.frames} aria-describedby={desc} />
+                    <img class="plate__media" style={style} width={f.w} height={f.h} data-gif data-src={f.src} alt={la} decoding="async" data-poster={st.gif?.poster} data-still-frame={st.gif?.still} data-frames={st.gif?.frames} aria-describedby={desc} />
                   )}
                   {/* the LCP GIF already has a real src: without JS it renders itself, so it has no twin */}
                   {!(lcpGif && isTop) && <noscript><img class="plate__media plate__media--ns" style={style} src={f.src} width={f.w} height={f.h} alt={la} loading="lazy" decoding="async" /></noscript>}
@@ -290,6 +294,8 @@ const rootAttrs = {
 </Wrap>
 <style>
   .plate { position: relative; min-inline-size: 0; }
+  .plate__view > :global(.ph.ph--save) { display: none; }
+  :global(html[data-save]) .plate__view > :global(.ph.ph--save) { display: grid; }
   .plate--staged { inline-size: 100%; }
   .plate__mat { position: relative; }
   .plate__view { position: relative; inline-size: 100%; }

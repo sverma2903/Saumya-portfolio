@@ -8,8 +8,8 @@
  *    (chrome). One figure (FIG. c.n); every image opens in Enlarged detail.
  *  - Phones: the row becomes a horizontal strip (scroll-snap), images at a common height.
  *  - Only where analysis exists: her label "Concept Analysis" (site.ts labels) and her lines. Each line's leading
- *    "+" or "-" stays in her text; only that first character is wrapped (graphite 600 for +, rust 600 for -) and
- *    hangs in its own column — textContent is unchanged.
+ *    "+" or "-" is her bold <strong> (as authored); it gains a class (graphite 600 for +, rust 600 for -) and hangs
+ *    in its own column — textContent is unchanged.
  * Owner flag (SPEC §8.9.10): concepts 4 and 5 repeat concept 3's captions on her live page; rendered verbatim.
  * Plan view: title + first image (the other images, captions after the first and the analysis are .plan-hide).
  */
@@ -36,10 +36,12 @@ const tracks = items.map((it) => `minmax(0, ${it.a.toFixed(4)}fr)`).join(' ');
 const capH = Math.min(...items.map((it) => (it.cap ? it.cap / it.a : Infinity)));
 const rowStyle = `--_tracks: ${tracks}; --_sum: ${sum.toFixed(4)}; --_n: ${items.length}${Number.isFinite(capH) ? `; --_caph: ${Math.round(capH)}px` : ''}`;
 // her "+"/"-" lead character, wrapped (first character only; the rest is her HTML untouched)
+// her lines open with a bold sign (<strong>+</strong> / <strong>-</strong>, orbit.ts as authored): the sign keeps her
+// <strong> and gains only a class (graphite for +, rust for -)
 const signed = (line: string) => {
-  const c = line.charAt(0);
-  if (c !== '+' && c !== '-') return rich(line);
-  return `<span class="an__sign an__sign--${c === '+' ? 'plus' : 'minus'}">${c}</span>${rich(line.slice(1))}`;
+  const m = /^<strong>([+-])<\/strong>/.exec(line);
+  if (!m) return rich(line);
+  return `<strong class="an__sign an__sign--${m[1] === '+' ? 'plus' : 'minus'}">${m[1]}</strong>${rich(line.slice(m[0].length))}`;
 };
 // phones: the row is a scroll strip → a named, focusable region so it scrolls with the keyboard (§6.2, WCAG 2.1.1).
 // Without JS it is always one; with JS (below) only while it actually scrolls, so desktop gets no empty tab stop.

@@ -18,6 +18,7 @@ import detailCss from '../../styles/detail.css?url';
 import Panzoom, { type PanzoomObject } from '@panzoom/panzoom';
 import { motionOK } from '../core/dom';
 import { setHold } from './hold';
+import { frameStream } from './bytes';
 
 /** The viewer's stylesheet (WP7): requested when this module first loads, and awaited before the dialog opens, so no
  *  page carries it in its first render (Astro would hoist a plain CSS import into every page's <head>). */
@@ -265,10 +266,12 @@ function clearMedia(): void {
 async function drawPosterNative(item: Item, token: number): Promise<boolean> {
   const D = (window as unknown as { ImageDecoder?: new (i: { data: ReadableStream<Uint8Array>; type: string }) => { decode(o: { frameIndex: number }): Promise<{ image: CanvasImageSource & { close(): void } }>; close(): void } }).ImageDecoder;
   if (!D) return false;
+  // the page's own download of this file when there is one (bytes.ts), else a request that stops at the poster frame
+  const s = await frameStream(item.src);
+  if (!s) return false;
   try {
-    const res = await fetch(item.src);
-    if (!res.body || token !== loadToken) return false;
-    const dec = new D({ data: res.body, type: 'image/gif' });
+    if (token !== loadToken) return false;
+    const dec = new D({ data: s.body, type: 'image/gif' });
     const { image } = await dec.decode({ frameIndex: item.poster });
     if (token !== loadToken) { image.close(); dec.close(); return false; }
     poster.width = item.w;
@@ -279,6 +282,8 @@ async function drawPosterNative(item: Item, token: number): Promise<boolean> {
     return true;
   } catch {
     return false;
+  } finally {
+    s.done();
   }
 }
 

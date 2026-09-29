@@ -8,11 +8,13 @@
 import { play } from '../../content/site';
 import { chrome } from '../../data/chrome';
 import Ornament from '../symbols/Ornament.astro';
+import { splitOrnament } from '../../lib/text';
 const p = chrome.wp6.play;
+const head = splitOrnament(play.headline);
 ---
 <header class="play-head shell">
   <p class="play-head__eyebrow t-label-lg"><span class="play-head__sheet t-code">{p.sheet}</span><span class="play-head__rule" aria-hidden="true"></span><span>{p.title}</span></p>
-  <h1 class="play-head__h" id="play-h" data-v><Fragment set:html={play.headline} /> <Ornament /></h1>
+  <h1 class="play-head__h" id="play-h" data-v><Fragment set:html={head.html} />{head.ornament && <Fragment> <Ornament /></Fragment>}</h1>
   <p class="play-head__sub" data-v set:html={play.sub} />
 </header>
 <style>

@@ -64,6 +64,14 @@ const BUDGET = {
 // the PFF cover (557 KB PNG) and the CSBS cover (a 5 MB GIF whose first frame paints early) get 2.5 s; a case's
 // transfer budget is "1.2 MB + cover" (the cover is its LCP image, counted separately)
 const LCP_OVERRIDE = { '/pff': 2500, '/csbs': 2500 };
+/**
+ * Animated-GIF LCP (polish r1, SPEC §7.2 exception): the web-exposed LCP entry of an animated image is timed when the
+ * WHOLE file has loaded (5 MB for /csbs), although its first frame paints as soon as that frame's bytes are in. Chrome
+ * ≥ 116 reports the first frame to CrUX, not to the page's API (metrics changelog 2023-08), so the lab cannot see it.
+ * For these routes the LCP budget is checked against the lab bound of that first paint, max(FCP, the GIF's first
+ * byte); the load-time entry is still printed. A first-frame still (a derivative) would end this — owner item §8.9.
+ */
+const ANIMATED_LCP = new Set(['/csbs']);
 
 const OBSERVE = () => {
   const v = (window.__v = { lcp: [], shifts: [], long: [], loaf: [], fcp: 0, events: [] });
@@ -155,6 +163,9 @@ async function measure(base, route, { probe = false } = {}) {
     }, loadAt);
   }
   const v = await pg.evaluate(() => window.__v);
+  // the LCP image's first byte (Resource Timing): the earliest its first frame can paint (see ANIMATED_LCP)
+  const lcpUrl = v.lcp.at(-1)?.url ?? '';
+  const lcpFirstByte = lcpUrl ? await pg.evaluate((u) => performance.getEntriesByName(u)[0]?.responseStart ?? NaN, lcpUrl) : NaN;
   // stylesheets before any interaction, with Chrome's own render-blocking verdict (Resource Timing)
   const sheets = await pg.evaluate(() => performance.getEntriesByType('resource')
     .filter((e) => /\.css(\?|$)/.test(e.name))
@@ -198,7 +209,7 @@ async function measure(base, route, { probe = false } = {}) {
   const cssAll = sheets.reduce((n, x) => n + x.body, 0) + inlineGz;
   const cover = lcpE?.url ? [...reqs.values()].find((r) => r.url === lcpE.url)?.bytes ?? 0 : 0;
   return {
-    route, lcp: lcpE?.t ?? NaN, lcpEl: lcpE ? `${lcpE.tag.toLowerCase()}${lcpE.id ? '#' + lcpE.id : ''}${lcpE.cls ? '.' + lcpE.cls.split(' ')[0] : ''} ${lcpE.url ? lcpE.url.split('/').pop() : JSON.stringify(lcpE.text)}` : '',
+    route, lcp: lcpE?.t ?? NaN, firstFrame: /\.gif$/i.test(lcpE?.url ?? '') ? Math.max(v.fcp, lcpFirstByte) : NaN, lcpEl: lcpE ? `${lcpE.tag.toLowerCase()}${lcpE.id ? '#' + lcpE.id : ''}${lcpE.cls ? '.' + lcpE.cls.split(' ')[0] : ''} ${lcpE.url ? lcpE.url.split('/').pop() : JSON.stringify(lcpE.text)}` : '',
     fcp: v.fcp, cls: cls(v.shifts), shifts: v.shifts, tbt: blocking, tti, longTasks: v.long.length, inp, inpBy,
     bytes: { ...byType, inlineCssGz: inlineGz, cssBlocking, cssAll, transfer, cover }, sheets, loaf: v.loaf, probe: probeRes, errors,
   };
@@ -213,7 +224,7 @@ const out = await withServer(async (base) => {
     for (let i = 0; i < RUNS; i++) runs.push(await measure(base, route));
     const m = {
       route, kind: KIND(route), runs,
-      lcp: median(runs.map((r) => r.lcp)), cls: median(runs.map((r) => r.cls)), tbt: median(runs.map((r) => r.tbt)),
+      lcp: median(runs.map((r) => r.lcp)), firstFrame: median(runs.map((r) => r.firstFrame)), cls: median(runs.map((r) => r.cls)), tbt: median(runs.map((r) => r.tbt)),
       fcp: median(runs.map((r) => r.fcp)), inp: median(runs.map((r) => r.inp ?? 0)),
       js: kb(median(runs.map((r) => r.bytes.Script))), css: kb(median(runs.map((r) => r.bytes.cssBlocking))), cssAll: kb(median(runs.map((r) => r.bytes.cssAll))),
       html: kb(median(runs.map((r) => r.bytes.Document))), transfer: kb(median(runs.map((r) => r.bytes.transfer))),
@@ -223,7 +234,9 @@ const out = await withServer(async (base) => {
     const b = { ...BUDGET[m.kind], lcp: LCP_OVERRIDE[route] ?? BUDGET[m.kind].lcp };
     const transferBudget = b.transfer + (m.kind === 'case' ? m.cover : 0);
     m.fail = [
-      m.lcp > b.lcp && `LCP ${Math.round(m.lcp)} > ${b.lcp}`,
+      ANIMATED_LCP.has(route) && Number.isFinite(m.firstFrame)
+        ? m.firstFrame > b.lcp && `first frame ${Math.round(m.firstFrame)} > ${b.lcp}`
+        : m.lcp > b.lcp && `LCP ${Math.round(m.lcp)} > ${b.lcp}`,
       m.cls > b.cls && `CLS ${m.cls.toFixed(3)} > ${b.cls}`,
       m.tbt > b.tbt && `TBT ${Math.round(m.tbt)} > ${b.tbt}`,
       m.inp > b.inp && `INP~ ${Math.round(m.inp)} > ${b.inp}`,
@@ -232,7 +245,7 @@ const out = await withServer(async (base) => {
       m.html > b.html && `HTML ${m.html} > ${b.html} KB`,
       m.transfer > transferBudget && `transfer ${m.transfer} > ${transferBudget} KB`,
     ].filter(Boolean);
-    console.log(`${route.padEnd(12)} LCP ${String(Math.round(m.lcp)).padStart(5)} ms (${m.lcpEl}) · FCP ${Math.round(m.fcp)} · CLS ${m.cls.toFixed(3)} · TBT ${Math.round(m.tbt)} ms · INP~ ${Math.round(m.inp)} ms · JS ${m.js} · CSS ${m.css} (all ${m.cssAll}) · HTML ${m.html} · transfer ${m.transfer} KB${m.fail.length ? `  ✗ ${m.fail.join('; ')}` : '  ✓'}`);
+    console.log(`${route.padEnd(12)} LCP ${String(Math.round(m.lcp)).padStart(5)} ms (${m.lcpEl})${Number.isFinite(m.firstFrame) ? ` · first frame ~${Math.round(m.firstFrame)} ms` : ''} · FCP ${Math.round(m.fcp)} · CLS ${m.cls.toFixed(3)} · TBT ${Math.round(m.tbt)} ms · INP~ ${Math.round(m.inp)} ms · JS ${m.js} · CSS ${m.css} (all ${m.cssAll}) · HTML ${m.html} · transfer ${m.transfer} KB${m.fail.length ? `  ✗ ${m.fail.join('; ')}` : '  ✓'}`);
     for (const r of runs) if (r.errors.length) console.log(`    page errors: ${r.errors.join(' | ')}`);
     if (Object.keys(m.inpBy).length) console.log(`    interactions (median ms): ${Object.entries(m.inpBy).map(([k, d]) => `${k} ${Math.round(d)}`).join(' · ')}`);
     if (flags.has('--verbose')) {

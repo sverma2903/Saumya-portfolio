@@ -26,7 +26,7 @@ export const labels = {
 };
 
 export const home = {
-  headline: '<span class="hl">Saumya Verma</span> is a <em>product designer</em> working on complex tools and AI-assisted workflows',
+  headline: '<mark>Saumya Verma</mark> is a <em>product designer</em> working on complex tools and AI-assisted workflows <mark>✦</mark>',
   sub: 'Currently at <strong>Fulcrum GT</strong>, leading design and front-end build for Accio, an AI delivery platform for enterprise software implementations.',
   connect: "I'd love to connect with you!",
   closing: "Let's build the next one together!",
@@ -43,7 +43,6 @@ export const selected = [
     logo: m('CQBzyCCtXm6Sxa1H7rjdmW35A4.webp'),
     tone: 'linear-gradient(180deg, rgba(251, 172, 64, 0.7) -10%, rgba(255, 103, 51, 0.65) 108%)',
     fit: 'shot',
-    tags: ['Personal Project', 'Mar 2026'],
   },
   {
     slug: 'pff',
@@ -53,7 +52,6 @@ export const selected = [
     logo: m('LLwKJhf5XlV3SWhOs3xldIRQFA.png'),
     tone: '#c3d4cd',
     fit: 'cover',
-    tags: ['Product Designer, PFF LLC', 'Sep 2025 - May 2026'],
   },
   {
     slug: 'csbs',
@@ -63,7 +61,6 @@ export const selected = [
     logo: m('o8ini5inZ7izIUkXDxD6Ryd890E.png'),
     tone: '#4878aa',
     fit: 'contain',
-    tags: ['UX Design Intern, CSBS', 'May - Dec 2025'],
   },
   {
     slug: 'u-up',
@@ -73,7 +70,6 @@ export const selected = [
     logo: m('z9qKmfXnKpQ01CHNuHDM1KgY6aE.png'),
     tone: 'linear-gradient(180deg, rgb(103, 51, 80) 0%, rgb(57, 39, 63) 100%)',
     fit: 'contain',
-    tags: ['🥇 Winner, CMU XHacks', '48 hours'],
   },
 ];
 
@@ -97,9 +93,9 @@ export const about = {
       published:
         'My writings have been published at <a href="https://www.re-thinkingthefuture.com/author/saumyaverma-1/">Rethinking the Future</a> and <a href="https://www.novatr.com/learning-hub">Novatr</a> (Design Journals) as well.',
       posts: [
-        { title: 'Cloudflare R2 Object Storage Redesign', href: 'https://medium.com/@saumyaverma29/cloudflare-r2-object-storage-redesign-ae5a1daf44f3' },
-        { title: 'Making Visual Data Accessible', href: 'https://medium.com/@saumyaverma29/making-visual-data-accessible-04dd0b6c6ba2' },
-        { title: 'Search SUGAR', href: 'https://medium.com/@saumyaverma29/search-sugar-33fc1c16fb16' },
+        { title: '<strong>Cloudflare R2 Object Storage Redesign</strong>', href: 'https://medium.com/@saumyaverma29/cloudflare-r2-object-storage-redesign-ae5a1daf44f3' },
+        { title: '<strong>Making Visual Data Accessible</strong>', href: 'https://medium.com/@saumyaverma29/making-visual-data-accessible-04dd0b6c6ba2' },
+        { title: '<strong>Search SUGAR</strong>', href: 'https://medium.com/@saumyaverma29/search-sugar-33fc1c16fb16' },
       ],
     },
     meditation: {
@@ -124,7 +120,7 @@ export const about = {
 };
 
 export const play = {
-  headline: "Hackathons &amp; <em>side quests</em> that didn't make the case study cut",
+  headline: "Hackathons &amp; <em>side quests</em> that didn't make the case study cut <mark>✦</mark>",
   sub: "Builder by default. If something makes me curious, I usually end up prototyping it, whether or not there's a reason to.",
   items: [
     {

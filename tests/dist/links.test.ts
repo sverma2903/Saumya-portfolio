@@ -90,10 +90,23 @@ describe.each(PAGES)('%s', (page) => {
 describe('legacy anchors (Framer-era section links, §5.2.9)', () => {
   test.each(Object.entries(legacyAnchors))('%s', (slug, map) => {
     const ids = idsOf(pageFile(slug as PageKey));
+    const { root } = load(slug as PageKey);
     for (const [alias, target] of Object.entries(map)) {
       expect(ids.has(alias), `${slug}#${alias}`).toBe(true);
       expect(ids.has(target), `${slug}#${target}`).toBe(true);
+      // the alias sits at its target: the chapter's top edge, or inside the heading / title / block it names
+      const el = root.querySelector(`[id="${alias}"]`)!;
+      expect(el.getAttribute('data-alias-of'), `${slug}#${alias}`).toBe(target);
+      const host = root.querySelector(`[id="${target}"]`)!;
+      expect(host.tagName === 'SECTION' ? el.parentNode === host : host.querySelector(`[id="${alias}"]`) != null, `${slug}#${alias} inside #${target}`).toBe(true);
     }
+  });
+  // polish r1: her Framer ids that are not in a case chapter
+  test.each([['index', 'projects', 'index'], ['fun', 'projects', null]] as const)('%s#%s', (page, alias, inside) => {
+    const { root } = load(page as PageKey);
+    const el = root.querySelector(`[id="${alias}"]`);
+    expect(el, `${page}#${alias}`).not.toBeNull();
+    if (inside) expect(el!.closest(`#${inside}`), `${page}#${alias} inside #${inside}`).not.toBeNull();
   });
 });
 

@@ -16,6 +16,8 @@
  *      so2bh2  55  the Student dashboard
  *      n8B6Uj  56  the assignment's status: Checked (30 was mid-slide)
  *      hc5LSN  50  the 3.4 s "After" hold (frame 45 still reads "Afte": frames 17 and 50 are the two holds)
+ *              still 17: the complete "Before" hold, for its thumbnails (card, teaser): it ends at 31 % of the file
+ *              (1.6 MB), frame 50 at 79 % (4.1 MB) — polish r1, a phone's home card spent 5 MB on one still
  *  - Baked phones: `clip` (inset T R B L) is the device's bounding box and stays the documented fallback. `outline` is the
  *    device SILHOUETTE: the union of every frame's non-canvas pixels (|Δ| > 8 from the canvas colour, specks < 3 px
  *    dropped), traced row by row and simplified to ≤ 1 native px (Douglas–Peucker), in % of the canvas. A rectangle
@@ -56,7 +58,10 @@ export interface Staging {
       (a ≈ 36 native px radius, fitted to its edge rows) sit on 26 px of white; the phone runs out of the bottom edge, so only the top is clipped. */
   corners?: string;
   wide?: boolean;
-  gif?: { secs: number; frames: number; poster: number };
+  /** `still` (polish r1): the frame a GIF shows where it can only ever be a still thumbnail — a home card, the next-
+   *  project teaser — when its poster sits deep in the file; decoding stops there, so the thumbnail costs the bytes
+   *  up to that frame only. Also a complete state. Default: the poster. */
+  gif?: { secs: number; frames: number; poster: number; still?: number };
   video?: { secs: number; audio?: boolean; remote?: boolean };
   /** SM6a section cut: the aligned file beneath; dx/dy = its offset in its own native px (measured, see the header) */
   compare?: { under: string; dx: number; dy: number; start: number };
@@ -94,7 +99,7 @@ export const staging: Record<string, Staging> = {
   'GHjG21Lo2f64p4k0y3obKTFGgck.mp4': { frame: 'phone-video', video: { secs: 6.32 } },
   '6GwunOSeX0YVHJspIvJG7W3Q.mp4': { frame: 'bezel-dark', video: { secs: 47.8, audio: true, remote: true } },
   // ── CSBS before/after GIF (own stage) ──
-  'hc5LSNViBiB98sAACx272BNZYw.gif': { gif: { secs: 10.0, frames: 68, poster: 50 } },
+  'hc5LSNViBiB98sAACx272BNZYw.gif': { gif: { secs: 10.0, frames: 68, poster: 50, still: 17 } },
   // ── optical-weight normalisation for icon wells ──
   'Fn2fGJ6uoe9bJooiMcmTo9gBck.jpg': { scale: 1.0 }, 'PfY4jWqw2rBGvI6q8LxIjCKQw.jpg': { scale: 1.1 },
   'HmFCeblpCm7SzpCgHFrf8Yjfg.jpg': { scale: 1.5 }, 'ySz4SWCgEuPuPs3PvYY04HQJVYU.jpg': { scale: 1.3 },

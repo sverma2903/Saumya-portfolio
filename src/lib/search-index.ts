@@ -17,7 +17,7 @@ import type { Block, CaseStudy } from './blocks';
 import { chapterCtxs } from './blocks-ctx';
 import { blockId, splitChildId } from './ids';
 import { reading } from './reading';
-import { domainOf, sentences, stripHtml } from './text';
+import { domainOf, sentences, stripHtml, withoutOrnament } from './text';
 import { sheets, SHEET_NO } from '../data/sheets';
 import { chrome } from '../data/chrome';
 import type { CaseSlug } from './verbatim';
@@ -223,7 +223,7 @@ function build(): SearchIndex {
   // ── pages (the Sheets group), in drawing-index order: A-000, A-101…A-106, B-100, C-100, ↗, ↗ ──
   const HOME = pages.push({
     kind: 'home', slug: '', sheet: 'A-000', title: w1.coverSheet, href: '/',
-    x: [w1.drawingIndex, s(home.headline)], lv: [w1.coverSheet, w1.drawingIndex],
+    x: [w1.drawingIndex, s(withoutOrnament(home.headline))], lv: [w1.coverSheet, w1.drawingIndex],
   }) - 1;
   const casePageIdx = new Map<string, number>();
   for (const cs of cases) casePageIdx.set(cs.slug, pages.push(casePage(cs)) - 1);
@@ -237,7 +237,7 @@ function build(): SearchIndex {
   }) - 1;
   const PLAY = pages.push({
     kind: 'play', slug: 'fun', sheet: playSheet.no, title: playSheet.title.text, href: playSheet.href,
-    x: [s(play.headline)], lv: [playSheet.title.text],
+    x: [s(withoutOrnament(play.headline))], lv: [playSheet.title.text],
   }) - 1;
   for (const ext of sheets.filter((x) => x.kind === 'external')) {
     pages.push({ kind: 'external', slug: '', sheet: '↗', title: ext.title.text, href: ext.href, x: [ext.domain ?? domainOf(ext.href)] });
@@ -266,7 +266,7 @@ function build(): SearchIndex {
   const fieldsOf = (fields: Field[]) => fields.map(fieldPassages);
 
   // site pages (no anchors: the client finds the sentence in the DOM, or cites by text fragment)
-  push(HOME, 0, undefined, fieldPassages({ text: s(home.headline), html: home.headline }));
+  push(HOME, 0, undefined, fieldPassages({ text: s(withoutOrnament(home.headline)), html: withoutOrnament(home.headline) }));
   push(HOME, 0, undefined, fieldPassages({ text: s(home.sub), html: home.sub }));
   selected.forEach((c) => push(HOME, 1, undefined, fieldPassages({ text: s(c.text), html: c.text })));
   push(ABOUT, 0, undefined, fieldPassages({ text: s(about.headline), html: about.headline }));
@@ -277,7 +277,7 @@ function build(): SearchIndex {
   writing.posts.forEach((x) => push(ABOUT, 2, undefined, fieldPassages({ text: s(x.title), html: x.title })));
   push(ABOUT, 3, undefined, fieldPassages({ text: s(meditation.text), html: meditation.text }));
   push(ABOUT, 4, undefined, fieldPassages({ text: s(sketching.text), html: sketching.text }));
-  push(PLAY, 0, undefined, fieldPassages({ text: s(play.headline), html: play.headline }));
+  push(PLAY, 0, undefined, fieldPassages({ text: s(withoutOrnament(play.headline)), html: withoutOrnament(play.headline) }));
   push(PLAY, 0, undefined, fieldPassages({ text: s(play.sub), html: play.sub }));
   play.items.forEach((x) => push(PLAY, 0, undefined, [...fieldPassages({ text: s(x.title), html: x.title }), ...fieldPassages({ text: s(x.tag), html: x.tag })]));
 

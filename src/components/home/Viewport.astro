@@ -33,6 +33,7 @@ import Readout from './Readout.astro';
 import { logoK } from './logo-optics';
 import { layerBox, boxStyle } from './plate-box';
 import { alt } from '../../data/alt';
+import { withoutOrnament } from '../../lib/text';
 
 interface Props {
   sheets: Sheet[];
@@ -75,7 +76,7 @@ const items = sheets.filter((s) => !s.external).map((s) => {
     gif: layers.some((l) => l.gif),
     video: layers.some((l) => l.video),
     logo,
-    quote: s.kind === 'about' ? about.headline : s.kind === 'play' ? play.headline : undefined,
+    quote: s.kind === 'about' ? about.headline : s.kind === 'play' ? withoutOrnament(play.headline) : undefined,
     quoteSub: s.kind === 'play' ? play.sub : undefined,
     /** "From Reflection · Impact Stats": where her numbers sit in the case (none for About / Play, or a home-card line) */
     citedParts: s.readout?.cited.length ? s.readout.cited : undefined,

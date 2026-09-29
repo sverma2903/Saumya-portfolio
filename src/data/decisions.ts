@@ -13,7 +13,8 @@ import type { Block, CaseStudy } from '../lib/blocks';
 import { blockId, splitChildId } from '../lib/ids';
 import { boldPieces } from '../lib/planview';
 import { normalize, stripHtml } from '../lib/text';
-import { findBlock } from '../lib/verbatim';
+import { findBlock, type Src } from '../lib/verbatim';
+import { selectionHtml } from '../lib/emphasis';
 
 export interface Decision {
   considered: string;
@@ -102,6 +103,10 @@ export interface ResolvedDecision extends Decision {
   anchor: DecisionAnchor | null;
   /** `plus: 'three-changes'`: her <strong> lead-ins of the list that follows the decided sentence, read from her content */
   plusItems: string[];
+  /** the same selections as HTML carrying her inline emphasis (lib/emphasis.ts): what the schedule renders */
+  consideredHtml: string;
+  decidedHtml: string;
+  plusHtml: string[];
 }
 
 /** Every top-level block and split child of a case, by id, in document order. */
@@ -138,6 +143,7 @@ export function resolveDecisions(cs: CaseStudy): ResolvedDecision[] {
       const derived = at ? leadIns(cs, at.id) : [];
       plusItems = derived.length ? derived : [...THREE_CHANGES];
     }
-    return { ...row, no: k + 1, anchor, plusItems };
+    const html = (t: string) => selectionHtml(cs.slug as Src, t);
+    return { ...row, no: k + 1, anchor, plusItems, consideredHtml: html(row.considered), decidedHtml: html(row.decided), plusHtml: plusItems.map(html) };
   });
 }

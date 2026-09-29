@@ -5,8 +5,8 @@
  * Each sheet: --sheet ground, --line-2 frame; her avatar (816px PNG with its own baked circle) at 112px; her title
  * (h{hl}, Newsreader 440); a ruled <dl> of her rows — keys "As a" / "I want to" / "So that" in label caps (her short
  * labels; the DOM text is hers), values in Newsreader ≈ 17px.
- * Her original rows read "As a, Financial Analyst": the [k, v] content model dropped the comma, so it is restored as
- * a chrome span right after the key (visible, aria-hidden), keeping the page text "As a , Financial Analyst".
+ * Each key is her source HTML ("<strong>As a</strong>,": her bold lead-in and her comma, pff.ts), rendered as is, so
+ * both are part of her guarded text and read by assistive tech (polish r1; they were a chrome span before).
  * Avatars are not figures (not enlargeable). Plan view: omitted by the Chapter (counted as a user-story set).
  */
 import type { Block } from '../../lib/blocks';
@@ -31,7 +31,7 @@ const Tag = `h${ctx.hl}` as 'h3' | 'h4';
             <dl class="story__rows">
               {it.rows.map(([k, v]) => (
                 <div class="story__row">
-                  <dt class="story__k" data-v>{k}<span class="story__comma" aria-hidden="true" data-chrome>,</span></dt>
+                  <dt class="story__k" data-v set:html={k} />
                   <dd class="story__v" data-v>{v}</dd>
                 </div>
               ))}
@@ -87,7 +87,8 @@ const Tag = `h${ctx.hl}` as 'h3' | 'h4';
     text-transform: uppercase;
     color: var(--ink-2);
   }
-  .story__comma { color: var(--ink-3); }
+  /* her bold lead-in ("<strong>As a</strong>,"), her comma after it */
+  .story__k :global(strong) { color: inherit; }
   .story__v {
     margin: var(--s-1) 0 0;
     font-family: var(--font-serif);

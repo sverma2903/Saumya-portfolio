@@ -2,9 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "saumya-verma-portfolio",
   "compatibility_date": "2026-09-01",
+  // polish r1: a tiny Worker answers byte ranges for her local MP4s (Safari needs 206; see worker/media.js).
+  // ONLY /media/*.mp4 runs it; every other request is served straight from the static assets.
+  "main": "worker/media.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/media/*.mp4"]
   }
 }

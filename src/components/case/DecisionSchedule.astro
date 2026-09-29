@@ -53,14 +53,14 @@ const rows = resolveDecisions(cs);
             <tr class="decisions__row" role="row">
               <th scope="row" role="rowheader" class="decisions__no t-code">{no}</th>
               <td role="cell" class="decisions__c">
-                <p data-v>{row.considered}</p>
+                <p data-v set:html={row.consideredHtml} />
               </td>
               <td role="cell" class="decisions__d">
                 <span class="decisions__ret" aria-hidden="true" data-chrome><Icon name="return" size={16} /></span>
-                <p data-v>{row.decided}</p>
+                <p data-v set:html={row.decidedHtml} />
                 {row.plusItems.length > 0 && (
                   <ul class="decisions__plus" role="list">
-                    {row.plusItems.map((x) => <li data-v>{x}</li>)}
+                    {row.plusHtml.map((x) => <li data-v set:html={x} />)}
                   </ul>
                 )}
               </td>

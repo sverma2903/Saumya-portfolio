@@ -133,10 +133,10 @@ const cs: CaseStudy = {
             'She opens Orbit at any time of the semester to view her balance distribution so she can keep teaching, research, and service in balance.',
           ],
           [
-            '+ The balance view helps faculty decide which tasks to say yes to and when.',
-            '+ Logged activities are already organized, so year-end reviews and promotion documents are faster.',
-            '- Manual input of information can become tedious for faculty.',
-            '- The system depends on faculty adding items weekly/ biweekly, so nothing gets forgotten.',
+            '<strong>+</strong> The balance view helps faculty decide which tasks to say yes to and when.',
+            '<strong>+</strong> Logged activities are already organized, so year-end reviews and promotion documents are faster.',
+            '<strong>-</strong> Manual input of information can become tedious for faculty.',
+            '<strong>-</strong> The system depends on faculty adding items weekly/ biweekly, so nothing gets forgotten.',
           ],
         ),
         concept(
@@ -148,11 +148,11 @@ const cs: CaseStudy = {
             'The Daily Review lets her select what to add to her activity log, a log she refers to while compiling her year-end report.',
           ],
           [
-            '+ Easier for the faculty to document fragmented work.',
-            '+ Smaller contributions can be collected easily at the end of the year and be recognised.',
-            '+ Daily logging would reduce the strain on recalling and inputting the data during submission.',
-            '- Frequent logging might be inconvenient for some faculty.',
-            '- Might add to cognitive load during busy periods.',
+            '<strong>+</strong> Easier for the faculty to document fragmented work.',
+            '<strong>+</strong> Smaller contributions can be collected easily at the end of the year and be recognised.',
+            '<strong>+</strong> Daily logging would reduce the strain on recalling and inputting the data during submission.',
+            '<strong>-</strong> Frequent logging might be inconvenient for some faculty.',
+            '<strong>-</strong> Might add to cognitive load during busy periods.',
           ],
         ),
         concept(
@@ -164,11 +164,11 @@ const cs: CaseStudy = {
             'The Suggestions tab lists what’s missing and shows a Structure preview of report completeness.',
           ],
           [
-            '+ Integrates into the system that is already very familiar to faculty. So, entirely new learning of a software is not required.',
-            '+ Makes it easier for the faculty to document and structure their work',
-            "+ Helps in typing out 'evidence' and examples easily",
-            '- Some may not be happy with the suggestions provided by AI.',
-            '- AI might miss out on some important tasks. How to make sure it is trustworthy and comprehensive?',
+            '<strong>+</strong> Integrates into the system that is already very familiar to faculty. So, entirely new learning of a software is not required.',
+            '<strong>+</strong> Makes it easier for the faculty to document and structure their work',
+            "<strong>+</strong> Helps in typing out 'evidence' and examples easily",
+            '<strong>-</strong> Some may not be happy with the suggestions provided by AI.',
+            '<strong>-</strong> AI might miss out on some important tasks. How to make sure it is trustworthy and comprehensive?',
           ],
         ),
         concept(

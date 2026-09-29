@@ -46,6 +46,7 @@ const summary = fill(ix.summaryYears, { n: caseSheets.length, from: Math.min(...
 const summaryParts = summary.split(' · ').map((seg, i, all) => (i < all.length - 1 ? `${seg} ·` : seg));
 ---
 <section id="index" class:list={['dix', 'shell', { 'dix--compact': compact }]} aria-labelledby="index-h" data-dix={compact ? undefined : ''}>
+  {!compact && <span id="projects" class="dix__alias" aria-hidden="true"></span>}
   <div class="dix__grid">
     <header class="dix__head">
       {!compact && <Bubble n="2" sheet="A-000" class="dix__bubble" />}
@@ -79,6 +80,9 @@ const summaryParts = summary.split(' · ').map((seg, i, all) => (i < all.length 
     --_no: calc(var(--s-8) + var(--s-2));          /* the rows' sheet-number column (72px): the bubble's column */
     padding-block: var(--s-5) var(--s-9);
   }
+  /* her Framer anchor (/#projects, her "Selected Projects ↓" target) lands exactly like #index: the span sits at the
+     top of the content box, and its scroll margin is the section's top padding */
+  .dix__alias { position: absolute; inline-size: 1px; block-size: 1px; pointer-events: none; scroll-margin-block-start: var(--s-5); }
   .dix__grid { display: grid; grid-template-columns: minmax(0, 1fr); }
   .dix__head { position: relative; display: flex; align-items: last baseline; gap: var(--s-4); }
   /* the title's line box is its cap height and descenders (--lh-readout, the display setting) plus --s-1 of

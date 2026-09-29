@@ -1,14 +1,18 @@
 ---
 /**
- * LegacyAnchors · WP5. Framer-era section anchors (SPEC §5.2.9): an empty <span id> at the top of the target chapter,
- * so /cloudflare#research lands on Empathize with no JS. Absolutely placed at the chapter's top edge (the chapter is
- * position: relative), so the span never takes a cell of the chapter grid, and it lands exactly like the chapter id.
+ * LegacyAnchors · WP5 (+ polish r1). Framer-era anchors (SPEC §5.2.9): an empty <span id> at the target, so an old
+ * link such as /cloudflare#research or /pff#highlight lands where her original page put it, with no JS.
+ *   chapter targets (default): absolutely placed at the chapter's top edge (the chapter is position: relative), so the
+ *     span never takes a cell of the chapter grid, and it lands exactly like the chapter id;
+ *   `inline` targets (a heading, a feature title, a block): the span is the target's first child, absolutely placed at
+ *     its static position — the start of the heading's first line, or the block's content box — and lands like it.
+ * `sectionId` is the id of the element the aliases point at (data/legacy-anchors.ts values).
  */
 import { aliasesFor } from '../../data/legacy-anchors';
-interface Props { slug: string; sectionId: string }
-const { slug, sectionId } = Astro.props;
+interface Props { slug: string; sectionId: string; inline?: boolean }
+const { slug, sectionId, inline = false } = Astro.props;
 ---
-{aliasesFor(slug, sectionId).map((a) => <span id={a} class="legacy-anchor" aria-hidden="true" data-alias-of={sectionId}></span>)}
+{aliasesFor(slug, sectionId).map((a) => <span id={a} class:list={['legacy-anchor', { 'legacy-anchor--in': inline }]} aria-hidden="true" data-alias-of={sectionId}></span>)}
 
 <style>
   .legacy-anchor {
@@ -16,5 +20,7 @@ const { slug, sectionId } = Astro.props;
     scroll-margin-block-start: var(--s-5);
     pointer-events: none;
   }
-  @media (max-width: 767.98px) { .legacy-anchor { scroll-margin-block-start: var(--s-3); } }
+  @media (max-width: 767.98px) { .legacy-anchor:not(.legacy-anchor--in) { scroll-margin-block-start: var(--s-3); } }
+  /* at the target's own static position; it scrolls like the target (the page's scroll-padding only) */
+  .legacy-anchor.legacy-anchor--in { inset: auto; scroll-margin-block-start: 0; }
 </style>

@@ -5,7 +5,7 @@
  * <head>: meta / canonical / OG / Twitter / JSON-LD from props, the three <Font>s (all preloaded, WP7),
  *         the synchronous head script (§4.8), Speculation Rules (prefetch only, §4.9), favicon, and exactly one
  *         preloaded `lcpImage` (fetchpriority=high) when the page passes one.
- *         The head script is SPEC §4.8's script, minified (≤ 700 bytes): it sets html[data-motion|theme|view|keys|gl]
+ *         The head script is SPEC §4.8's script, minified (≤ 700 bytes): it sets html[data-motion|theme|view|keys|gl|save]
  *         and html.js before first paint (localStorage 'sv:*' first, then the OS; ?view=section wins for one load).
  * <body>: HatchDefs · SkipLink · TitleBar · <main id="main" tabindex="-1"> · EndSheet · BottomBar · .vt-cutline · DetailViewer ·
  *         Palette · the hidden "opens in a new tab" description (#sv-newtab, see lib/rich.ts) · core/boot.
@@ -88,7 +88,7 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <script is:inline>(()=>{const d=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch{return null}};const m=g('sv:motion');const r=m?m==='reduce':matchMedia('(prefers-reduced-motion: reduce)').matches;d.dataset.motion=r?'reduce':'full';if(g('sv:theme')==='dusk')d.dataset.theme='dusk';const q=new URLSearchParams(location.search).get('view');d.dataset.view=q==='section'?'section':(g('sv:view')==='plan'?'plan':'section');d.dataset.keys=g('sv:keys')==='off'?'off':'on';const c=navigator.connection,w=(c&&c.saveData)||(navigator.deviceMemory||8)<=2;d.dataset.gl=('WebGL2RenderingContext' in window&&!r&&!w)?'maybe':'no';d.classList.add('js')})();</script>
+    <script is:inline>(()=>{const d=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch{return null}};const m=g('sv:motion');const r=m?m==='reduce':matchMedia('(prefers-reduced-motion: reduce)').matches;d.dataset.motion=r?'reduce':'full';if(g('sv:theme')==='dusk')d.dataset.theme='dusk';const q=new URLSearchParams(location.search).get('view');d.dataset.view=q==='section'?'section':(g('sv:view')==='plan'?'plan':'section');d.dataset.keys=g('sv:keys')==='off'?'off':'on';const c=navigator.connection||{},s=c.saveData||/2g$/.test(c.effectiveType);s&&(d.dataset.save='');d.dataset.gl='WebGL2RenderingContext' in window&&!r&&!s&&(navigator.deviceMemory||8)>2?'maybe':'no';d.classList.add('js')})();</script>
     <title>{title}</title>
     <meta name="description" content={description} />
     {canonical && <link rel="canonical" href={canonical} />}
@@ -117,7 +117,12 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
     <Font cssVariable="--font-serif" preload />
     <Font cssVariable="--font-sans" preload />
     <Font cssVariable="--font-mono" preload />
-    {lcpImage && <link rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
+    {/* polish r1: an animated LCP (the CSBS cover, a 5 MB GIF) is preloaded from a one-line script, so Save-Data readers
+        skip it: a static preload would hold the download even after Plate's inline script drops the <img>'s src (the
+        <img src fetchpriority=high> is still found by the preload scanner, so others lose ~0.1 s at most) */}
+    {lcpImage && (/\.gif$/i.test(lcpImage)
+      ? <script is:inline set:html={`document.documentElement.hasAttribute('data-save')||document.head.insertAdjacentHTML('beforeend','<link rel="preload" as="image" href="${lcpImage}" fetchpriority="high">')`} />
+      : <link rel="preload" as="image" href={lcpImage} fetchpriority="high" />)}
     <link rel="stylesheet" href={printCss} media="print" />
     <link rel="stylesheet" href={paletteCss} media="print" onload="this.media='all'" />
     <script type="speculationrules" is:inline set:html={speculation} />

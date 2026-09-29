@@ -13,12 +13,15 @@ import { play } from '../../content/site';
 import PinItem from './PinItem.astro';
 ---
 <div class="board shell">
+  <span id="projects" class="board__alias" aria-hidden="true"></span>
   <ul class="board__list" role="list">
     {play.items.map((it, i) => <PinItem item={it} n={i + 1} />)}
   </ul>
 </div>
 <style>
   .board { padding-block-end: var(--s-10); }
+  /* her Framer anchor for this list (/fun#projects) */
+  .board__alias { position: absolute; inline-size: 1px; block-size: 1px; pointer-events: none; }
   .board__list {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

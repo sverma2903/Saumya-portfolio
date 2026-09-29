@@ -197,16 +197,17 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
     overflow: hidden;
     align-self: flex-start;
     inline-size: var(--_icon);                 /* SPEC: a square well, max 112px — every tile identical, titles align */
-    isolation: isolate;                        /* the icon's multiply blends with the plate only */
     max-inline-size: 100%;
     aspect-ratio: 1;
     margin-block-end: var(--s-4);
-    background: var(--plate);
+    /* the pure white her icons were drawn on (--white, as for her logo grounds): her opaque-white canvases meet it
+       with no seam and every file renders exactly as authored — no blend mode, no recolouring (SPEC §0.1.2) */
+    background: var(--white);
     outline: var(--lw-object) solid var(--line-1);
     outline-offset: calc(-1 * var(--lw-object));
   }
-  /* her icon sits inside the plate with a real margin: art that runs to its canvas edge (a clock, a gear) floats
-     instead of touching the well outline; opaque-white canvases still vanish into the plate (multiply) */
+  /* her icon sits inside the well with a real margin: art that runs to its canvas edge (a clock, a gear) floats
+     instead of touching the well outline */
   .card__well--icon { padding: var(--s-3); }
   .card__well--icon img {
     display: block;
@@ -214,7 +215,6 @@ const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
     block-size: 100%;
     object-fit: contain;                       /* her icon whole inside the square */
     transform: scale(var(--_s, 1));
-    mix-blend-mode: multiply;                  /* her opaque-white canvas takes the plate's tone: no seam (file untouched) */
   }
 
   /* ── numbered ──────────────────────────────────────────────────────── */

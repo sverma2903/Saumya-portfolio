@@ -20,7 +20,7 @@ import type { Sheet } from '../../data/sheets';
 import { about, play } from '../../content/site';
 import { chrome, fill } from '../../data/chrome';
 import { externalAttrs } from '../../lib/rich';
-import { escapeHtml } from '../../lib/text';
+import { escapeHtml, withoutOrnament } from '../../lib/text';
 import Icon from '../symbols/Icon.astro';
 import IndexCard from './IndexCard.astro';
 import Readout from './Readout.astro';
@@ -29,7 +29,7 @@ const { sheet, minutes, compact = false, active = false } = Astro.props;
 const key = sheet.slug ?? (sheet.kind === 'external' ? (sheet.href.includes('issuu') ? 'architecture' : 'resume') : sheet.kind);
 const isCase = sheet.kind === 'case';
 /** B-100 / C-100: her headline HTML (keeps her <em>), not the stripped line */
-const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play' ? play.headline : undefined;
+const lineHtml = sheet.kind === 'about' ? about.headline : sheet.kind === 'play' ? withoutOrnament(play.headline) : undefined;
 const ext = sheet.external ? externalAttrs(sheet.href) : {};
 /** her title with each hyphenated word kept whole ("E-learning", "COVID-era"): wrapping spans only, text unchanged */
 const titleHtml = escapeHtml(sheet.title.text).replace(/(\S+-\S+)/g, '<span class="ix__nb">$1</span>');

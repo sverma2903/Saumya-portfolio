@@ -106,7 +106,7 @@ export function siteCorpus(): CorpusEntry[] {
   const out: CorpusEntry[] = [];
   const add = (raw: string | undefined, field: string) => { if (raw == null) return; const text = stripHtml(raw); if (text) out.push({ text, raw, field: `site/${field}` }); };
   add(home.headline, 'home.headline'); add(home.sub, 'home.sub'); add(home.connect, 'home.connect'); add(home.closing, 'home.closing'); add(home.copyright, 'home.copyright');
-  selected.forEach((s, i) => { add(s.title, `selected[${i}].title`); add(s.text, `selected[${i}].text`); s.tags.forEach((t, j) => add(t, `selected[${i}].tags[${j}]`)); });
+  selected.forEach((s, i) => { add(s.title, `selected[${i}].title`); add(s.text, `selected[${i}].text`); });
   add(about.headline, 'about.headline');
   about.story.forEach((s, i) => add(s, `about.story[${i}]`));
   const { fiction, writing, meditation, sketching } = about.loves;

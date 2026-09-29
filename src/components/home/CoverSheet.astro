@@ -28,6 +28,7 @@ import type { SheetNo } from '../../data/sheets';
 import Ornament from '../symbols/Ornament.astro';
 import Bubble from '../symbols/Bubble.astro';
 import SitePlanFallback from './SitePlanFallback.astro';
+import { splitOrnament } from '../../lib/text';
 
 const SHEET: SheetNo = 'A-000';
 const h = chrome.wp2.hero;
@@ -45,13 +46,14 @@ const planName = narrative(h.planLabel) ?? `${hp.site} · ${h.section}`;
  *  break at their hyphens, and her italic "product designer" is never split across lines (text-wrap: balance did so at
  *  768–1023) — a nowrap span around the run; the text — and every test's view of it — is unchanged. */
 const nb = (html: string, word: string) => html.replace(word, `<span class="cover__nb">${word}</span>`);
-const headline = nb(nb(home.headline, 'AI-assisted'), '<em>product designer</em>');
+const { html: headHtml, ornament } = splitOrnament(home.headline);
+const headline = nb(nb(headHtml, 'AI-assisted'), '<em>product designer</em>');
 const sub = nb(home.sub, 'front-end');
 ---
 <section class="cover" id="cover" aria-labelledby="cover-h" data-cover data-el={h.el} data-north={h.north}>
   <div class="cover__text" data-text>
     <p class="cover__eyebrow t-label-lg"><span class="cover__sheet t-code">{SHEET}</span><span class="cover__rule" aria-hidden="true"></span><span>{h.coverSheet}</span></p>
-    <h1 id="cover-h" class="cover__h" data-v><Fragment set:html={headline} /> <Ornament /></h1>
+    <h1 id="cover-h" class="cover__h" data-v><Fragment set:html={headline} />{ornament && <Fragment> <Ornament /></Fragment>}</h1>
     <p class="cover__sub" data-v set:html={sub} />
     <p class="cover__ctas">
       <a class="btn cover__btn" href="#index" data-v>{labels.selected}</a>
@@ -120,7 +122,8 @@ const sub = nb(home.sub, 'front-end');
     letter-spacing: var(--tr-cover);
     text-wrap: balance;
   }
-  .cover__h :global(.hl) { color: var(--rust-2); }
+  /* her <mark>Saumya Verma</mark>: on the cover her highlight is set in rust, not the ochre band */
+  .cover__h :global(mark:not(.orn)) { color: var(--rust-2); background: none; padding: 0; }
   .cover :global(.cover__nb) { white-space: nowrap; }
   .cover__sub {
     margin-block-start: var(--s-5);

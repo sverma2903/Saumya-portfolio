@@ -21,7 +21,7 @@ import type { Site } from '../../lib/terrain.js';
 import { createOverlay, CUT_INSET_BOTTOM, CUT_INSET_TOP, CUT_INSET_X, type Landform, type Palette, type RGB, type Rect, type Scene, type Type } from './section2d';
 import { on as onPref } from '../core/prefs';
 import { listen } from '../core/bus';
-import { idle } from '../core/dom';
+import { idle, saveData } from '../core/dom';
 import { onVisibility } from '../core/io';
 
 // ── timing (SPEC SM1 loop) ────────────────────────────────────────────────────────────────────────────────────────
@@ -172,15 +172,15 @@ const UNIFORMS = ['uRes', 'uRange', 'uLightDir', 'uDpr', 'uAA', 'uUnit', 'uRevea
   'uTri', 'uCirc', 'uInk', 'uRust', 'uSq', 'uText', 'uQuiet', 'uFade', 'uPlan'] as const;
 type Loc = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
-type Nav = Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
-/** the head script's gate, re-evaluated when Motion is switched on later */
-const canGL = () => {
-  const n = navigator as Nav;
-  return 'WebGL2RenderingContext' in window && !n.connection?.saveData && (n.deviceMemory ?? 8) > 2;
-};
+type Nav = Navigator & { deviceMemory?: number };
+/** the head script's gate, re-evaluated when Motion is switched on later (Save-Data: html[data-save], core/dom) */
+const canGL = () => 'WebGL2RenderingContext' in window && !saveData() && ((navigator as Nav).deviceMemory ?? 8) > 2;
 const drafted = () => { try { return sessionStorage.getItem('sv:drafted') === '1'; } catch { return false; } };
 const markDrafted = () => { try { sessionStorage.setItem('sv:drafted', '1'); } catch { /* private mode */ } };
 const waitIdle = () => new Promise<void>((r) => idle(r, 800));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** the longest the hero waits for a font before it draws (it redraws its labels when the font arrives) */
+const FONT_WAIT = 600;
 /** true while a view transition runs on this document (:active-view-transition; false where it is unsupported) */
 const inViewTransition = () => { try { return document.documentElement.matches(':active-view-transition'); } catch { return false; } };
 /** resolves on the first frame with no view transition running (at once when there is none) */
@@ -194,7 +194,9 @@ export function initSitePlan(): void {
   root.dataset.hero = 'boot'; // tells the inline guard in CoverSheet that the module ran
   const html = document.documentElement;
   const boot = async (restOnly: boolean) => {
-    await (document.fonts?.ready ?? Promise.resolve());
+    // polish r1: the GL contour pass needs no font, so a slow font file never holds the cover blank (html[data-gl=maybe]
+    // hides the static drawing): the wait is capped, and the 2D labels redraw when the fonts land (see loadingdone)
+    await Promise.race([document.fonts?.ready ?? Promise.resolve(), sleep(FONT_WAIT)]);
     await waitIdle();
     await hero(root, restOnly);
   };
@@ -294,7 +296,7 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     gain = parseFloat(getComputedStyle(root).getPropertyValue('--_gl-gain')) || 1;
   };
   readPalette();
-  try { await document.fonts.load(`500 ${type.code}px ${type.mono}`); } catch { /* canvas falls back to the stack */ }
+  try { await Promise.race([document.fonts.load(`500 ${type.code}px ${type.mono}`), sleep(FONT_WAIT)]); } catch { /* canvas falls back to the stack */ }
 
   // ── WebGL2 ──
   let gl: WebGL2RenderingContext | null = null, prog: WebGLProgram | null = null, loc = {} as Loc;
@@ -625,6 +627,9 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
     if (busy) raf = requestAnimationFrame(frame);
     else prev = 0; // settled: 0 frames until the next input
   }
+
+  // a font that arrives after the capped wait: the 2D labels are measured and drawn again in it
+  document.fonts?.addEventListener?.('loadingdone', () => { needLayout = true; kick(); });
 
   function begin() {
     started = true;

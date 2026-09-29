@@ -16,6 +16,7 @@ import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { headingId } from '../../lib/ids';
 import { chrome, fill } from '../../data/chrome';
 import Bubble from '../symbols/Bubble.astro';
+import LegacyAnchors from '../case/LegacyAnchors.astro';
 interface Props { block: Extract<Block, { t: 'h' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const hid = ctx.headingId ?? headingId(ctx.chapter.id, block.text);
@@ -25,7 +26,7 @@ const label = fill(chrome.wp4a.permalinkLabel, { n, sheet: ctx.sheet, title: blo
 <div {...blkAttrs('h', ctx)}>
   <div class="blk__main dt">
     <a class="dt__bubble" href={`#${hid}`} aria-label={label}><Bubble n={n} sheet={ctx.sheet} /></a>
-    <h3 id={hid} class="dt__t" data-v>{block.text}<i class="dt__rule" aria-hidden="true" data-chrome></i></h3>
+    <h3 id={hid} class="dt__t" data-v><LegacyAnchors inline slug={ctx.slug} sectionId={hid} />{block.text}<i class="dt__rule" aria-hidden="true" data-chrome></i></h3>
   </div>
 </div>
 <style>

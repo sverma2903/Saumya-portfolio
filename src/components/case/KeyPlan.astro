@@ -66,9 +66,9 @@ const [goWord, goArrow] = (() => { const i = k.go.lastIndexOf(' '); return i < 0
           </p>
           <p class="keyplan__line">
             {s.kind === 'html' && s.html && <span data-v set:html={rich(s.html)} />}
-            {s.kind === 'text' && <span data-v>{s.text}</span>}
+            {s.kind === 'text' && (s.html ? <span data-v set:html={s.html} /> : <span data-v>{s.text}</span>)}
             {s.kind === 'parts' && s.parts?.map((p, j) => (
-              <>{j > 0 && <span class="keyplan__join" aria-hidden="true" data-chrome>{'\u00A0· '}</span>}<span data-v>{p}</span></>
+              <>{j > 0 && <span class="keyplan__join" aria-hidden="true" data-chrome>{'\u00A0· '}</span>}{s.partsHtml?.[j] ? <span data-v set:html={s.partsHtml[j]} /> : <span data-v>{p}</span>}</>
             ))}
             {s.kind === 'stat' && s.stat && (
               <>

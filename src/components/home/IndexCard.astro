@@ -28,7 +28,7 @@ const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAA
 const A = sheet.plate?.aspect ?? 1.6;
 const layers = (sheet.plate?.layers ?? []).map((l) => {
   const f = facts(l.file);
-  return { f, style: boxStyle(layerBox(f.aspect, A, l.pad ?? 0)), gif: f.gif, poster: stagingOf(l.file).gif?.poster ?? 0 };
+  return { f, style: boxStyle(layerBox(f.aspect, A, l.pad ?? 0)), gif: f.gif, poster: stagingOf(l.file).gif?.still ?? stagingOf(l.file).gif?.poster ?? 0 };
 });
 const top = layers[layers.length - 1];
 const hasGif = layers.some((l) => l.gif);

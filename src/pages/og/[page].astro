@@ -29,6 +29,7 @@ import { LAPTOP_BBOX } from '../../components/play/board';
 import { facts, srcOf, stagingOf } from '../../lib/staging';
 import { keepPhrases } from '../../lib/typeset';
 import type { CaseSlug } from '../../lib/verbatim';
+import { withoutOrnament } from '../../lib/text';
 
 type OgPage = 'index' | CaseSlug | 'about' | 'fun';
 export function getStaticPaths() {
@@ -60,7 +61,7 @@ if (page === 'index') {
   eyebrow = chrome.wp1.titleBar.coverSheet;
   // as on the cover sheet (CoverSheet.astro): her compounds never break at their hyphen; text unchanged
   const nb = (html: string, w: string) => html.replace(w, `<span class="nobr">${w}</span>`);
-  titleHtml = nb(nb(home.headline, 'AI-assisted'), '<em>product designer</em>');
+  titleHtml = nb(nb(withoutOrnament(home.headline), 'AI-assisted'), '<em>product designer</em>');
   deckHtml = nb(home.sub, 'front-end');
 } else if (page === 'about') {
   kind = 'about';
@@ -75,7 +76,7 @@ if (page === 'index') {
   kind = 'play';
   sheet = 'C-100';
   eyebrow = chrome.wp1.titleBar.play;
-  titleHtml = play.headline;
+  titleHtml = withoutOrnament(play.headline);
   deckHtml = play.sub;
   // ExpressLanes: scale so the laptop's measured bounding box fills 86% of the 16:10 plate's height, centred — only
   // the uniform #f2f2f2 canvas around it falls outside the plate (every laptop pixel stays inside: its width is then
@@ -214,7 +215,7 @@ if (page === 'index') {
     text-wrap: balance; color: var(--ink);
   }
   .og__title :global(em) { font-style: italic; }
-  .og__title :global(.hl) { color: var(--rust-2); }
+  .og__title :global(mark) { color: var(--rust-2); background: none; padding: 0; }
   .og__title :global(.nobr), .og__deck :global(.nobr) { white-space: nowrap; }
   .og__title :global(.keep) { display: inline-block; }
   [data-kind='home'] .og__title, [data-kind='about'] .og__title, [data-kind='play'] .og__title { font-size: 50px; }

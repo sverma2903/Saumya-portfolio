@@ -20,8 +20,14 @@ import FeatureRun from '../blocks/FeatureRun.astro';
 import SectionMark from './SectionMark.astro';
 import OmitRun from './OmitRun.astro';
 import LegacyAnchors from './LegacyAnchors.astro';
+import heights from '../../data/chapter-heights.json';
 interface Props { cs: CaseStudy; chapter: ChapterCtx; level: SectionReading; sheetNo: string }
 const { cs, chapter, level, sheetNo } = Astro.props;
+/** polish r1: the chapter's measured height per grid range and view (tools/chapter-heights.mjs), as the placeholder
+ *  size of an off-screen chapter (contain-intrinsic-size below), so a first visit's page is (about) its real height */
+const hs = (heights as Record<string, Record<string, Record<string, number>> | string>)[cs.slug];
+const h = typeof hs === 'object' ? hs[chapter.section.id] : undefined;
+const cis = h ? Object.entries(h).map(([k, px]) => `--cis-${k}: ${px}px`).join('; ') : undefined;
 const { section, ctxs, plan, groups } = chapter;
 type Item = { kind: 'block'; i: number } | { kind: 'run'; renderer: 'phone' | 'player'; indices: number[] } | { kind: 'omit'; indices: number[] };
 const items: Item[] = [];
@@ -35,7 +41,7 @@ for (const g of groups) {
 }
 const counted = (indices: number[]) => indices.some((i) => Object.values(plan[i].omitted ?? {}).some((n) => (n ?? 0) > 0));
 ---
-<section id={section.id} class="chapter" aria-labelledby={`${section.id}-h`} data-chapter={chapter.index}>
+<section id={section.id} class="chapter" aria-labelledby={`${section.id}-h`} data-chapter={chapter.index} style={cis}>
   <LegacyAnchors slug={cs.slug} sectionId={section.id} />
   <SectionMark index={chapter.index} id={section.id} label={section.label} sheet={sheetNo} elev={level.elev} minutes={level.minutes} />
   {items.map((it, k) =>
@@ -72,7 +78,23 @@ const counted = (indices: number[]) => indices.some((i) => Object.values(plan[i]
     /* belt and braces for engines that honour it: nothing a block draws just outside the box is clipped */
     overflow-clip-margin: var(--s-7);
   }
-  .chapter:not(:first-of-type) { content-visibility: auto; contain-intrinsic-size: auto 1400px; }
+  /* the placeholder of a chapter not yet rendered: its measured height for this grid range and view (--cis-*, set on the
+     element from data/chapter-heights.json); `auto` = once rendered, its real height is remembered */
+  .chapter:not(:first-of-type) { content-visibility: auto; contain-intrinsic-size: auto var(--_cis, 1400px); }
+  .chapter { --_cis: var(--cis-xl); }
+  :global(html[data-view='plan']) .chapter { --_cis: var(--cis-pxl); }
+  @media (max-width: 1279.98px) {
+    .chapter { --_cis: var(--cis-l); }
+    :global(html[data-view='plan']) .chapter { --_cis: var(--cis-pl); }
+  }
+  @media (max-width: 1023.98px) {
+    .chapter { --_cis: var(--cis-m); }
+    :global(html[data-view='plan']) .chapter { --_cis: var(--cis-pm); }
+  }
+  @media (max-width: 767.98px) {
+    .chapter { --_cis: var(--cis-s); }
+    :global(html[data-view='plan']) .chapter { --_cis: var(--cis-ps); }
+  }
   /* while a citation or J/K lands (cite.ts), every chapter renders, so the target's real position is known before the
      page moves and the chapters in between keep their true (remembered) height afterwards */
   :global(html[data-landing]) .chapter { content-visibility: visible; }

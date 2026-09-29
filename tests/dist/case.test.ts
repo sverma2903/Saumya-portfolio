@@ -56,7 +56,12 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
     // (WP7: for Orbit's two layers these differ — the full-width backdrop is the LCP, the laptop sits above it)
     const layers = COVERS[slug].layers;
     const lcpLayer = layers.reduce((a, l) => ((l.pad ?? 0) <= (a.pad ?? 0) ? l : a));
-    expect(page().querySelector('link[rel=preload][as=image]')?.getAttribute('href')).toBe(srcOf(lcpLayer.file));
+    // an animated cover (CSBS's GIF) is preloaded from a one-line script unless Save-Data is on (Base.astro)
+    const href = srcOf(lcpLayer.file);
+    if (/\.gif$/i.test(href)) {
+      expect(page().querySelector('link[rel=preload][as=image]')).toBeNull();
+      expect(page().querySelectorAll('head script').some((s) => s.text.includes('data-save') && s.text.includes(`href="${href}"`))).toBe(true);
+    } else expect(page().querySelector('link[rel=preload][as=image]')?.getAttribute('href')).toBe(href);
     const top = layers[layers.length - 1].file;
     if (kindOf(top) !== 'gif') expect(page().querySelector('img[fetchpriority=high]')?.getAttribute('src')).toBe(srcOf(top));
     expect(text(head.querySelector('.titleblock__sheet'))).toBe(`${sheetBySlug(slug).no} · ${r.levels} levels · ≈ ${r.minutes} min`);

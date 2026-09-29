@@ -7,6 +7,7 @@
  *   [2]  Making Visual Data Accessible ↗ ······································· MEDIUM.COM
  *   [3]  Search SUGAR ↗ ·························································· MEDIUM.COM
  *
+ * Her titles are bold in her source (<a><strong>…</strong></a>): site.ts keeps that HTML and it renders as is.
  * Fidelity: her three titles stay adjacent in the page text (only tags between them), exactly as in her original
  * block. So every piece of chrome here is CSS generated content with empty alt text (`content: … / ""`): the [n]
  * counters, the derived domain (from `data-domain`); the ↗ is an aria-hidden SVG (no text node).
@@ -29,7 +30,7 @@ const id = slugify(w.title); // 'blog-writing'
   <ol class="refs" role="list">
     {w.posts.map((p) => (
       <li class="ref" data-domain={domainOf(p.href)}>
-        <a class="ref__a" href={p.href} {...externalAttrs(p.href)} data-v>{p.title}<span class="ref__i" aria-hidden="true" data-chrome><Icon name="arrow-up-right" size={14} /></span></a>
+        <a class="ref__a" href={p.href} {...externalAttrs(p.href)} data-v><Fragment set:html={p.title} /><span class="ref__i" aria-hidden="true" data-chrome><Icon name="arrow-up-right" size={14} /></span></a>
       </li>
     ))}
   </ol>

@@ -2,7 +2,9 @@
 /**
  * Ornament · P0 symbol. Her ✦ four-point sparkle in rust-2, after her headlines on Home and Play (it is in her
  * original <h1>s). The drawing is SVG (✦ is not in the font subsets), and the ✦ character itself is kept in the DOM,
- * visually hidden, so the page text still reads exactly as her original headline. Chrome: aria-hidden + data-chrome.
+ * visually hidden, so the page text still reads exactly as her original headline. It is HER <mark>✦</mark> (site.ts,
+ * split off by text.ts splitOrnament): a real <mark> in her guarded text, read by assistive tech; only the SVG drawing
+ * of it is aria-hidden (polish r1).
  */
 interface Props {
   size?: string;
@@ -10,9 +12,9 @@ interface Props {
 }
 const { size = '0.55em', class: cls } = Astro.props;
 ---
-<span class:list={['orn', cls]} aria-hidden="true" data-chrome style={`--_s:${size}`}><svg viewBox="0 0 24 24" focusable="false"><path d="M12 1.5c.7 5.6 3.9 9.2 10.5 10.5-6.6 1.3-9.8 4.9-10.5 10.5-.7-5.6-3.9-9.2-10.5-10.5C8.1 10.7 11.3 7.1 12 1.5z" fill="currentColor" /></svg><span class="orn__glyph">✦</span></span>
+<mark class:list={['orn', cls]} style={`--_s:${size}`}><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 1.5c.7 5.6 3.9 9.2 10.5 10.5-6.6 1.3-9.8 4.9-10.5 10.5-.7-5.6-3.9-9.2-10.5-10.5C8.1 10.7 11.3 7.1 12 1.5z" fill="currentColor" /></svg><span class="orn__glyph">✦</span></mark>
 <style>
-  .orn { display: inline-block; position: relative; inline-size: var(--_s); block-size: var(--_s); color: var(--rust-2); vertical-align: 0.12em; }
+  .orn { display: inline-block; position: relative; padding: 0; background: none; inline-size: var(--_s); block-size: var(--_s); color: var(--rust-2); vertical-align: 0.12em; }
   .orn svg { inline-size: 100%; block-size: 100%; }
   .orn__glyph { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

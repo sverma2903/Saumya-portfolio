@@ -128,6 +128,18 @@ export const SHEET_NO: Record<CaseSlug, SheetNo> = {
 };
 
 const sel = (i: number) => selected[i];
+/**
+ * A case row's two tags, both her literal strings from the case page (polish r1: they were re-cased copies kept in
+ * site.ts, validated only against themselves): her eyebrow (CSS sets it in capitals) and the time part of her "Role"
+ * meta value ("Sole designer, Mar 2026" → "Mar 2026"). Refs declare the case as the source, so
+ * tests/data/substrings.test.ts checks them against her page text.
+ */
+function caseTags(slug: CaseSlug): VerbatimRef[] {
+  const cs = cases.find((c) => c.slug === slug)!;
+  const role = cs.meta.find(([k]) => k === 'Role')?.[1] ?? '';
+  const when = role.includes(', ') ? role.slice(role.indexOf(', ') + 2) : '';
+  return [ref(slug, cs.eyebrow, 'eyebrow'), ...(when ? [ref(slug, when, 'meta › Role')] : [])];
+}
 const card = (i: number) => ({ cover: selected[i].cover.src.split('/').pop()!, logo: selected[i].logo.src.split('/').pop()!, tone: selected[i].tone });
 
 export const sheets: Sheet[] = [
@@ -135,7 +147,7 @@ export const sheets: Sheet[] = [
     no: 'A-101', kind: 'case', group: 'selected', slug: 'cloudflare', href: '/cloudflare',
     title: ref('site', sel(0).title, 'selected[0].title'),
     line: ref('site', sel(0).text, 'selected[0].text'),
-    tags: sel(0).tags.map((t, j) => ref('site', t, `selected[0].tags[${j}]`)),
+    tags: caseTags('cloudflare'),
     readout: {
       lines: [{ value: ref('site', 'Two', 'selected[0].text'), label: ref('site', ' of the gaps identified have since been shipped independently.', 'selected[0].text'), joined: true }],
       sub: ref('cloudflare', 'Cloudflare has since introduced bulk emptying and folder deletion.', 'overview › callout "Update"'),
@@ -147,7 +159,7 @@ export const sheets: Sheet[] = [
     no: 'A-102', kind: 'case', group: 'selected', slug: 'pff', href: '/pff',
     title: ref('site', sel(1).title, 'selected[1].title'),
     line: ref('site', sel(1).text, 'selected[1].text'),
-    tags: sel(1).tags.map((t, j) => ref('site', t, `selected[1].tags[${j}]`)),
+    tags: caseTags('pff'),
     readout: {
       lines: [{ value: ref('pff', '~60%', 'overview › Results › stats[0].v'), label: ref('pff', 'reduction in time spent creating a mission assignment', 'overview › Results › stats[0].html') }],
       bars: {
@@ -164,7 +176,7 @@ export const sheets: Sheet[] = [
     no: 'A-103', kind: 'case', group: 'selected', slug: 'csbs', href: '/csbs',
     title: ref('site', sel(2).title, 'selected[2].title'),
     line: ref('site', sel(2).text, 'selected[2].text'),
-    tags: sel(2).tags.map((t, j) => ref('site', t, `selected[2].tags[${j}]`)),
+    tags: caseTags('csbs'),
     readout: {
       lines: [
         { value: ref('csbs', '50%', 'reflection › Impact Stats › stats[0].v'), label: ref('csbs', 'reduction in navigation time across 10 common searches', 'reflection › Impact Stats › stats[0].html') },
@@ -178,7 +190,7 @@ export const sheets: Sheet[] = [
     no: 'A-104', kind: 'case', group: 'selected', slug: 'u-up', href: '/u-up',
     title: ref('site', sel(3).title, 'selected[3].title'),
     line: ref('site', sel(3).text, 'selected[3].text'),
-    tags: sel(3).tags.map((t, j) => ref('site', t, `selected[3].tags[${j}]`)),
+    tags: caseTags('u-up'),
     readout: {
       lines: [{ value: ref('site', '1st', 'selected[3].text'), label: ref('site', ' Place + Social Innovation Prize at XHacks by Carnegie Mellon University', 'selected[3].text'), joined: true }],
       cited: [],

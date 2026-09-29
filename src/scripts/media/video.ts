@@ -7,9 +7,11 @@
  *   loops only where authored as ambient (the default); the walkthrough player drives its own videos (managed=false)
  *   the one video with sound (Teachable AI, remote, 38 MB) NEVER autoplays: a click on "Play · 0:48 · sound" loads and
  *   plays it unmuted (a user gesture); then Pause, Mute/Unmute and Restart.
+ *   Save-Data (html[data-save], polish r1): no source is attached before a click — no first-frame priming, no autoplay;
+ *   the drafting X with the file's facts and Play stand in, and Play loads the original.
  */
 import { observe, viewportMargin } from '../core/io';
-import { motionOK } from '../core/dom';
+import { motionOK, saveData } from '../core/dom';
 import { on as onPref } from '../core/prefs';
 import { setState } from './state';
 import { isHeld, onHold } from './hold';
@@ -46,8 +48,8 @@ function evaluate(x: Vid): void {
   // the Enlarged detail is open over the page: a playing video pauses (its source and the reader's choice are kept)
   if (isHeld()) { if (!x.v.paused) x.v.pause(); return; }
   if (x.sound) return; // never automatic
-  if (x.near) attach(x);
-  const want = x.visible && (x.choice === 'play' || (x.choice === 'auto' && motionOK()));
+  if (x.near && (x.choice === 'play' || !saveData())) attach(x);
+  const want = x.visible && (x.choice === 'play' || (x.choice === 'auto' && motionOK() && !saveData()));
   if (want) {
     attach(x);
     x.v.muted = true;

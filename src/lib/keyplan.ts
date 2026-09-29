@@ -14,7 +14,9 @@
 import type { Block, CaseStudy, Section } from './blocks';
 import { keyplanOverrides } from '../data/sheets';
 import { reading } from './reading';
-import { sentences, stripHtml, strongs } from './text';
+import { escapeHtml, sentences, stripHtml, strongs } from './text';
+import { selectionHtml, sliceHtml } from './emphasis';
+import type { Src } from './verbatim';
 
 export type KeyRule = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 'override';
 
@@ -28,8 +30,9 @@ export interface KeyStop {
   rule: KeyRule;
   kind: 'html' | 'text' | 'parts' | 'stat';
   html?: string;          // kind 'html': her lede HTML (set:html through rich())
-  text?: string;          // kind 'text': verbatim plain text
+  text?: string;          // kind 'text': verbatim plain text (its HTML with her emphasis is in `html`)
   parts?: string[];       // kind 'parts': verbatim plain texts; render with an aria-hidden chrome " · " between
+  partsHtml?: string[];   // kind 'parts': each part with her inline emphasis (lib/emphasis.ts)
   stat?: { v: string; html: string }; // kind 'stat': her stat value + label (override only)
   plain: string;          // normalised text (parts joined with ' · ', stat as 'v label') — what tests compare
 }
@@ -42,8 +45,11 @@ function flat(blocks: Block[]): Block[] {
 
 type RulePick = Pick1 | PickText | PickParts;
 interface Pick1 { rule: 1; html: string }
-interface PickText { rule: 3 | 4 | 5; text: string }
-interface PickParts { rule: 2 | 6 | 7 | 8; parts: string[] }
+/** `html`: the selection sliced out of her source HTML, so her <strong>/<em>/<mark> inside it survive */
+interface PickText { rule: 3 | 4 | 5; text: string; html: string }
+interface PickParts { rule: 2 | 6 | 7 | 8; parts: string[]; partsHtml: string[] }
+
+const slice = (raw: string, plain: string): string => sliceHtml(raw, plain) ?? escapeHtml(plain);
 
 export function keyplanRule(section: Section): RulePick | null {
   const bl = flat(section.blocks);
@@ -52,11 +58,11 @@ export function keyplanRule(section: Section): RulePick | null {
   if (lede) return { rule: 1, html: lede.html };
   const feats = bl.filter((b): b is Extract<Block, { t: 'feature' }> => b.t === 'feature');
   // 2
-  const ft = feats.filter((f) => f.title).map((f) => stripHtml(f.title));
-  if (ft.length) return { rule: 2, parts: ft };
+  const ftRaw = feats.filter((f) => f.title).map((f) => f.title!);
+  if (ftRaw.length) return { rule: 2, parts: ftRaw.map(stripHtml), partsHtml: ftRaw.map((r) => slice(r, stripHtml(r))) };
   // 3
   const fl = feats.find((f) => f.lede);
-  if (fl?.lede) return { rule: 3, text: stripHtml(fl.lede) };
+  if (fl?.lede) return { rule: 3, text: stripHtml(fl.lede), html: slice(fl.lede, stripHtml(fl.lede)) };
   // 4
   for (const b of bl) {
     const cands: string[] =
@@ -67,7 +73,7 @@ export function keyplanRule(section: Section): RulePick | null {
         if (st.length > 12) {
           const probe = st.slice(0, 20);
           const sen = sentences(stripHtml(html)).find((x) => x.includes(probe));
-          return { rule: 4, text: sen ?? st };
+          return { rule: 4, text: sen ?? st, html: slice(html, sen ?? st) };
         }
       }
     }
@@ -76,17 +82,17 @@ export function keyplanRule(section: Section): RulePick | null {
   const p = bl.find((b): b is Extract<Block, { t: 'p' }> => b.t === 'p');
   if (p) {
     const first = sentences(stripHtml(p.html))[0];
-    if (first) return { rule: 5, text: first };
+    if (first) return { rule: 5, text: first, html: slice(p.html, first) };
   }
   // 6
-  const ct = bl.flatMap((b) => (b.t === 'cards' ? b.items.map((i) => stripHtml(i.title)) : []));
-  if (ct.length) return { rule: 6, parts: ct };
+  const ct = bl.flatMap((b) => (b.t === 'cards' ? b.items.map((i) => i.title) : []));
+  if (ct.length) return { rule: 6, parts: ct.map(stripHtml), partsHtml: ct.map((r) => slice(r, stripHtml(r))) };
   // 7
   const tl = bl.flatMap((b) => (b.t === 'tabs' ? b.items.map((i) => i.label) : []));
-  if (tl.length) return { rule: 7, parts: tl };
+  if (tl.length) return { rule: 7, parts: tl, partsHtml: tl.map((r) => slice(r, stripHtml(r))) };
   // 8
   const hs = bl.flatMap((b) => (b.t === 'h' ? [b.text] : []));
-  if (hs.length) return { rule: 8, parts: hs };
+  if (hs.length) return { rule: 8, parts: hs, partsHtml: hs.map((r) => slice(r, stripHtml(r))) };
   return null;
 }
 
@@ -97,14 +103,14 @@ export function keyplan(cs: CaseStudy): KeyStop[] {
     const base = { sectionId: s.id, label: s.label, index, elev: lv.elev, minutes: lv.minutes, anchor: `#${s.id}` };
     const o = keyplanOverrides[`${cs.slug}.${s.id}`];
     if (o) {
-      if ('text' in o) return { ...base, rule: 'override', kind: 'text', text: o.text.text, plain: o.text.text } satisfies KeyStop;
+      if ('text' in o) return { ...base, rule: 'override', kind: 'text', text: o.text.text, html: selectionHtml(o.text.src as Src, o.text.text), plain: o.text.text } satisfies KeyStop;
       const stat = { v: o.stat.v.text, html: o.stat.html.text };
       return { ...base, rule: 'override', kind: 'stat', stat, plain: `${stat.v} ${stat.html}` } satisfies KeyStop;
     }
     const pick = keyplanRule(s);
     if (!pick) return { ...base, rule: 8, kind: 'parts', parts: [], plain: '' } satisfies KeyStop;
     if (pick.rule === 1) return { ...base, rule: 1, kind: 'html', html: pick.html, plain: stripHtml(pick.html) } satisfies KeyStop;
-    if ('text' in pick) return { ...base, rule: pick.rule, kind: 'text', text: pick.text, plain: pick.text } satisfies KeyStop;
-    return { ...base, rule: pick.rule, kind: 'parts', parts: pick.parts, plain: pick.parts.join(JOIN) } satisfies KeyStop;
+    if ('text' in pick) return { ...base, rule: pick.rule, kind: 'text', text: pick.text, html: pick.html, plain: pick.text } satisfies KeyStop;
+    return { ...base, rule: pick.rule, kind: 'parts', parts: pick.parts, partsHtml: pick.partsHtml, plain: pick.parts.join(JOIN) } satisfies KeyStop;
   });
 }

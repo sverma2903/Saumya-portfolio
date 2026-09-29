@@ -19,6 +19,7 @@ describe('media-staging.ts', () => {
       expect(s.gif.secs, f).toBeGreaterThan(0);
       expect(s.gif.frames, f).toBeGreaterThan(0);
       expect(s.gif.poster, f).toBeLessThan(s.gif.frames);
+      if (s.gif.still != null) expect(s.gif.still, f).toBeLessThan(s.gif.frames);
       expect(facts(f).format, f).toBe('GIF');
     }
   });

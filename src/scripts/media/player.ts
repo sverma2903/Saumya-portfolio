@@ -7,8 +7,12 @@
  *   Motion off: nothing autoplays or advances; videos wait on their first frame, the GIF on its poster.
  *   Memory: only the selected step's media is mounted (desktop); within 1.5 viewports a video shows its first frame
  *   and the GIF's bytes are fetched ahead; beyond 3 viewports every source is removed (the GIF manager's rule).
+ *   One download per file (polish r1): the GIF's warm-up is the ONLY request for it — the <img> shows those bytes
+ *   through an object URL and its poster is decoded from them (media/bytes.ts), never a second fetch.
+ *   Save-Data (html[data-save]): no warm-up, no video priming, no autoplay, no poster decode; an explicit Play (or a
+ *   selected tab) still loads the original. No warm-up either on a 3g-or-slower link.
  */
-import { $$, motionOK, ready } from '../core/dom';
+import { $$, motionOK, ready, saveData, slowLink } from '../core/dom';
 import { observe, viewportMargin } from '../core/io';
 import { on as onPref } from '../core/prefs';
 import { chrome } from '../../data/chrome';
@@ -16,6 +20,7 @@ import { openDetail } from './plates';
 import { phNote, setState } from './state';
 import { freezePlate, pausePlate, posterPlate } from './gif';
 import { isHeld, onHold } from './hold';
+import { load, objectUrl, release } from './bytes';
 
 const wide = matchMedia('(min-width: 1024px)');
 const TH = [0, 0.35, 0.5, 0.75, 1];
@@ -36,6 +41,11 @@ function wire(root: HTMLElement): void {
   const isNear = panels.map(() => false);
   let active = 0, auto = true, chosen = false, desktop = false, visible = false, timer = 0;
   const userPaused = new Set<number>();
+  /** per step: the pending GIF mount (a newer play() or a stop() supersedes it before its bytes arrive) */
+  const pending = panels.map(() => 0);
+  let seq = 0;
+  /** autoplay (not a reader's Play): Motion on and no Save-Data */
+  const autoOK = () => motionOK() && !saveData();
 
   const srcOf = (i: number) => (vids[i]?.dataset.src ?? gifs[i]?.dataset.src ?? '').replace(/#t=[\d.]+$/, '');
 
@@ -43,12 +53,16 @@ function wire(root: HTMLElement): void {
   function stop(i: number, park = false) {
     const v = vids[i], g = gifs[i];
     clearTimeout(timer);
+    pending[i] = 0;
     if (v) {
       v.pause();
       if (park && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); setState(plates[i], 'idle'); }
     }
     if (g && park) {
       if (g.getAttribute('src')) g.removeAttribute('src');
+      // the bytes go too (a finished download is in the HTTP cache, so coming back costs no network)
+      release(srcOf(i));
+      warmed.delete(i);
       if (plates[i].dataset.state !== 'paused') setState(plates[i], 'idle');
     } else if (g && g.getAttribute('src')) {
       pausePlate(plates[i]);
@@ -70,10 +84,11 @@ function wire(root: HTMLElement): void {
   /** within 1.5 viewports: a video's first frame; the GIF's bytes fetched ahead (or its poster, if it may not play) */
   const warmed = new Set<number>();
   function near(i: number) {
-    if (vids[i]) { prime(i); return; }
+    if (vids[i]) { if (!saveData()) prime(i); return; }
     if (!gifs[i] || gifs[i]!.getAttribute('src')) return;
-    if (motionOK() && !userPaused.has(i)) {
-      if (!warmed.has(i)) { warmed.add(i); fetch(srcOf(i)).then((r) => r.blob()).catch(() => {}); }
+    if (autoOK() && !userPaused.has(i)) {
+      // the one download of this file (bytes.ts): play() and the poster use these same bytes
+      if (!warmed.has(i) && !slowLink()) { warmed.add(i); void load(srcOf(i)); }
     } else rest(i);
   }
 
@@ -108,7 +123,10 @@ function wire(root: HTMLElement): void {
       else {
         if (plates[i].dataset.state !== 'paused' && plates[i].dataset.state !== 'playing') setState(plates[i], 'loading');
         g.addEventListener('load', start, { once: true });
-        requestAnimationFrame(() => { g.src = srcOf(i); });
+        // the warm-up's bytes (or this one download, if there was none) through an object URL: one request per file
+        const token = (pending[i] = ++seq);
+        const src = srcOf(i);
+        void objectUrl(src).then((url) => requestAnimationFrame(() => { if (pending[i] === token) g.src = url ?? src; }));
       }
     }
   }
@@ -119,7 +137,7 @@ function wire(root: HTMLElement): void {
     select(from + 1, false);
   }
 
-  const mayPlay = (i: number) => !isHeld() && visible && !userPaused.has(i) && (motionOK() || chosen);
+  const mayPlay = (i: number) => !isHeld() && visible && !userPaused.has(i) && (autoOK() || chosen);
 
   function select(i: number, byUser: boolean) {
     if (byUser) { chosen = true; auto = false; userPaused.delete(i); }
@@ -171,7 +189,7 @@ function wire(root: HTMLElement): void {
     for (const k of panels.keys()) if (k !== best) stop(k);
     if (best >= 0) {
       active = best;
-      if (!userPaused.has(best) && motionOK()) { if (plates[best].dataset.state !== 'playing') play(best); }
+      if (!userPaused.has(best) && autoOK()) { if (plates[best].dataset.state !== 'playing') play(best); }
       else rest(best);
     }
   }

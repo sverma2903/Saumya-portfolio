@@ -5,9 +5,9 @@
  *     view drops its src (memory). A swap restarts the GIF from frame 0.
  *   · mounted within 1 viewport, parked beyond 3; Pause shows the step's poster frame (ImageDecoder), Restart re-sets
  *     the src; Enlarge opens the active step's own figure. Below 1024px / Motion off: the stacked layout, where each
- *     step's Plate is an ordinary managed GIF (plates.ts).
+ *     step's Plate is an ordinary managed GIF (plates.ts). Save-Data: the stacked layout too (polish r1).
  */
-import { $$, motionOK, ready } from '../core/dom';
+import { $$, motionOK, ready, saveData } from '../core/dom';
 import { observe, viewportMargin } from '../core/io';
 import { on as onPref } from '../core/prefs';
 import { openDetail } from './plates';
@@ -94,7 +94,8 @@ function wire(grid: HTMLElement): void {
   }
 
   function mode() {
-    const on = wide.matches && motionOK();
+    // Save-Data: the stacked layout, whose plates are managed GIFs that wait for Play (gif.ts)
+    const on = wide.matches && motionOK() && !saveData();
     if (on === sticky) return;
     sticky = on;
     grid.toggleAttribute('data-sticky', on);

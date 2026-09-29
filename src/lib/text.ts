@@ -37,6 +37,18 @@ export function stripHtml(html: string | undefined | null): string {
   return normalize(decodeEntities(noTags));
 }
 
+/**
+ * Her ✦ (a <mark>ed sparkle closing her Home and Play headlines). It is drawn by the Ornament symbol (the character is
+ * not in the font subsets) and stays in the DOM as her text. `withoutOrnament` gives the headline for places that
+ * quote it without the sparkle (index rows, the OG card, the search index) — a selection, like any other.
+ */
+export const ORNAMENT = '<mark>✦</mark>';
+export function splitOrnament(html: string): { html: string; ornament: boolean } {
+  const t = html.trimEnd();
+  return t.endsWith(ORNAMENT) ? { html: t.slice(0, -ORNAMENT.length).trimEnd(), ornament: true } : { html, ornament: false };
+}
+export const withoutOrnament = (html: string): string => splitOrnament(html).html;
+
 /** Escape text for safe insertion into HTML (used when we must build markup around her plain text). */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

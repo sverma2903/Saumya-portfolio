@@ -5,6 +5,7 @@ import { legacyAnchors, aliasesFor } from '@/data/legacy-anchors';
 import { allNarratives, chrome, narrative } from '@/data/chrome';
 import { alt } from '@/data/alt';
 import { facts } from '@/lib/staging';
+import heights from '@/data/chapter-heights.json';
 
 const lum = (hex: string) => {
   const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
@@ -41,12 +42,14 @@ describe('sheets.ts', () => {
 });
 
 describe('legacy anchors (§5.2.9)', () => {
-  test('every alias targets a real section and never collides with one', () => {
+  test('every alias targets a real section (or an id inside one) and never collides with one', () => {
     for (const [slug, map] of Object.entries(legacyAnchors)) {
       const cs = cases.find((c) => c.slug === slug)!;
       const ids = cs.sections.map((s) => s.id);
       for (const [alias, target] of Object.entries(map)) {
-        expect(ids, `${slug}#${alias}`).toContain(target);
+        // polish r1: a heading / feature-title / block id inside a chapter is prefixed by its chapter id; the built id
+        // itself is checked on the page (tests/dist/links.test.ts)
+        expect(ids.some((id) => target === id || target.startsWith(`${id}-`)), `${slug}#${alias} → ${target}`).toBe(true);
         expect(ids, `${slug}#${alias}`).not.toContain(alias);
       }
     }
@@ -68,5 +71,17 @@ describe('chrome.ts / alt.ts', () => {
   });
   test('alt() returns the draft or ""', () => {
     expect(alt('not-a-file.png')).toBe('');
+  });
+});
+
+// polish r1: every case chapter has a measured placeholder height (tools/chapter-heights.mjs → Chapter.astro)
+describe('chapter heights (contain-intrinsic-size)', () => {
+  test('every chapter of every case is measured, in every grid range and both views', () => {
+    const t = heights as unknown as Record<string, Record<string, Record<string, number>>>;
+    for (const cs of cases) for (const s of cs.sections) {
+      const h = t[cs.slug]?.[s.id];
+      expect(h, `${cs.slug}#${s.id}: run node tools/chapter-heights.mjs`).toBeTruthy();
+      for (const k of ['xl', 'l', 'm', 's', 'pxl', 'pl', 'pm', 'ps']) expect(h[k], `${cs.slug}#${s.id} ${k}`).toBeGreaterThan(100);
+    }
   });
 });

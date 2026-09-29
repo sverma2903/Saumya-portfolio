@@ -68,8 +68,9 @@
   /* device frames (§6.3 frames table; WP4b): CSS bezels around her flat screens. Never themed: a device is a device. */
   --bezel:      #1B1A19; /* `phone` ring */
   --bezel-dark: #121110; /* `bezel-dark` ring (Teachable) */
-  /* WP4b: the pure white her logo files were composed on. ONLY for `soft` (logo) grounds, so their opaque-white
-     canvases vanish exactly as they did on her white site (on --plate they read as stray boxes). Never themed. */
+  /* WP4b: the pure white her logo files were composed on. ONLY for `soft` (logo) grounds and the icon-card wells
+     (polish r1), so their opaque-white canvases vanish exactly as they did on her white site (on --plate they read as
+     stray boxes) with no blend mode. Never themed. */
   --white:      #FFFFFF;
   /* WP4b: ink and linework drawn ON a print (--plate / --white never invert, §2.3), so never themed either: the
      drafting-X placeholder, a logo sheet's cell rules and tags. = Vellum's --ink-3 / --line-2 (6.1:1 on --plate). */

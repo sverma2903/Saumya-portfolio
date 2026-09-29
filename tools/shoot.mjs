@@ -13,6 +13,8 @@
  *   --plan    localStorage sv:view=plan
  *   --report  print console errors/warnings, failed requests, and the loaded font families (document.fonts)
  *   --base    server origin (default: $SHOOT_BASE, else an internal static server over dist/ with clean URLs + 404.html)
+ *   --no-range the internal server ignores `Range` and answers 200 with the whole file (what an asset layer without
+ *             range support sends; SHOOT_RANGE=0 does the same for every tool that uses withServer)
  *
  * Chromium: /opt/pw-browsers/chromium with the SwiftShader WebGL flags (never `playwright install`).
  * Playwright: $PLAYWRIGHT_PATH or /opt/node22/lib/node_modules/playwright/index.mjs.
@@ -59,7 +61,9 @@ const COMPRESSIBLE = /^(text\/|application\/(json|xml|javascript)|image\/svg)/;
  * compresses HTML/CSS/JS/JSON/SVG on the wire, so transfer sizes and lab LCP are measured the way visitors get them.
  */
 export function serveDist(port = 0, opts = {}) {
-  const { compress = true, dir = DIST } = opts;
+  // range: false → `Range` is ignored (200 + the whole file), reproducing an asset layer without range support
+  // (wrangler dev's asset worker; see worker/media.js); default from SHOOT_RANGE=0 so every tool can opt in
+  const { compress = true, dir = DIST, range: ranges = process.env.SHOOT_RANGE !== '0' } = opts;
   const ROOTDIR = path.resolve(dir);
   const rules = readHeaderRules(ROOTDIR);
   const gz = new Map(); // file → gzipped buffer (built once)
@@ -83,7 +87,7 @@ export function serveDist(port = 0, opts = {}) {
         return;
       }
       const size = fs.statSync(f).size;
-      const range = status === 200 && /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
+      const range = ranges && status === 200 && /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
       if (range) {
         const start = range[1] ? +range[1] : 0;
         const end = range[2] ? +range[2] : size - 1;
@@ -91,7 +95,7 @@ export function serveDist(port = 0, opts = {}) {
         fs.createReadStream(f, { start, end }).pipe(res);
         return;
       }
-      res.writeHead(status, { ...extra, 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+      res.writeHead(status, { ...extra, 'content-type': type, 'content-length': size, ...(ranges ? { 'accept-ranges': 'bytes' } : {}) });
       if (req.method === 'HEAD') res.end();
       else fs.createReadStream(f).pipe(res);
     };
@@ -190,6 +194,7 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const argv = process.argv.slice(2);
   const flags = new Set(argv.filter((a) => a.startsWith('--') && !a.includes('=')));
+  if (flags.has('--no-range')) process.env.SHOOT_RANGE = '0';
   const kv = Object.fromEntries(argv.filter((a) => a.startsWith('--') && a.includes('=')).map((a) => a.slice(2).split('=')));
   const [p = '/', out = 'shot.png', scrollY = '0', w = '1440', h = '900', full = '0'] = argv.filter((a) => !a.startsWith('--'));
   const r = await withServer(
