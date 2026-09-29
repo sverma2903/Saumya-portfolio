@@ -582,6 +582,10 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
 
   // ── the loop: renders only while something changes ──
   let raf = 0, prev = 0, dirty = false, needLayout = true, live = true, lost = false, visible = false, started = false, shown = false;
+  // leaving under a view transition (see pageswap below): the context is released and a 2D still stands in
+  let leaving = false;
+  let still: HTMLCanvasElement | null = null;
+  let loseExt: WEBGL_lose_context | null = null;
   const samples: number[] = [];
   function kick() {
     dirty = true;
@@ -608,7 +612,11 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
       }
     }
     render();
-    if (!shown) { shown = true; html.dataset.gl = 'live'; planEl!.tabIndex = 0; }
+    if (!shown) {
+      shown = true; html.dataset.gl = 'live'; planEl!.tabIndex = 0;
+      // back from the bfcache: the first live frame takes the still's place (same pixels, no blank frame between)
+      if (still) { still.remove(); still = null; glCanvas!.hidden = false; }
+    }
     if (busy) raf = requestAnimationFrame(frame);
     else prev = 0; // settled: 0 frames until the next input
   }
@@ -747,9 +755,6 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   // 2D canvas that takes the GL canvas's place (a shallow clone: same scoped class, same box), and the context is
   // released. The snapshot shows exactly what was on screen. Back from the bfcache, the copy goes and the context is
   // restored (webglcontextrestored → live again, at the rest pose).
-  let leaving = false;
-  let still: HTMLCanvasElement | null = null;
-  let loseExt: WEBGL_lose_context | null = null;
   addEventListener('pageswap', (e) => {
     const vt = (e as Event & { viewTransition?: ViewTransition | null }).viewTransition;
     if (!vt || !gl || lost) return;
@@ -771,9 +776,9 @@ async function hero(root: HTMLElement, restOnly: boolean): Promise<void> {
   addEventListener('pageshow', (e) => {
     if (!(e as PageTransitionEvent).persisted || !leaving) return;
     leaving = false;
-    still?.remove(); still = null;
-    glCanvas.hidden = false;
-    loseExt?.restoreContext();
+    // the still keeps showing the frame; the context comes back once any cut has finished (a context created while a
+    // view transition reveals the page drops it), and frame() swaps the still out on the first live frame
+    void afterViewTransition().then(() => loseExt?.restoreContext());
   });
 
   // warm the pipeline once (a 1-px draw with nothing inked, then cleared), so the first visible frame does not stall
