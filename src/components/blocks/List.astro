@@ -14,7 +14,7 @@ import LeaderList from './LeaderList.astro';
 import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
-import { boldPieces } from '../../lib/planview';
+import { boldPieces, skimJoins } from '../../lib/planview';
 import { rich } from '../../lib/rich';
 import { pad2 } from '../../lib/text';
 import { chrome, fill } from '../../data/chrome';
@@ -24,7 +24,7 @@ const skimmed = ctx.plan.mode === 'skim';
 const html = block.items.map((it) => rich(it));
 // Plan view: the kept items (with their original numbers) and their bold pieces
 const kept = skimmed
-  ? block.items.map((it, i) => ({ n: i + 1, pieces: boldPieces(it) })).filter((k) => k.pieces.length > 0)
+  ? block.items.map((it, i) => ({ n: i + 1, pieces: boldPieces(it), joins: skimJoins(it) })).filter((k) => k.pieces.length > 0)
   : [];
 const dropped = skimmed ? block.items.length - kept.length : 0;
 const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : fill(chrome.wp4a.itemsOmitted, { n: dropped });
@@ -42,7 +42,7 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
           <ol class="keynotes skim" role="list">
             {kept.map((k) => (
               <li class="keynotes__i"><span class="keynotes__tag" aria-hidden="true" data-chrome>{pad2(k.n)}</span>{k.pieces.map((s, j) => (
-                <>{j > 0 && <span class="keynotes__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+                <>{j > 0 && (k.joins[j - 1] === 'gap' ? <span class="keynotes__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span> : k.joins[j - 1] === 'space' ? ' ' : null)}<strong data-v set:html={s} /></>
               ))}</li>
             ))}
           </ol>
@@ -51,7 +51,7 @@ const droppedLabel = dropped === 1 ? fill(chrome.wp4a.itemOmitted, { n: 1 }) : f
     ) : (
       <>
         <LeaderList items={html} class={skimmed ? 'full' : undefined} />
-        {skimmed && <LeaderList pieces={kept.map((k) => k.pieces)} class="skim" />}
+        {skimmed && <LeaderList pieces={kept.map((k) => k.pieces)} joins={kept.map((k) => k.joins)} class="skim" />}
       </>
     )}
     {skimmed && dropped > 0 && <p class="list__dropped skim" data-chrome>{droppedLabel}</p>}

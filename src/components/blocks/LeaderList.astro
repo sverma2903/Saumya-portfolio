@@ -7,23 +7,26 @@
  * `hang={false}` keeps it inset (lists that don't start at the text edge).
  *
  * `items` are her HTML strings, already post-processed by the caller (rich()), rendered as <li data-v>.
- * `pieces` (Plan-view skim) replaces an item's content by her bold pieces joined with a chrome ⋯ (data-join).
+ * `pieces` (Plan-view skim) replaces an item's content by her bold pieces joined with a chrome ⋯ (data-join) — or,
+ * per `joins` (planview.ts skimJoins), by her own space where nothing of hers is left out between two pieces.
  */
 import Icon from '../symbols/Icon.astro';
+import type { SkimJoin } from '../../lib/planview';
 interface Props {
   items?: string[];
   pieces?: string[][];
+  joins?: SkimJoin[][];
   hang?: boolean;
   size?: 'body' | 'sm';
   class?: string;
 }
-const { items, pieces, hang = true, size = 'body', class: cls } = Astro.props;
+const { items, pieces, joins, hang = true, size = 'body', class: cls } = Astro.props;
 ---
 <ul class:list={['leaders', `leaders--${size}`, { 'leaders--hang': hang }, cls]} role="list">
   {items && items.map((html) => <li class="leaders__i" data-v set:html={html} />)}
-  {pieces && pieces.map((ps) => (
+  {pieces && pieces.map((ps, i) => (
     <li class="leaders__i">{ps.map((s, j) => (
-      <>{j > 0 && <span class="leaders__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+      <>{j > 0 && ((joins?.[i]?.[j - 1] ?? 'gap') === 'gap' ? <span class="leaders__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span> : joins?.[i]?.[j - 1] === 'space' ? ' ' : null)}<strong data-v set:html={s} /></>
     ))}</li>
   ))}
 </ul>

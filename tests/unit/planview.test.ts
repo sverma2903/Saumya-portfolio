@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { cases } from '@/content/site';
 import { h, h3, img, lede, list, p, split, stories, cards, feature, stats } from '@/lib/blocks';
 import type { Section } from '@/lib/blocks';
-import { boldPieces, omitLabel, omitRuns, planBlocks, planSection } from '@/lib/planview';
+import { boldPieces, omitLabel, omitRuns, planBlocks, planSection, skimJoins } from '@/lib/planview';
 
 const sec = (blocks: Section['blocks']): Section => ({ id: 'x', label: 'X', blocks });
 
@@ -58,6 +58,24 @@ describe('plan-view modes on fixtures (SM5c)', () => {
       expect(infos.some((i) => i.mode === 'omit'), cs.slug).toBe(true);
       const planWords = cs.sections.reduce((a, s) => a + planSection(s).words, 0);
       expect(planWords).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('skimJoins: the ⋯ joiner only where her words are left out (integration)', () => {
+  test('whitespace between two bold pieces is her space; touching pieces join; words between are a gap', () => {
+    expect(skimJoins("<strong>R2's dashboard is</strong> <strong>missing foundational interactions</strong> such as")).toEqual(['space']);
+    expect(skimJoins('<strong>Every</strong><strong> competitor offers</strong>')).toEqual(['none']);
+    expect(skimJoins('<strong>One bold run</strong> then her words, <strong>another run</strong>.')).toEqual(['gap']);
+    // a short strong (< 3 characters, not a piece) between two pieces is left out: a gap
+    expect(skimJoins('<strong>First piece</strong> <strong>R2</strong> <strong>second piece</strong>')).toEqual(['gap']);
+    expect(skimJoins('<strong>only one</strong>')).toEqual([]);
+    expect(skimJoins(undefined)).toEqual([]);
+  });
+  test('one join per gap between boldPieces, on every paragraph and list item of her six cases', () => {
+    for (const cs of cases) for (const sec of cs.sections) for (const b of sec.blocks) {
+      const htmls = b.t === 'p' || b.t === 'small' ? [b.html] : b.t === 'list' ? b.items : [];
+      for (const html of htmls) expect(skimJoins(html)).toHaveLength(Math.max(0, boldPieces(html).length - 1));
     }
   });
 });

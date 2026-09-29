@@ -94,7 +94,8 @@ export const chrome = {
       linkedin: 'LinkedIn',
       toTop: 'A-000',
       colophon: N('Set in Newsreader and IBM Plex. Drawn once in WebGL on the cover sheet; everything else is HTML.'),
-      toTopHome: 'Back to the top of the cover sheet',
+      /** its visible text ("A-000") leads, so a voice user can say what they see (WCAG 2.5.3; integration axe run) */
+      toTopHome: 'A-000, back to the top of the cover sheet',
       toTopOther: 'A-000 Cover sheet',
     },
     /** the running footer repeated on every printed page (§4.10) */

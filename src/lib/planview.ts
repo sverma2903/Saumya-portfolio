@@ -48,6 +48,27 @@ export function boldPieces(html: string | undefined): string[] {
   return strongs(html).filter((s) => nonSpaceLength(s) >= 3);
 }
 
+/**
+ * How each pair of consecutive bold pieces (boldPieces order) meets in her HTML — one entry per gap:
+ *  'gap'   her words between them are left out → the Plan-view ⋯ joiner
+ *  'space' only whitespace between them (one bold run her editor split in two: "<strong>R2's dashboard is</strong>
+ *          <strong>missing foundational interactions</strong>") → her own space, no ellipsis (nothing is omitted)
+ *  'none'  the two touch → nothing between them
+ * (integration: a ⋯ between two touching halves of one bold phrase claimed an omission that isn't there)
+ */
+export type SkimJoin = 'gap' | 'space' | 'none';
+export function skimJoins(html: string | undefined): SkimJoin[] {
+  if (!html) return [];
+  const re = /<strong\b[^>]*>([\s\S]*?)<\/strong>/gi;
+  const kept: { start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) if (nonSpaceLength(m[1]) >= 3) kept.push({ start: m.index, end: m.index + m[0].length });
+  return kept.slice(1).map((k, i) => {
+    const between = html.slice(kept[i].end, k.start);
+    return between === '' ? 'none' : /^\s+$/.test(between) ? 'space' : 'gap';
+  });
+}
+
 const wordsOf = (...htmls: (string | undefined)[]) => words(htmls.map((h) => stripHtml(h)).join(' '));
 
 interface State { firstMediaAfterH: boolean }

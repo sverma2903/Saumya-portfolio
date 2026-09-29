@@ -120,6 +120,10 @@ const rid = `${ctx.id}-rev`;
   @media print {
     .rev__line { stroke-dashoffset: 0 !important; }
     .rev__fill { opacity: 1 !important; }
+    /* the cloud (≈ 19px) and its △ (≈ 23px) run outside the note's box, and page breaks ignore overflow: the block's
+       own box holds them in print, so a break under the note never paints its scallops over the next page's first
+       line (integration: /cloudflare printed the cloud's foot over "Opportunity") */
+    .revcloud { margin-block: 0; padding-block: var(--s-5); break-inside: avoid; }
   }
   @media (forced-colors: active) {
     .rev__fill { fill: none; }

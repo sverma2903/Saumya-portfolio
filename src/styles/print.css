@@ -81,7 +81,10 @@
 
   /* ---------- the case as a printed set: header → Decision schedule → Key plan → chapters ---------- */
   article.case { display: flex !important; flex-direction: column; }
-  article.case > * { order: 3; }
+  /* every part keeps the page's full measure: a column flexbox does not stretch an item with auto inline margins
+     (.shell), it shrinks it to fit-content — and a size container has no content size (the Key plan band is one,
+     WP5's measure-based columns): it collapsed to a 50px sliver and ran ten A4 pages (integration) */
+  article.case > * { order: 3; align-self: stretch; margin-inline: 0 !important; }
   article.case > :is(.case-head, header) { order: 0; }
   article.case > :is(.decisions, section[aria-labelledby='decisions-h']) { order: 1; }
   article.case > :is(.keyplan, section[aria-labelledby='keyplan-h']) { order: 2; }

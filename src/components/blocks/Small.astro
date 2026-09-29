@@ -8,16 +8,18 @@ import Icon from '../symbols/Icon.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
+import { skimJoins } from '../../lib/planview';
 interface Props { block: Extract<Block, { t: 'small' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const skim = ctx.plan.mode === 'skim' ? (ctx.plan.skim ?? []) : null;
+const joins = skim ? skimJoins(block.html) : [];
 ---
 <div {...blkAttrs('small', ctx)}>
   <div class="blk__note">
     <p class:list={['small', { full: !!skim }]} data-v set:html={rich(block.html)} />
     {skim && (
       <p class="small skim" data-v>{skim.map((s, i) => (
-        <>{i > 0 && <span class="small__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span>}<strong data-v set:html={s} /></>
+        <>{i > 0 && (joins[i - 1] === 'gap' ? <span class="small__join" aria-hidden="true" data-chrome data-join><Icon name="ellipsis" /></span> : joins[i - 1] === 'space' ? ' ' : null)}<strong data-v set:html={s} /></>
       ))}</p>
     )}
   </div>
