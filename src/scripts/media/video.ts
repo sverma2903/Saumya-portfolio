@@ -67,11 +67,18 @@ export function manageVideo(v: HTMLVideoElement, plate: HTMLElement): void {
   v.addEventListener('loadeddata', () => { if (plate.dataset.state === 'loading') setState(plate, v.paused ? 'ready' : 'playing'); });
   v.addEventListener('playing', () => {
     // "Play · 0:48 · sound" hides on the first play; if it held focus, focus moves on to Pause (never dropped to <body>)
+    const first = !plate.hasAttribute('data-played');
     const pill = plate.querySelector<HTMLElement>('[data-mc-sound]');
-    const handOff = !!pill && document.activeElement === pill && !plate.hasAttribute('data-played');
+    const handOff = first && !!pill && document.activeElement === pill;
+    // the cover was this plate's keyboard Enlarge while its controls were hidden; from now on the controls' Enlarge is
+    // (one focusable Enlarge per plate, as on every other moving plate)
+    const cover = first ? plate.querySelector<HTMLElement>('.plate__open[data-cover-until-played]') : null;
+    const coverFocused = !!cover && document.activeElement === cover;
+    if (cover) { cover.tabIndex = -1; cover.setAttribute('aria-hidden', 'true'); }
     plate.toggleAttribute('data-played', true);
     setState(plate, 'playing', { restartProgress: true, at: v.currentTime });
     if (handOff) plate.querySelector<HTMLElement>('[data-mc-toggle]')?.focus({ preventScroll: true });
+    else if (coverFocused) plate.querySelector<HTMLElement>('[data-mc-enlarge]')?.focus({ preventScroll: true });
   });
   v.addEventListener('pause', () => { if (v.getAttribute('src')) setState(plate, v.readyState >= 2 ? 'paused' : 'loading'); });
   v.addEventListener('ended', () => setState(plate, 'paused'));

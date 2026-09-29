@@ -75,4 +75,21 @@ describe('Enlarged detail', () => {
     const scripts = root.querySelectorAll('script[type="module"]').map((s) => s.getAttribute('src') ?? '');
     expect(scripts.some((s) => /DetailViewer/.test(s))).toBe(true);
   });
+
+  // one keyboard Enlarge per plate: the controls' Enlarge where the controls show, else the cover over the media. The
+  // narrated video (Teachable) shows only "Play · 0:48 · sound" before its first play, so its cover is the Enlarge until
+  // then (video.ts hands the role to the controls on the first play).
+  test.each(PAGES)('%s: every enlargeable plate starts with exactly one Enlarge in the tab order', (page) => {
+    const { root } = load(page);
+    for (const p of root.querySelectorAll('[data-plate]')) {
+      const cover = p.querySelector('.plate__open');
+      if (!cover) continue;
+      const file = p.getAttribute('data-file') ?? '';
+      const inTabOrder = cover.getAttribute('tabindex') !== '-1' && cover.getAttribute('aria-hidden') !== 'true';
+      const controlsEnlarge = !!p.querySelector('[data-mc-enlarge]');
+      const soundFirst = !!p.querySelector('[data-mc-sound]');
+      expect(inTabOrder, file).toBe(!controlsEnlarge || soundFirst);
+      expect(cover.hasAttribute('data-cover-until-played'), file).toBe(controlsEnlarge && soundFirst);
+    }
+  });
 });

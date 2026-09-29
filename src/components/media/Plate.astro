@@ -169,6 +169,10 @@ const enlargeLabel = fig
 // transparent files never get one (it would show through them)
 const showPh = !(staged && matFrame === 'bare') && layers.some((l) => wantsPlaceholder(l));
 const coverIsDuplicate = canEnlarge && controls; // then the controls carry the visible, focusable Enlarge
+// …except on the narrated video before its first play: its controls are hidden (only "Play · 0:48 · sound" shows), so
+// the cover is its keyboard Enlarge until video.ts sees the first play and hands that role to the controls' Enlarge
+const coverUntilPlayed = coverIsDuplicate && audio;
+const coverHidden = coverIsDuplicate && !coverUntilPlayed;
 
 /** per-layer geometry inside a staged box (a device-wrapped top layer fills its wrapper instead) */
 const layerStyle = (layer: LayerMedia): string | undefined => {
@@ -268,7 +272,7 @@ const rootAttrs = {
         </div>
         {controls && ctlVariant === 'overlay' && <MediaControls variant="overlay" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
         {canEnlarge && (
-          <button type="button" class="plate__open" data-fig data-js-only aria-label={enlargeLabel} tabindex={coverIsDuplicate ? '-1' : undefined} aria-hidden={coverIsDuplicate ? 'true' : undefined}></button>
+          <button type="button" class="plate__open" data-fig data-js-only aria-label={enlargeLabel} tabindex={coverHidden ? '-1' : undefined} aria-hidden={coverHidden ? 'true' : undefined} data-cover-until-played={coverUntilPlayed ? '' : undefined}></button>
         )}
       </div>
     </Win>
