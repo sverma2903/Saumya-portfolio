@@ -21,6 +21,8 @@
  * (.vp__ctl, also aria-hidden, no tab stops): the whole preview is one link to the active sheet (so the "Open sheet"
  * button is drawn, and lights up with the rest of the preview on hover), ⤢ (Enlarged detail) sits in the strip, and
  * the pause control on the plate's corner.
+ * The plate's images are decorative duplicates here (alt=""); the box carries the top layer's alt draft as data-alt, so
+ * the Enlarged detail opened from ⤢ still describes the file (WP7).
  */
 import type { Sheet } from '../../data/sheets';
 import { cases, about, play } from '../../content/site';
@@ -30,6 +32,7 @@ import Icon from '../symbols/Icon.astro';
 import Readout from './Readout.astro';
 import { logoK } from './logo-optics';
 import { layerBox, boxStyle } from './plate-box';
+import { alt } from '../../data/alt';
 
 interface Props {
   sheets: Sheet[];
@@ -102,7 +105,7 @@ const first = items.find((i) => i.active) ?? items[0];
           data-no={it.no}
           hidden={!it.active}
         >
-          <span class:list={['vp__box', { 'vp__box--edge': it.edge }]} data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
+          <span class:list={['vp__box', { 'vp__box--edge': it.edge }]} data-vp-box data-file={it.layers[it.layers.length - 1]?.f.file} data-alt={alt(it.layers[it.layers.length - 1]?.f.file ?? '') || undefined} style={[`background: ${it.s.plate.stage}`, it.active && it.vt ? `view-transition-name: ${it.vt}` : ''].filter(Boolean).join('; ')}>
             {it.layers.map((l) => {
               const style = boxStyle(l.box);
               const eager = it.active && !l.gif && !l.video;

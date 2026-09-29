@@ -19,6 +19,7 @@
  * Also importable: `import { shoot, withServer } from './tools/shoot.mjs'` for batch runs.
  */
 import http from 'node:http';
+import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -32,35 +33,75 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
-  '.webp': 'image/webp', '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain', '.xml': 'application/xml',
+  '.webp': 'image/webp', '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8',
 };
 
-/** A tiny static server over dist/ that mimics Cloudflare assets: clean URLs, 404.html, byte ranges for video. */
-export function serveDist(port = 0) {
+/**
+ * _headers rules (Cloudflare syntax: a path pattern line, then indented "Name: value" lines), read once per server.
+ * Applied to every response, so tools see the production cache policy (e.g. vitals' repeat views).
+ */
+function readHeaderRules(dir = DIST) {
+  const file = path.join(dir, '_headers');
+  if (!fs.existsSync(file)) return [];
+  const rules = [];
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+    if (!/^\s/.test(line)) rules.push({ re: new RegExp(`^${line.trim().replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`), set: [] });
+    else if (rules.length) { const i = line.indexOf(':'); rules.at(-1).set.push([line.slice(0, i).trim(), line.slice(i + 1).trim()]); }
+  }
+  return rules;
+}
+const COMPRESSIBLE = /^(text\/|application\/(json|xml|javascript)|image\/svg)/;
+
+/**
+ * A tiny static server over dist/ that mimics Cloudflare assets: clean URLs, 404.html, byte ranges for video, the
+ * `_headers` cache rules and (opts.compress, default on) gzip for text types when the client accepts it — Cloudflare
+ * compresses HTML/CSS/JS/JSON/SVG on the wire, so transfer sizes and lab LCP are measured the way visitors get them.
+ */
+export function serveDist(port = 0, opts = {}) {
+  const { compress = true, dir = DIST } = opts;
+  const ROOTDIR = path.resolve(dir);
+  const rules = readHeaderRules(ROOTDIR);
+  const gz = new Map(); // file → gzipped buffer (built once)
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://x');
     let p = decodeURIComponent(url.pathname);
     if (p.endsWith('/')) p += 'index';
-    let file = path.join(DIST, p);
-    if (!file.startsWith(DIST)) { res.writeHead(403).end(); return; }
+    let file = path.join(ROOTDIR, p);
+    if (!file.startsWith(ROOTDIR)) { res.writeHead(403).end(); return; }
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = fs.existsSync(`${file}.html`) ? `${file}.html` : '';
+    const extra = {};
+    for (const r of rules) if (r.re.test(url.pathname)) for (const [k, v] of r.set) extra[k] = v;
+    const accepts = compress && /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''));
+    const send = (status, f, type) => {
+      if (accepts && COMPRESSIBLE.test(type)) {
+        const key = `${f}:${fs.statSync(f).mtimeMs}`; // a rebuild under a running server is picked up
+        if (!gz.has(key)) gz.set(key, zlib.gzipSync(fs.readFileSync(f), { level: 9 }));
+        const body = gz.get(key);
+        res.writeHead(status, { ...extra, 'content-type': type, 'content-encoding': 'gzip', 'content-length': body.length, vary: 'accept-encoding' });
+        res.end(req.method === 'HEAD' ? undefined : body);
+        return;
+      }
+      const size = fs.statSync(f).size;
+      const range = status === 200 && /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
+      if (range) {
+        const start = range[1] ? +range[1] : 0;
+        const end = range[2] ? +range[2] : size - 1;
+        res.writeHead(206, { ...extra, 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
+        fs.createReadStream(f, { start, end }).pipe(res);
+        return;
+      }
+      res.writeHead(status, { ...extra, 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+      if (req.method === 'HEAD') res.end();
+      else fs.createReadStream(f).pipe(res);
+    };
     if (!file) {
-      res.writeHead(404, { 'content-type': TYPES['.html'] });
-      fs.createReadStream(path.join(DIST, '404.html')).pipe(res);
+      const nf = path.join(ROOTDIR, '404.html');
+      if (fs.existsSync(nf)) send(404, nf, TYPES['.html']);
+      else res.writeHead(404).end();
       return;
     }
-    const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
-    const size = fs.statSync(file).size;
-    const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
-    if (range) {
-      const start = range[1] ? +range[1] : 0;
-      const end = range[2] ? +range[2] : size - 1;
-      res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
-      fs.createReadStream(file, { start, end }).pipe(res);
-      return;
-    }
-    res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
-    fs.createReadStream(file).pipe(res);
+    send(200, file, TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
   });
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
 }
@@ -78,13 +119,18 @@ export async function withServer(fn, base = process.env.SHOOT_BASE) {
 }
 
 let browserP = null;
-async function browser() {
+/** The shared Chromium (SwiftShader flags). WP7's tools (axe, vitals, og, a11y passes) reuse it. */
+export async function browser() {
   if (!browserP) {
     const { chromium } = await import(pathToFileURL(PW).href);
     browserP = chromium.launch({ executablePath: CHROMIUM, args: ARGS });
   }
   return browserP;
 }
+/** Playwright's module (for tools that need `devices`, `request`, …). */
+export const playwright = () => import(pathToFileURL(PW).href);
+/** The ten routes every QA tool walks (§8.6 WP7: the nine URLs + an unknown path for the 404 sheet). */
+export const ROUTES = ['/', '/cloudflare', '/pff', '/csbs', '/u-up', '/orbit', '/educademy', '/about', '/fun', '/nope'];
 export async function closeBrowser() {
   if (browserP) (await browserP).close();
   browserP = null;

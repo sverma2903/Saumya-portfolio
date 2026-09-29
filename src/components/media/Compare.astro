@@ -59,7 +59,8 @@ const start = c.start;
 const tx = Math.round((c.dx / fu.w) * 1e5) / 1e3;
 const ty = Math.round((c.dy / fu.h) * 1e5) / 1e3;
 const fig = ctx.fig ?? self?.no ?? '';
-const enlargeLabel = `${fill(m.enlargeLabel, { fig })}${alt ? `: ${alt}` : finalTitle ? `: ${stripHtml(finalTitle)}` : ''}`;
+// her feature title names the compare; the alt text stays on the images (WP7: alt drafts are long)
+const enlargeLabel = `${fill(m.enlargeLabel, { fig })}${finalTitle ? `: ${stripHtml(finalTitle)}` : ''}`;
 ---
 <div
   class="cmp"

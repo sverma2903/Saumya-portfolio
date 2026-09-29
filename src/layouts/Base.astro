@@ -2,7 +2,7 @@
 /**
  * Base.astro · P0 (shared). Every page renders through this layout (SPEC §4, §7.3, §8.6 P0 task 4).
  *
- * <head>: meta / canonical / OG / Twitter / JSON-LD from props, the three <Font>s (serif roman + sans preloaded),
+ * <head>: meta / canonical / OG / Twitter / JSON-LD from props, the three <Font>s (all preloaded, WP7),
  *         the synchronous head script (§4.8), Speculation Rules (prefetch only, §4.9), favicon, and exactly one
  *         preloaded `lcpImage` (fetchpriority=high) when the page passes one.
  *         The head script is SPEC §4.8's script, minified (≤ 700 bytes): it sets html[data-motion|theme|view|keys|gl]
@@ -16,7 +16,6 @@ import { Font } from 'astro:assets';
 import '../styles/tokens.css';
 import '../styles/base.css';
 import '../styles/transitions.css';
-import '../styles/print.css';
 import HatchDefs from '../components/symbols/HatchDefs.astro';
 import SkipLink from '../components/chrome/SkipLink.astro';
 import TitleBar from '../components/chrome/TitleBar.astro';
@@ -26,6 +25,10 @@ import DetailViewer from '../components/chrome/DetailViewer.astro';
 import Palette from '../components/chrome/Palette.astro';
 import { chrome } from '../data/chrome';
 import { NEWTAB_ID } from '../lib/rich';
+// WP7 (§7.2 CSS budget): stylesheets that never style the first render leave the render-blocking set —
+// print.css applies only to print; palette.css only to the Sheet list, which JavaScript opens
+import printCss from '../styles/print.css?url';
+import paletteCss from '../styles/palette.css?url';
 
 import type { PageMeta } from '../lib/page';
 export interface Props {
@@ -36,8 +39,9 @@ export interface Props {
   /** '/', '/about', '/cloudflare'… (canonical + og:url). Omit on 404. */
   canonicalPath?: string;
   ogType?: 'website' | 'article';
-  /** root-relative or absolute */
+  /** root-relative or absolute; the pages pass their WP7 share sheet, /og/<page>.png (1200 × 630) */
   ogImage?: string;
+  /** og:image:alt / twitter:image:alt (chrome.wp7.og.alt: our description of the share sheet) */
   ogImageAlt?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   /** the page's ONE LCP image (root-relative src) → <link rel=preload as=image fetchpriority=high> */
@@ -67,6 +71,8 @@ const {
 const site = Astro.site ?? new URL('https://www.saumya-verma.com');
 const canonical = canonicalPath ? new URL(canonicalPath, site).href : undefined;
 const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
+/** the WP7 share sheets (public/og/<page>.png, tools/og.mjs) are always 1200 × 630 PNGs */
+const ogSheet = !!ogImage && ogImage.startsWith('/og/');
 const speculation = JSON.stringify({
   prefetch: [
     {
@@ -92,16 +98,28 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/media/ACwkGtncbgGidk0PGO4wEAjBQ4.png" />
     <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={chrome.p0.person} />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
     {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
-    {ogImageUrl && <meta property="og:image:alt" content={ogImageAlt} />}
+    {ogSheet && <meta property="og:image:type" content="image/png" />}
+    {ogSheet && <meta property="og:image:width" content="1200" />}
+    {ogSheet && <meta property="og:image:height" content="630" />}
+    {ogImageUrl && ogImageAlt && <meta property="og:image:alt" content={ogImageAlt} />}
     <meta name="twitter:card" content="summary_large_image" />
-    <Font cssVariable="--font-serif" preload={[{ style: 'normal' }]} />
+    {ogImageUrl && ogImageAlt && <meta name="twitter:image:alt" content={ogImageAlt} />}
+    {/* WP7: every face is preloaded (257 KB in all, subset: less than the 365 KB of the full files, of which 197 KB were
+        preloaded). Her italic is in the first viewport of every sheet (the home and About headlines, every case deck)
+        and the mono sheet numbers are in every title bar: discovered only after the CSS, they swapped in after the first
+        paint and re-set the headline under the reader (CLS 0.23 on a phone) — now all four land together. */}
+    <Font cssVariable="--font-serif" preload />
     <Font cssVariable="--font-sans" preload />
-    <Font cssVariable="--font-mono" />
+    <Font cssVariable="--font-mono" preload />
     {lcpImage && <link rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
+    <link rel="stylesheet" href={printCss} media="print" />
+    <link rel="stylesheet" href={paletteCss} media="print" onload="this.media='all'" />
     <script type="speculationrules" is:inline set:html={speculation} />
     {ld && <script type="application/ld+json" is:inline set:html={ld} />}
   </head>

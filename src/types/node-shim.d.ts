@@ -42,3 +42,11 @@ declare module 'node:path' {
 declare module 'node:url' {
   export function fileURLToPath(url: string | URL): string;
 }
+
+/* WP7: tests/dist/css.test.ts measures the §7.2 CSS budget in gzip bytes */
+declare module 'node:zlib' {
+  function gzipSync(data: string | Uint8Array, options?: { level?: number }): NodeByteBuffer;
+  const zlib: { gzipSync: typeof gzipSync };
+  export { gzipSync };
+  export default zlib;
+}

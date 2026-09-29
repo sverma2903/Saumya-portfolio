@@ -34,7 +34,7 @@ describe.each(PAGES)('%s', (page) => {
     expect(spec).toBeTruthy();
     const rules = JSON.parse(spec!.text);
     expect(Object.keys(rules)).toEqual(['prefetch']);
-    expect(root.querySelectorAll('link[rel=preload][as=font]')).toHaveLength(2);
+    expect(root.querySelectorAll('link[rel=preload][as=font]')).toHaveLength(5); // WP7: every face, subset (fonts.test.ts)
     expect(raw).toContain('--font-serif:');
     expect(raw).toContain('--font-sans:');
     expect(raw).toContain('--font-mono:');

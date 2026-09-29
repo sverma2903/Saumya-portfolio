@@ -162,8 +162,10 @@ const rootStyle = [
   secs ? `--_secs: ${secs}s` : '',
 ].filter(Boolean).join('; ');
 
+// the Enlarge name is the figure number plus her caption when there is one — never the alt text, which the image
+// itself carries (alt drafts run to several sentences; a button name repeating them would be read out twice) (WP7)
 const enlargeLabel = fig
-  ? fillTpl(m.enlargeLabel, { fig: fig.no }) + (fig.caption ? `: ${stripHtml(fig.caption)}` : alt ? `: ${alt}` : '')
+  ? fillTpl(m.enlargeLabel, { fig: fig.no }) + (fig.caption ? `: ${stripHtml(fig.caption)}` : '')
   : undefined;
 // the drafting X: heavy media only. A bare staged plate (a cover) never gets one: its stage IS its loading state;
 // transparent files never get one (it would show through them)

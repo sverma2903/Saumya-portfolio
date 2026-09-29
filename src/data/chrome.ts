@@ -405,7 +405,26 @@ export const chrome = {
 
   /** WP7 · QA / SEO */
   wp7: {
-    ogAlt: '{title} — cover plate',
+    /**
+     * The Open Graph sheets (src/pages/og/[page].astro → public/og/<page>.png, SPEC §7.3). Labels only; the titles and
+     * decks on them are hers (site.ts / the case files). `alt` is og:image:alt / twitter:image:alt: OUR description of
+     * the composite (owner review, §8.9 item 14).
+     */
+    og: {
+      sheetKey: 'Sheet',
+      cover: 'Cover',
+      alt: {
+        index: 'Sheet A-000 of Saumya Verma’s portfolio: her headline beside a drafted site plan of her triangle, circle and square mark.',
+        cloudflare: 'Sheet A-101: the Cloudflare R2 Object Storage Redesign title and summary beside its cover, a laptop showing the redesigned R2 Analytics page.',
+        pff: 'Sheet A-102: the PFF case title and summary beside its cover, a phone and a desktop screen from the mission assignment tool.',
+        csbs: 'Sheet A-103: the NMLS Resource Center Redesign title and summary beside its cover, the redesigned CSBS Knowledge Center page on a blue ground.',
+        'u-up': 'Sheet A-104: the U-Up case title and summary beside its cover, three phones with the app’s dark screens.',
+        orbit: 'Sheet A-105: the Orbit case title and summary beside its cover, a laptop showing the Orbit workload dashboard.',
+        educademy: 'Sheet A-106: the Educademy case title and summary beside its cover, four phones from the app.',
+        about: 'Sheet B-100 of Saumya Verma’s portfolio: her About headline beside her portrait.',
+        fun: 'Sheet C-100 of Saumya Verma’s portfolio: her Play headline beside the ExpressLanes laptop mockup.',
+      } as Record<'index' | 'cloudflare' | 'pff' | 'csbs' | 'u-up' | 'orbit' | 'educademy' | 'about' | 'fun', string>,
+    },
   },
 };
 

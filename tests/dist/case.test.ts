@@ -14,6 +14,7 @@ import { keyplan } from '@/lib/keyplan';
 import { reading } from '@/lib/reading';
 import { stripHtml } from '@/lib/text';
 import { srcOf } from '@/lib/staging';
+import { kindOf } from '@/components/media/media-lib';
 import type { CaseSlug } from '@/lib/verbatim';
 import { distExists, load } from './helpers';
 
@@ -51,8 +52,13 @@ describe.each(cases.map((c) => c.slug as CaseSlug))('%s', (slug) => {
     // the 16:10 box is the plate's view (WP4b's Plate, SPEC §6.3: the root carries the VT name, frame and controls;
     // `.plate__view` is the exact-aspect box on her stage). P0's stub put the aspect on the root.
     expect(plate.querySelector('.plate__view')?.getAttribute('style')).toContain('aspect-ratio: 1.6');
-    const top = COVERS[slug].layers[COVERS[slug].layers.length - 1].file;
-    expect(page().querySelector('link[rel=preload][as=image]')?.getAttribute('href')).toBe(srcOf(top));
+    // the preload is the cover's LCP layer: the largest on screen (least inset); the top layer is fetchpriority=high
+    // (WP7: for Orbit's two layers these differ — the full-width backdrop is the LCP, the laptop sits above it)
+    const layers = COVERS[slug].layers;
+    const lcpLayer = layers.reduce((a, l) => ((l.pad ?? 0) <= (a.pad ?? 0) ? l : a));
+    expect(page().querySelector('link[rel=preload][as=image]')?.getAttribute('href')).toBe(srcOf(lcpLayer.file));
+    const top = layers[layers.length - 1].file;
+    if (kindOf(top) !== 'gif') expect(page().querySelector('img[fetchpriority=high]')?.getAttribute('src')).toBe(srcOf(top));
     expect(text(head.querySelector('.titleblock__sheet'))).toBe(`${sheetBySlug(slug).no} · ${r.levels} levels · ≈ ${r.minutes} min`);
   });
 

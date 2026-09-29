@@ -14,7 +14,14 @@
     "test:dist": "vitest run tests/dist",
     "check": "npm run typecheck && npm run test && npm run build && npm run test:dist",
     "shoot": "node tools/shoot.mjs",
-    "og": "node tools/og.mjs"
+    "og": "node tools/og.mjs",
+    "fonts": "node tools/subset-fonts.mjs",
+    "qa:axe": "node tools/axe.mjs",
+    "qa:passes": "node tools/passes.mjs",
+    "qa:vitals": "node tools/vitals.mjs",
+    "qa:flash": "node tools/flash-check.mjs",
+    "qa:alt": "node tools/alt-draft.mjs --sheet",
+    "qa:shots": "node tools/matrix.mjs"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",

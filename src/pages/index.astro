@@ -5,34 +5,23 @@
 import Base from '../layouts/Base.astro';
 import CoverSheet from '../components/home/CoverSheet.astro';
 import DrawingIndex from '../components/home/DrawingIndex.astro';
-import { home, links } from '../content/site';
+import { home } from '../content/site';
+import { ogImageAlt, ogImagePath, personLd, websiteLd } from '../lib/seo';
 import { chrome } from '../data/chrome';
 import { stripHtml } from '../lib/text';
 import type { PageMeta } from '../lib/page';
 
 const page: PageMeta = { kind: 'home', sheet: 'A-000', sheetTitle: chrome.wp1.titleBar.coverSheet };
 const description = stripHtml(home.headline);
-const person = {
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: chrome.p0.person,
-  url: 'https://www.saumya-verma.com/',
-  jobTitle: chrome.p0.jobTitle,
-  worksFor: { '@type': 'Organization', name: 'Fulcrum GT' },
-  alumniOf: [
-    { '@type': 'CollegeOrUniversity', name: 'University of Maryland, College Park' },
-    { '@type': 'CollegeOrUniversity', name: 'NIT Bhopal' },
-  ],
-  sameAs: [links.linkedin],
-};
 ---
 <Base
   title={`${chrome.p0.person} — ${chrome.p0.jobTitle}`}
   description={description}
   page={page}
   canonicalPath="/"
-  ogImage="/media/ynF3JX3AYbXmF5u4ZKwl04aGc.png"
-  jsonLd={person}
+  ogImage={ogImagePath('index')}
+  ogImageAlt={ogImageAlt('index')}
+  jsonLd={[personLd(), websiteLd()]}
 >
   <CoverSheet />
   <DrawingIndex />

@@ -14,6 +14,7 @@ import Crossword from '../components/play/Crossword.astro';
 import { play } from '../content/site';
 import { chrome } from '../data/chrome';
 import type { PageMeta } from '../lib/page';
+import { ogImageAlt, ogImagePath } from '../lib/seo';
 
 const page: PageMeta = { kind: 'play', sheet: 'C-100', sheetTitle: chrome.wp1.titleBar.play };
 const lcp = play.items[1].media[0].src; // ExpressLanes (§7.2)
@@ -23,7 +24,8 @@ const lcp = play.items[1].media[0].src; // ExpressLanes (§7.2)
   description={play.sub}
   page={page}
   canonicalPath="/fun"
-  ogImage={lcp}
+  ogImage={ogImagePath('fun')}
+  ogImageAlt={ogImageAlt('fun')}
   lcpImage={lcp}
 >
   <PlayHeader />

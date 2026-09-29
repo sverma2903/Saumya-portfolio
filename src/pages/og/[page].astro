@@ -1,0 +1,255 @@
+---
+/**
+ * /og/<page> · WP7 (SPEC §7.3, §8.9 item 14). The Open Graph sheet for each shareable page, screenshot at 1200 × 630 by
+ * `npm run og` (tools/og.mjs) into public/og/<page>.png. These routes exist ONLY in that build: getStaticPaths returns
+ * nothing unless SV_OG=1, so the site's own build never ships /og/* pages (noindex anyway, and not in the sitemap).
+ *
+ * Composition: the vellum sheet · a title block like the site's (sheet number + her eyebrow, her title, her deck) ·
+ * her cover plate on its stage, placed with the same geometry as the case header's cover (COVERS + plate-box), her
+ * pixels unaltered · a title-block strip along the foot (her mark, name, sheet, domain).
+ *   A-000  her home headline + her sub-line · the drafted site plan of her △○□ (SitePlanFallback, our drawing)
+ *   A-10x  her eyebrow, title and deck · her cover plate (CSBS: the GIF's reviewed poster frame, "After", drawn from
+ *          the file by ImageDecoder, as the site's paused GIF shows it)
+ *   B-100  her About headline · her portrait on the About plate
+ *   C-100  her Play headline + sub-line · ExpressLanes, scaled inside its #f2f2f2 stage so only that uniform margin is
+ *          cut (the §6.4 exception Play already uses; the laptop's measured bounding box stays whole)
+ * No photos of minors: Educademy uses its phone cover.
+ */
+import { Font } from 'astro:assets';
+import '../../styles/tokens.css';
+import '../../styles/base.css';
+import SitePlanFallback from '../../components/home/SitePlanFallback.astro';
+import Mark from '../../components/symbols/Mark.astro';
+import Bubble from '../../components/symbols/Bubble.astro';
+import { about, cases, home, play } from '../../content/site';
+import { COVERS, STAGES, deckOf, sheetBySlug, sheets } from '../../data/sheets';
+import { chrome } from '../../data/chrome';
+import { layerBox, boxStyle } from '../../components/home/plate-box';
+import { LAPTOP_BBOX } from '../../components/play/board';
+import { facts, srcOf, stagingOf } from '../../lib/staging';
+import { keepPhrases } from '../../lib/typeset';
+import type { CaseSlug } from '../../lib/verbatim';
+
+type OgPage = 'index' | CaseSlug | 'about' | 'fun';
+export function getStaticPaths() {
+  if (process.env.SV_OG !== '1') return [];
+  const pages: OgPage[] = ['index', ...cases.map((c) => c.slug as CaseSlug), 'about', 'fun'];
+  return pages.map((page) => ({ params: { page } }));
+}
+
+const page = Astro.params.page as OgPage;
+const o = chrome.wp7.og;
+const TITLE_PHRASES: Record<string, readonly string[]> = {
+  cloudflare: ['Cloudflare R2', 'Object Storage'],
+  pff: ['approval chain', 'federally funded', 'emergency spending'],
+  'u-up': ['Connecting People', 'Shared Experience'],
+  orbit: ['Faculty Workload'],
+};
+
+interface Layer { src: string; style: string; frame?: number }
+let sheet = '';
+let eyebrow = '';
+let titleHtml = '';
+let deckHtml = '';
+let stage = '';
+let layers: Layer[] = [];
+let kind: 'case' | 'home' | 'about' | 'play' = 'case';
+if (page === 'index') {
+  kind = 'home';
+  sheet = 'A-000';
+  eyebrow = chrome.wp1.titleBar.coverSheet;
+  // as on the cover sheet (CoverSheet.astro): her compounds never break at their hyphen; text unchanged
+  const nb = (html: string, w: string) => html.replace(w, `<span class="nobr">${w}</span>`);
+  titleHtml = nb(nb(home.headline, 'AI-assisted'), '<em>product designer</em>');
+  deckHtml = nb(home.sub, 'front-end');
+} else if (page === 'about') {
+  kind = 'about';
+  sheet = 'B-100';
+  eyebrow = chrome.wp1.titleBar.about;
+  titleHtml = about.headline;
+  const plate = sheets.find((x) => x.no === 'B-100')?.plate;
+  const f = facts(about.portrait.src.split('/').pop()!);
+  stage = STAGES.about;
+  layers = [{ src: f.src, style: boxStyle(layerBox(f.w / f.h, 1.6, plate?.layers[0].pad ?? 6)) }];
+} else if (page === 'fun') {
+  kind = 'play';
+  sheet = 'C-100';
+  eyebrow = chrome.wp1.titleBar.play;
+  titleHtml = play.headline;
+  deckHtml = play.sub;
+  // ExpressLanes: scale so the laptop's measured bounding box fills 86% of the 16:10 plate's height, centred — only
+  // the uniform #f2f2f2 canvas around it falls outside the plate (every laptop pixel stays inside: its width is then
+  // 88% of the plate's)
+  const bb = LAPTOP_BBOX;
+  const A = 1.6;
+  const fy = (bb.y1 - bb.y0 + 1) / bb.h;          // the laptop's share of the file's height
+  const imgH = 86 / fy;                            // the file's rendered height, % of the plate height
+  const imgW = (imgH / A) * (bb.w / bb.h);          // … and width, % of the plate width
+  const bbCx = (bb.x0 + bb.x1 + 1) / 2 / bb.w;
+  const bbCy = (bb.y0 + bb.y1 + 1) / 2 / bb.h;
+  stage = '#f2f2f2';
+  layers = [{
+    src: srcOf('sgdIeQ2FYc9vdl8NcEV3RS8g.jpg'),
+    style: `left: ${(50 - bbCx * imgW).toFixed(4)}%; top: ${(50 - bbCy * imgH).toFixed(4)}%; inline-size: ${imgW.toFixed(4)}%; block-size: ${imgH.toFixed(4)}%`,
+  }];
+} else {
+  const slug = page as CaseSlug;
+  const cs = cases.find((c) => c.slug === slug)!;
+  const s = sheetBySlug(slug);
+  const cover = COVERS[slug];
+  sheet = s.no;
+  eyebrow = cs.eyebrow;
+  titleHtml = keepPhrases(cs.title, TITLE_PHRASES[slug] ?? []);
+  deckHtml = deckOf(slug).text;
+  stage = cover.stage;
+  layers = cover.layers.map((l) => {
+    const f = facts(l.file);
+    const gif = stagingOf(l.file).gif;
+    return { src: f.src, style: boxStyle(layerBox(f.w / f.h, cover.aspect, l.pad ?? 0)), frame: gif?.poster };
+  });
+}
+---
+<!doctype html>
+<html lang="en" data-og={page} data-kind={kind}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1200" />
+    <meta name="robots" content="noindex" />
+    <title>OG · {page}</title>
+    <link rel="icon" href="data:," />
+    <Font cssVariable="--font-serif" />
+    <Font cssVariable="--font-sans" />
+    <Font cssVariable="--font-mono" />
+  </head>
+  <body>
+    <main class="og">
+      <div class="og__main">
+        <div class="og__text" data-og-fit>
+          <p class="og__eyebrow t-label-lg"><span class="og__no">{sheet}</span><span class="og__sep" aria-hidden="true"></span><span>{eyebrow}</span></p>
+          <h1 class="og__title" set:html={titleHtml} />
+          {deckHtml && <p class="og__deck" set:html={deckHtml} />}
+        </div>
+        <figure class="og__fig">
+          {kind === 'home' ? (
+            <div class="og__plan"><SitePlanFallback /></div>
+          ) : (
+            <div class="og__plate" style={`background: ${stage}`}>
+              {layers.map((l) => (
+                l.frame != null
+                  ? <canvas class="og__layer" style={l.style} data-og-frame={l.frame} data-src={l.src}></canvas>
+                  : <img class="og__layer" style={l.style} src={l.src} alt="" decoding="sync" />
+              ))}
+            </div>
+          )}
+          {kind === 'case' && (
+            <figcaption class="og__cap"><Bubble n="0" sheet={sheet} /><span class="t-label">{o.cover}</span></figcaption>
+          )}
+        </figure>
+      </div>
+      <footer class="og__tb">
+        <span class="og__tb-c og__tb-c--brand"><Mark size={22} strokeWidth={1.25} /><span class="t-label-lg">{chrome.p0.person}</span></span>
+        <span class="og__tb-c t-label">{chrome.p0.jobTitle}</span>
+        <span class="og__tb-c"><span class="t-label">{o.sheetKey}</span><span class="og__tb-v">{sheet}</span></span>
+        <span class="og__tb-c og__tb-c--url"><span class="og__tb-v">{chrome.wp1.print.domain}</span></span>
+      </footer>
+    </main>
+    <script is:inline>
+      // fit, then draw any GIF poster frame, then signal readiness to tools/og.mjs (html[data-ready])
+      (async () => {
+        await document.fonts.ready;
+        const box = document.querySelector('[data-og-fit]');
+        const h1 = box.querySelector('.og__title');
+        let fs = parseFloat(getComputedStyle(h1).fontSize);
+        while (box.scrollHeight > box.clientHeight + 1 && fs > 30) { fs -= 1; h1.style.fontSize = fs + 'px'; }
+        const deck = box.querySelector('.og__deck');
+        let ds = deck ? parseFloat(getComputedStyle(deck).fontSize) : 0;
+        while (deck && box.scrollHeight > box.clientHeight + 1 && ds > 17) { ds -= 0.5; deck.style.fontSize = ds + 'px'; }
+        for (const c of document.querySelectorAll('canvas[data-og-frame]')) {
+          const data = await (await fetch(c.dataset.src)).arrayBuffer();
+          const dec = new ImageDecoder({ data, type: 'image/gif' });
+          const { image } = await dec.decode({ frameIndex: Number(c.dataset.ogFrame) });
+          const r = c.getBoundingClientRect();
+          c.width = Math.round(r.width * devicePixelRatio);
+          c.height = Math.round(r.height * devicePixelRatio);
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(image, 0, 0, c.width, c.height);
+          image.close();
+        }
+        await Promise.all([...document.images].map((i) => (i.complete ? null : i.decode().catch(() => null))));
+        document.documentElement.dataset.ready = '1';
+      })();
+    </script>
+  </body>
+</html>
+<style>
+  html, body { margin: 0; inline-size: 1200px; block-size: 630px; overflow: hidden; }
+  /* flat vellum: the fibre texture is invisible at share-card sizes and would triple the PNG */
+  body { background: var(--paper); color: var(--ink); }
+  .og {
+    --_pad: var(--s-8);
+    position: relative; box-sizing: border-box;
+    inline-size: 1200px; block-size: 630px;
+    display: grid; grid-template-rows: minmax(0, 1fr) auto;
+    padding: var(--_pad) var(--_pad) 0;
+  }
+  /* the sheet's border: a drafting frame inset from the edge */
+  .og::before {
+    content: ''; position: absolute; inset: var(--s-4);
+    border: var(--lw-object) solid var(--line-3);
+    pointer-events: none;
+  }
+  .og__main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 560px; column-gap: var(--s-8);
+    align-items: center; min-block-size: 0;
+    padding-block-end: var(--s-6);
+  }
+  .og__text { display: flex; flex-direction: column; justify-content: center; gap: var(--s-4); block-size: 100%; min-block-size: 0; overflow: hidden; }
+  .og__eyebrow { display: flex; align-items: center; gap: var(--s-3); margin: 0; color: var(--ink-2); }
+  .og__no { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0; color: var(--rust); text-transform: none; }
+  .og__sep { inline-size: var(--s-6); block-size: var(--lw-object); background: var(--line-3); }
+  .og__title {
+    margin: 0;
+    font-family: var(--font-serif); font-weight: 340; font-size: 54px; line-height: 1.04; letter-spacing: -0.02em;
+    text-wrap: balance; color: var(--ink);
+  }
+  .og__title :global(em) { font-style: italic; }
+  .og__title :global(.hl) { color: var(--rust-2); }
+  .og__title :global(.nobr), .og__deck :global(.nobr) { white-space: nowrap; }
+  .og__title :global(.keep) { display: inline-block; }
+  [data-kind='home'] .og__title, [data-kind='about'] .og__title, [data-kind='play'] .og__title { font-size: 50px; }
+  .og__deck {
+    margin: 0; max-inline-size: 34em;
+    font-family: var(--font-serif); font-style: italic; font-weight: 380; font-size: 22px; line-height: 1.36;
+    color: var(--ink-2); text-wrap: pretty;
+  }
+  [data-kind='home'] .og__deck, [data-kind='play'] .og__deck { font-style: normal; }
+  .og__deck :global(strong) { font-weight: 620; color: var(--ink); }
+  .og__fig { margin: 0; display: grid; gap: var(--s-3); justify-items: start; }
+  .og__plate {
+    position: relative; inline-size: 560px; aspect-ratio: 16 / 10; overflow: hidden;
+    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
+  }
+  .og__layer { position: absolute; display: block; max-inline-size: none; }
+  .og__cap { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-2); }
+  .og__plan { inline-size: 560px; }
+  .og__plan :global(.spf__v--n) { display: none !important; }
+  .og__plan :global(.spf__v--w) { display: block !important; }
+  /* the title-block strip: four cells ruled like the site's end sheet */
+  .og__tb {
+    display: grid; grid-template-columns: 1.4fr 1fr 0.8fr 1fr; align-items: stretch;
+    margin-inline: calc(-1 * var(--_pad) + var(--s-4)); margin-block-end: var(--s-4);
+    border-block-start: var(--lw-object) solid var(--line-3);
+    block-size: 56px;
+  }
+  .og__tb-c {
+    display: flex; align-items: center; gap: var(--s-3);
+    padding-inline: var(--s-5); color: var(--ink-2);
+    border-inline-start: var(--lw-object) solid var(--line-3);
+  }
+  .og__tb-c:first-child { border-inline-start: 0; }
+  .og__tb-c--brand { color: var(--ink); }
+  .og__tb-c--brand :global(.sym-mark) { color: var(--rust); }
+  .og__tb-c--url { justify-content: flex-end; }
+  .og__tb-v { font-family: var(--font-mono); font-size: 15px; color: var(--ink); }
+</style>

@@ -14,9 +14,20 @@
  *   mobile             full screen; the panel is a 72px bottom sheet that expands to 50vh; swipe steps figures at fit
  * Keyboard-initiated actions never animate (§2.7 law 1). Everything is cleaned up on close (sources removed).
  */
+import detailCss from '../../styles/detail.css?url';
 import Panzoom, { type PanzoomObject } from '@panzoom/panzoom';
 import { motionOK } from '../core/dom';
 import { setHold } from './hold';
+
+/** The viewer's stylesheet (WP7): requested when this module first loads, and awaited before the dialog opens, so no
+ *  page carries it in its first render (Astro would hoist a plain CSS import into every page's <head>). */
+const cssReady: Promise<void> = new Promise((resolve) => {
+  if (document.querySelector(`link[rel="stylesheet"][href="${detailCss}"]`)) { resolve(); return; }
+  const link = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: detailCss });
+  link.addEventListener('load', () => resolve(), { once: true });
+  link.addEventListener('error', () => resolve(), { once: true });
+  document.head.append(link);
+});
 
 type Kind = 'image' | 'gif' | 'video';
 interface Item {
@@ -129,7 +140,7 @@ function fromForeign(el: Element): Item | null {
   return {
     el, plate: null, src: src.split('#')[0], kind: kindOfFmt(fmt || (file.endsWith('.mp4') ? 'MP4' : file.endsWith('.gif') ? 'GIF' : '')),
     w: w || Number(top.getAttribute('width')) || 0, h: h || Number(top.getAttribute('height')) || 0,
-    file, fmt, size, fig: host?.dataset.no ?? '', alt: '', cap: () => null, capText: '',
+    file, fmt, size, fig: host?.dataset.no ?? '', alt: (el as HTMLElement).dataset.alt ?? '', cap: () => null, capText: '',
     back: host?.dataset.href ? { href: host.dataset.href, text: host.dataset.no ?? '' } : null,
     poster: Number(host?.querySelector<HTMLElement>('[data-frame]')?.dataset.frame ?? 0), sound: false, zoom: '',
   };
@@ -414,6 +425,10 @@ function flipFrom(el: Element): void {
 }
 
 export function open(el: Element, from?: HTMLElement | null): void {
+  cssReady.then(() => openStyled(el, from));
+}
+
+function openStyled(el: Element, from?: HTMLElement | null): void {
   if (!dlg) return;
   const { list, at } = collect(el);
   if (!list.length) return;

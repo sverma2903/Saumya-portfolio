@@ -114,7 +114,11 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
   }
 
   .case-head__eyebrow { color: var(--acc); margin-block-end: var(--s-3); }
-  .case-head__title { max-inline-size: 16ch; text-wrap: balance; }
+  /* WP7: the measure is 16ch of Newsreader 340 at the title's size, written as a length that does not depend on the
+     face (1ch ≈ 0.6165em − 1.83px over 38–51px, from its "0" at each optical size): in ch, the fallback face's narrower
+     "0" cut the measure by 11 % while the fonts loaded, and the title re-wrapped when they landed (CLS 0.17 on a
+     phone). Same breaks as 16ch for every title at every width 320–1023 px, in Newsreader. */
+  .case-head__title { max-inline-size: calc(9.864em - 29.2px); text-wrap: balance; }
   /* presentation-only typesetting of her words (lib/typeset.ts keepPhrases; textContent unchanged): a hyphenated
      compound never breaks at its hyphen, and a title breaks between its noun phrases, never inside one (an atomic
      inline-block, which still wraps inside itself when a phrase is wider than the line, so nothing overflows) */
@@ -122,7 +126,7 @@ const TITLE_PHRASES: Record<string, readonly string[]> = {
   .case-head__title :global(.keep) { display: inline-block; }
   /* a long title (PFF's is 63 characters) steps the title token down a size, so it sets in three or four lines, not
      five, beside the plate */
-  .case-head__title--long { font-size: calc(var(--fs-title) * .82); line-height: 1.04; max-inline-size: 18ch; }
+  .case-head__title--long { font-size: calc(var(--fs-title) * .82); line-height: 1.04; max-inline-size: calc(10.804em - 21.6px); /* 18ch, as above */ }
   .case-head__deck { color: var(--ink-2); margin-block-start: var(--s-4); max-inline-size: 30em; text-wrap: pretty; }
 
   .case-head__plate { margin-block: var(--s-6) 0; min-inline-size: 0; }

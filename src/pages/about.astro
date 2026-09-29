@@ -16,30 +16,23 @@ import Shelf from '../components/about/Shelf.astro';
 import Writing from '../components/about/Writing.astro';
 import Meditation from '../components/about/Meditation.astro';
 import Salon from '../components/about/Salon.astro';
-import { about, labels, links } from '../content/site';
+import { about, labels } from '../content/site';
+import { ogImageAlt, ogImagePath, personLd } from '../lib/seo';
 import { chrome } from '../data/chrome';
 import { slugify, stripHtml } from '../lib/text';
 import type { PageMeta } from '../lib/page';
 
 const page: PageMeta = { kind: 'about', sheet: 'B-100', sheetTitle: chrome.wp1.titleBar.about };
-const person = {
-  '@context': 'https://schema.org', '@type': 'Person', name: chrome.p0.person, url: 'https://www.saumya-verma.com/',
-  jobTitle: chrome.p0.jobTitle, worksFor: { '@type': 'Organization', name: 'Fulcrum GT' },
-  alumniOf: [
-    { '@type': 'CollegeOrUniversity', name: 'University of Maryland, College Park' },
-    { '@type': 'CollegeOrUniversity', name: 'NIT Bhopal' },
-  ],
-  sameAs: [links.linkedin],
-};
 ---
 <Base
   title={`${chrome.wp1.titleBar.about} — ${chrome.p0.person}`}
   description={stripHtml(about.headline)}
   page={page}
   canonicalPath="/about"
-  ogImage={about.portrait.src}
+  ogImage={ogImagePath('about')}
+  ogImageAlt={ogImageAlt('about')}
   lcpImage={about.portrait.src}
-  jsonLd={person}
+  jsonLd={personLd()}
 >
   <AboutHeader />
   <Story />

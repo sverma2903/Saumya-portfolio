@@ -107,11 +107,20 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
     }
     put(best);
   };
+  // WP7: the first fit and the one when the fonts land wait for the next frame (just before its layout) instead of
+  // measuring from the module script and the fonts promise: each of those forced a layout of the whole sheet mid-load
+  // (30–50 ms apiece on a 4× throttled CPU). The ResizeObserver still fits on every width change, after layout.
+  let fitQueued = false;
+  const fitSoon = () => {
+    if (fitQueued) return;
+    fitQueued = true;
+    requestAnimationFrame(() => { fitQueued = false; fitTitle(); });
+  };
   if (full && cut) {
-    fitTitle();
+    fitSoon();
     let w = 0;
     new ResizeObserver((es) => { const nw = Math.round(es[0].contentRect.width); if (nw !== w) { w = nw; fitTitle(); } }).observe(full.parentElement!);
-    document.fonts?.ready.then(fitTitle);
+    document.fonts?.ready.then(fitSoon);
   }
 
   // the running head's live level (WP5 → sv:level {index, label, elev})
@@ -128,6 +137,19 @@ const levelIds = page.levels?.map((l) => l.id).join(' ');
   }
 </script>
 
+<style is:global>
+  /* THE keycap: one style for the title bar's ⌘K and every key in the Sheet list (global: the title bar uses it too) */
+  .kbd {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0; min-inline-size: var(--s-5); block-size: var(--s-5);
+    padding-inline: var(--s-1); border: var(--lw-object) solid var(--line-3); border-block-end-width: var(--lw-cut); border-radius: var(--r-1);
+    background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code);
+    line-height: 1; letter-spacing: 0; font-style: normal; text-transform: none;
+  }
+  .kbd--mod .keycap__apple { display: inline-flex; align-items: center; }
+  .kbd--mod .keycap__other { display: none; }
+  .kbd--mod[data-platform='other'] .keycap__apple { display: none; }
+  .kbd--mod[data-platform='other'] .keycap__other { display: inline; }
+</style>
 <style>
   .titlebar {
     position: sticky; inset-block-start: 0; z-index: var(--z-bar);
