@@ -357,6 +357,12 @@ export const chrome = {
       title: 'About',
       clause: 'B-100.{n}',
       sketchCaption: N('The linework on the cover sheet is drawn in this hand.'),
+      /** figure numbers keyed to the detail bubble they sit under: 'FIG. 1.2' (Historical Fiction, 2nd cover) */
+      fig: 'Fig. {d}.{n}',
+      /** the dimension string under her portrait (on hover): the file's native width */
+      diameter: '{w} px',
+      /** the detail bubble is a permalink, as on case pages */
+      permalink: '{n}/{sheet}, permalink to {title}',
     },
     play: {
       sheet: 'C-100',
@@ -370,6 +376,35 @@ export const chrome = {
       tileLetter: '{l} — letter tile, {words}',
       tileMaterial: 'Material tile, {material}',
       gridLabel: 'DATA, DESIGN, NERDS tiles',
+      /** joins a letter tile's words: "DESIGN and DATA" */
+      wordJoin: ' and ',
+      /** the pinned plates' figure numbers (Enlarged detail) */
+      fig: 'Fig. {n}',
+      /** the legend's word key: the words her letters spell, read as a crossword's (→ across, ↓ down) */
+      wordsTitle: 'Words',
+      across: 'across',
+      down: 'down',
+      /** the legend's key: her five colours as drafting materials */
+      materialsTitle: 'Materials',
+      materials: {
+        poche: 'oxblood poché',
+        rust: 'rust hatch',
+        rustx: 'rust cross-hatch',
+        orange: 'orange hatch',
+        courses: 'orange courses',
+        clay: 'clay stipple',
+        blush: 'blush',
+        void: 'void',
+      } as Record<'poche' | 'rust' | 'rustx' | 'orange' | 'courses' | 'clay' | 'blush' | 'void', string>,
+      /** screen-reader help and status for the tiles (visually hidden) */
+      gridHint: 'Arrow keys move between tiles. Enter changes a material tile.',
+      relaid: 'Tiles re-laid.',
+      /** the Teachable-AI player's controls (a fallback until the media system's own controls are present) */
+      pause: 'Pause',
+      resume: 'Play',
+      mute: 'Mute',
+      restart: 'Restart',
+      playerLabel: 'Video controls',
     },
   },
 

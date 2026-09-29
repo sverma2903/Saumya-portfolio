@@ -1,7 +1,10 @@
 ---
 /**
- * AboutHeader · OWNER: WP6 (P0 functional stub). B-100 ─── ABOUT (chrome), her headline (h1, <em>move metrics</em>),
- * the "Architecture Portfolio" CTA (her label → links.architecture ↗). The Portrait sits beside it (≥1024).
+ * AboutHeader · WP6 (SPEC §5.3). The head of sheet B-100:
+ *   B-100 ─── ABOUT   (chrome: sheet number in Plex Mono rust, a rule, the label — as the cover sheet's eyebrow)
+ *   her headline (h1, --fs-title; her <em>move metrics</em> stays italic)
+ *   [ Architecture Portfolio ↗ ]   (her label → links.architecture, new tab)
+ * with her Portrait (and its compass construction) beside it at ≥ 1024px (cols 7–12) and under it below.
  */
 import { about, labels, links } from '../../content/site';
 import { chrome } from '../../data/chrome';
@@ -10,16 +13,49 @@ import Icon from '../symbols/Icon.astro';
 import Portrait from './Portrait.astro';
 const a = chrome.wp6.about;
 ---
-<header class="about-head shell">
-  <div class="about-head__text">
-    <p class="t-label-lg ink-2"><span class="t-code rust">{a.sheet}</span> <span aria-hidden="true">───</span> {a.title}</p>
-    <h1 class="t-title" data-v set:html={about.headline} />
-    <p><a class="btn" href={links.architecture} {...externalAttrs(links.architecture)} data-v>{labels.architecture}<Icon name="arrow-up-right" /></a></p>
+<header class="ab-head shell">
+  <div class="ab-head__text">
+    <p class="ab-head__eyebrow t-label-lg"><span class="ab-head__sheet t-code">{a.sheet}</span><span class="ab-head__rule" aria-hidden="true"></span><span>{a.title}</span></p>
+    <h1 class="ab-head__h" id="about-h" data-v set:html={about.headline} />
+    <p class="ab-head__cta">
+      <a class="btn ab-head__btn" href={links.architecture} {...externalAttrs(links.architecture)} data-v>{labels.architecture}<span class="ab-head__i" aria-hidden="true" data-chrome><Icon name="arrow-up-right" size={14} /></span></a>
+    </p>
   </div>
   <Portrait />
 </header>
 <style>
-  .about-head { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: center; padding-block: var(--s-7); }
-  @media (max-width: 1023.98px) { .about-head { grid-template-columns: minmax(0, 1fr); } }
-  .about-head__text { display: grid; gap: var(--s-5); }
+  .ab-head {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--g);
+    align-items: center;
+    padding-block: var(--s-6) var(--s-7);
+    overflow-x: clip;                 /* the compass construction may reach past the sheet edge; it never scrolls it */
+  }
+  .ab-head__text { grid-column: 1 / span 6; padding-block: var(--s-7); }
+  .ab-head :global(.portrait) { grid-column: 7 / -1; }
+
+  .ab-head__eyebrow { display: flex; align-items: center; gap: var(--s-3); margin-block-end: var(--s-5); color: var(--ink-2); }
+  .ab-head__sheet { color: var(--rust); }
+  .ab-head__rule { inline-size: var(--s-7); border-block-start: var(--lw-object) solid var(--line-3); }
+
+  .ab-head__h {
+    font-family: var(--font-serif);
+    font-size: var(--fs-title);
+    font-weight: var(--wt-title);
+    line-height: var(--lh-title);
+    letter-spacing: var(--tr-title);
+    max-inline-size: 15em;
+    text-wrap: balance;
+  }
+  .ab-head__cta { margin-block-start: var(--s-7); }
+  .ab-head__btn { transition: color var(--dur-1) var(--ease-ui); }
+  .ab-head__i { display: inline-flex; }
+
+  @media (max-width: 1023.98px) {
+    .ab-head { padding-block: var(--s-6) var(--s-6); }
+    .ab-head__text { grid-column: 1 / -1; padding-block: var(--s-5) 0; }
+    .ab-head :global(.portrait) { grid-column: 1 / -1; }
+    .ab-head__cta { margin-block-start: var(--s-6); }
+  }
 </style>

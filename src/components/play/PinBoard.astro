@@ -1,16 +1,44 @@
 ---
 /**
- * PinBoard · OWNER: WP6 (P0 functional stub). Her five Play items in her order (matches her live page row by row),
- * pinned plates with drafting-tape corners, ±0.6° rotations (0° on mobile).
+ * PinBoard · WP6 (SPEC §5.4). Her five Play items in her order (it matches her live page row by row), pinned to the
+ * sheet in two rows on the 12-column grid (≥ 768px):
+ *   row 1   Conversense cols 1–4 · ExpressLanes 5–8 · Teachable 9–12      (3:4 · 1:1 · 3:4, bottom-aligned)
+ *   row 2   Orbit cols 1–8 · Educademy 9–12                              (1.915 · 0.96, bottom-aligned)
+ *           (the spec's 1–7 / 8–12 left Orbit 162px shorter than Educademy; on 1–8 / 9–12 the two prints stand within
+ *           16px of one height and share the first row's column lines)
+ * Each item spans two subgrid rows — its print, then its title block — so the prints of a row stand on one line and the
+ * title blocks start on one line whatever their length. One column below 768px, at 0°.
  */
 import { play } from '../../content/site';
 import PinItem from './PinItem.astro';
 ---
-<section class="pinboard shell" aria-label="Play">
-  <ul class="pinboard__grid" role="list">
-    {play.items.map((it, i) => <PinItem item={it} priority={i === 1 ? 'high' : 'lazy'} />)}
+<div class="board shell">
+  <ul class="board__list" role="list">
+    {play.items.map((it, i) => <PinItem item={it} n={i + 1} />)}
   </ul>
-</section>
+</div>
+<script>
+  import '../../scripts/play/pinboard';
+</script>
 <style>
-  .pinboard__grid { list-style: none; padding: 0; display: grid; gap: var(--s-6); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); align-items: end; }
+  .board { padding-block-end: var(--s-10); }
+  .board__list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: var(--g);
+    list-style: none;
+    padding: 0;
+  }
+  .board__list > :global(.pin:nth-child(n + 2) .pin__print) { margin-block-start: var(--s-9); }
+  @media (min-width: 768px) {
+    .board__list { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .board__list > :global(.pin:nth-child(1)) { grid-column: 1 / span 4; grid-row: 1 / span 2; }
+    .board__list > :global(.pin:nth-child(2)) { grid-column: 5 / span 4; grid-row: 1 / span 2; }
+    .board__list > :global(.pin:nth-child(3)) { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+    .board__list > :global(.pin:nth-child(4)) { grid-column: 1 / span 8; grid-row: 3 / span 2; }
+    .board__list > :global(.pin:nth-child(5)) { grid-column: 9 / span 4; grid-row: 3 / span 2; }
+    /* the first row's prints stand on one line; the second row stands one --s-10 below the first row's titles */
+    .board__list > :global(.pin:nth-child(n + 2) .pin__print) { margin-block-start: 0; }
+    .board__list > :global(.pin:nth-child(n + 4) .pin__print) { margin-block-start: var(--s-10); }
+  }
 </style>

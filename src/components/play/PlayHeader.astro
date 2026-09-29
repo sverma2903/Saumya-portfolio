@@ -1,7 +1,9 @@
 ---
 /**
- * PlayHeader · OWNER: WP6 (P0 functional stub). C-100 ─── PLAY (chrome), her headline (h1, <em>side quests</em>) + the ✦
- * Ornament (it is in her original h1), her sub.
+ * PlayHeader · WP6 (SPEC §5.4). The head of sheet C-100:
+ *   C-100 ─── PLAY   (chrome: sheet number in Plex Mono rust, a rule, the label — as the cover sheet's eyebrow)
+ *   her headline (h1, --fs-title; her <em>side quests</em> stays italic) + the ✦ Ornament (it is in her original h1)
+ *   her sub-line (--fs-body-md, ink-2, at the reading measure)
  */
 import { play } from '../../content/site';
 import { chrome } from '../../data/chrome';
@@ -9,10 +11,35 @@ import Ornament from '../symbols/Ornament.astro';
 const p = chrome.wp6.play;
 ---
 <header class="play-head shell">
-  <p class="t-label-lg ink-2"><span class="t-code rust">{p.sheet}</span> <span aria-hidden="true">───</span> {p.title}</p>
-  <h1 class="t-title" data-v><Fragment set:html={play.headline} /> <Ornament /></h1>
-  <p class="t-body-md ink-2" data-v set:html={play.sub} />
+  <p class="play-head__eyebrow t-label-lg"><span class="play-head__sheet t-code">{p.sheet}</span><span class="play-head__rule" aria-hidden="true"></span><span>{p.title}</span></p>
+  <h1 class="play-head__h" id="play-h" data-v><Fragment set:html={play.headline} /> <Ornament /></h1>
+  <p class="play-head__sub" data-v set:html={play.sub} />
 </header>
 <style>
-  .play-head { display: grid; gap: var(--s-4); padding-block: var(--s-7); max-inline-size: calc(var(--maxw)); }
+  .play-head { padding-block: var(--s-8) var(--s-8); }
+  .play-head__eyebrow { display: flex; align-items: center; gap: var(--s-3); margin-block-end: var(--s-5); color: var(--ink-2); }
+  .play-head__sheet { color: var(--rust); }
+  .play-head__rule { inline-size: var(--s-7); border-block-start: var(--lw-object) solid var(--line-3); }
+  .play-head__h {
+    font-family: var(--font-serif);
+    font-size: var(--fs-title);
+    font-weight: var(--wt-title);
+    line-height: var(--lh-title);
+    letter-spacing: var(--tr-title);
+    max-inline-size: 18em;
+    text-wrap: balance;
+  }
+  /* her italic phrase is one unit: the line breaks before or after it, never inside it */
+  .play-head__h :global(em) { white-space: nowrap; }
+  .play-head__sub {
+    margin-block-start: var(--s-6);
+    max-inline-size: var(--measure);
+    font-size: var(--fs-body-md);
+    line-height: var(--lh-body-md);
+    color: var(--ink-2);
+  }
+  @media (max-width: 1023.98px) {
+    .play-head { padding-block: var(--s-6) var(--s-8); }
+    .play-head__sub { margin-block-start: var(--s-5); }
+  }
 </style>
