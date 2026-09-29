@@ -1,47 +1,216 @@
 ---
 /**
- * 404 · "Sheet not in set" · OWNER: WP1. P0 minimal: the label h1 "Sheet not in set." (narrative lines stay off until
- * approved), the path (3-line inline script; omitted without JS), the title block (SHEET 404 · TITLE — · REV. — ·
- * DRAWN BY S. V.), the compact Drawing index, and the way back. Served with status 404 by Cloudflare
- * (not_found_handling: "404-page").
+ * 404 · "Sheet not in set" · WP1 (SPEC §5.5). A sheet that isn't in the set gets drawn like a revision:
+ *   SHEET 404 · the h1 label "Sheet not in set." · a revision cloud (drawn once in 1.6 s; static under reduced motion)
+ *   with △1 at its corner, holding the path that was asked for (a 3-line inline script; omitted without JS) · the title
+ *   block strip under it (SHEET 404 · TITLE — · REV. — · DRAWN BY S. V.) · the compact Drawing index · the way back.
+ * The cloud ships as static SVG (seeded at build time, lib/revcloud.ts), so it is there without JS; the script only
+ * redraws it to the box's real size and draws it in. The cloud's outer scallops and the title block share one width
+ * and the page's left margin line: one drawing on the grid.
+ * Narrative lines ("This sheet is not in the set.", "REV. FINAL FINAL FINAL") render only once the owner approves them
+ * (chrome.ts narrative()). Served with status 404 by Cloudflare (wrangler.jsonc not_found_handling: "404-page").
  */
 import Base from '../layouts/Base.astro';
 import DrawingIndex from '../components/home/DrawingIndex.astro';
 import Icon from '../components/symbols/Icon.astro';
+import RevDelta from '../components/symbols/RevDelta.astro';
 import { chrome, narrative } from '../data/chrome';
 import type { PageMeta } from '../lib/page';
+import { CLOUD_NOMINAL, CLOUD_UNIT, cloudPath } from '../lib/revcloud';
 
 const nf = chrome.wp1.notFound;
 const page: PageMeta = { kind: '404', sheet: '404', sheetTitle: chrome.wp1.titleBar.notInSet };
 const cloud = narrative(nf.cloud);
 const rev = narrative(nf.revFinal);
+// the static clouds (no JS): one per width class, each stretched to its box (the stroke never scales)
+const staticCloud = (k: 'wide' | 'narrow') => {
+  const [w, h] = CLOUD_NOMINAL[k];
+  return { viewBox: `0 0 ${w} ${h}`, d: cloudPath(w, h, CLOUD_UNIT[k], 'nf-cloud') };
+};
+const wide = staticCloud('wide');
+const narrow = staticCloud('narrow');
 ---
 <Base title={`${chrome.wp1.titleBar.notInSet} — ${chrome.p0.person}`} description={nf.h1} page={page} noindex>
   <section class="nf shell" aria-labelledby="nf-h">
-    <p class="t-label-lg ink-2">{nf.sheet}</p>
-    <h1 id="nf-h" class="t-title">{nf.h1}</h1>
-    <div class="nf__cloud">
-      {cloud && <p>{cloud}</p>}
-      <p class="nf__path t-code" data-path hidden></p>
+    <div class="nf__head">
+      <p class="nf__label t-label-lg"><span class="nf__no">{nf.sheet}</span></p>
+      <h1 id="nf-h" class="nf__h">{nf.h1}</h1>
     </div>
-    <dl class="nf__tb">
-      <div><dt class="t-label ink-2">{nf.sheetKey}</dt><dd class="t-code">{nf.sheetValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.titleKey}</dt><dd>{nf.titleValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.revKey}</dt><dd>{rev ?? nf.revValue}</dd></div>
-      <div><dt class="t-label ink-2">{nf.drawnByKey}</dt><dd>{nf.drawnByValue}</dd></div>
-    </dl>
+
+    {/* one drawing: the cloud over the title block, the same width, on the page's margin line */}
+    <div class="nf__drawing">
+      <div class="nf__cloud" data-revcloud id="nf-cloud">
+        {[['wide', wide], ['narrow', narrow]].map(([k, c]) => (
+          <svg class={`nf__svg nf__svg--${k}`} viewBox={(c as typeof wide).viewBox} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path class="nf__fill" d={(c as typeof wide).d} /><path class="nf__line" pathLength="1" d={(c as typeof wide).d} />
+          </svg>
+        ))}
+        <span class="nf__delta" aria-hidden="true"><RevDelta n={1} size={26} /></span>
+        {cloud && <p class="nf__msg">{cloud}</p>}
+        <p class="nf__req" data-path-row hidden>
+          <span class="nf__req-k t-label">{nf.requested}</span>
+          <code class="nf__path" data-path></code>
+        </p>
+      </div>
+
+      {/* the sheet's title block: one strip under the cloud (2 × 2 on phones: SHEET · REV. over TITLE · DRAWN BY) */}
+      <dl class="nf__tb">
+        <div><dt class="t-label">{nf.sheetKey}</dt><dd class="nf__code">{nf.sheetValue}</dd></div>
+        <div><dt class="t-label">{nf.titleKey}</dt><dd>{nf.titleValue}</dd></div>
+        <div><dt class="t-label">{nf.revKey}</dt><dd>{rev ?? nf.revValue}</dd></div>
+        <div><dt class="t-label">{nf.drawnByKey}</dt><dd>{nf.drawnByValue}</dd></div>
+      </dl>
+    </div>
   </section>
-  <DrawingIndex variant="compact" />
-  <p class="shell"><a class="t-label" href="/#index"><Icon name="arrow-left" size={14} /> {nf.back}</a></p>
+
+  <div class="nf__index">
+    <DrawingIndex variant="compact" />
+    <p class="nf__back shell"><a class="t-label" href="/#index"><Icon name="arrow-left" size={14} /><span>{nf.back}</span></a></p>
+  </div>
+
   <script is:inline>
-    (() => { const p = document.querySelector('[data-path]'); if (p) { p.textContent = location.pathname; p.hidden = false; } })();
+    (() => { const r = document.querySelector('[data-path-row]'), p = r && r.querySelector('[data-path]');
+      if (p) { let t = location.pathname; try { t = decodeURI(t); } catch (e) {}
+        /* long paths break at their segment boundaries first (a <wbr> after every "/") */
+        t.split('/').forEach((s, i, a) => { p.append(s); if (i < a.length - 1) { p.append('/'); p.append(document.createElement('wbr')); } });
+        r.hidden = false; } })();
   </script>
 </Base>
+
+<script>
+  /**
+   * The revision cloud (SM6b's drawing, for the 404): the static cloud from the build, redrawn to the box's real size
+   * (lib/revcloud.ts; tighter scallops on phones) and drawn once with stroke-dashoffset over --dur-6 (instant when
+   * Motion is off); the blush fill follows. Redrawn on resize.
+   */
+  import { CLOUD_UNIT, cloudPath } from '../lib/revcloud';
+
+  const box = document.querySelector<HTMLElement>('[data-revcloud]');
+  const svgs = box ? Array.from(box.querySelectorAll<SVGSVGElement>('svg.nf__svg')) : [];
+  const svg = svgs[0];
+  // one live svg: the script sizes it, so the width-class copy is not needed
+  svgs.slice(1).forEach((x) => x.remove());
+  svg?.classList.add('is-live');
+  const line = svg?.querySelector<SVGPathElement>('.nf__line');
+  const fill = svg?.querySelector<SVGPathElement>('.nf__fill');
+
+  function draw() {
+    if (!box || !svg || !line || !fill) return;
+    const w = box.clientWidth;
+    const h = box.clientHeight;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    const d = cloudPath(w, h, matchMedia('(max-width: 767.98px)').matches ? CLOUD_UNIT.narrow : CLOUD_UNIT.wide, box.id || 'cloud');
+    line.setAttribute('d', d);
+    fill.setAttribute('d', d);
+  }
+
+  if (box) {
+    draw();
+    let last = `${box.clientWidth}×${box.clientHeight}`;
+    new ResizeObserver(() => { const now = `${box.clientWidth}×${box.clientHeight}`; if (now !== last) { last = now; draw(); } }).observe(box);
+    // draw in once (the cloud is at the top of the sheet: it is in view on arrival)
+    box.classList.add('is-armed');
+    requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('is-drawn')));
+  }
+</script>
+
 <style>
-  .nf { display: grid; gap: var(--s-4); padding-block: var(--s-7); }
-  .nf__cloud { border: var(--lw-border) solid var(--rust); padding: var(--s-4); overflow-wrap: anywhere; }
-  .nf__tb { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); border: var(--lw-border) solid var(--ink); }
-  .nf__tb div { padding: var(--s-2) var(--s-3); }
+  /* the sheet, top to bottom: SHEET 404 · the h1 · the cloud · the title block (SPEC §5.5) */
+  .nf {
+    display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: var(--s-6);
+    padding-block: var(--s-8) var(--s-6);
+  }
+  .nf__head { display: grid; gap: var(--s-3); }
+  .nf__label { margin: 0; color: var(--ink-2); }
+  .nf__no { font-family: var(--font-mono); font-size: var(--fs-label-lg); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--rust); }
+  .nf__h {
+    margin: 0; font-family: var(--font-serif); font-size: var(--fs-title); font-weight: var(--wt-title);
+    line-height: var(--lh-title); letter-spacing: var(--tr-title); text-wrap: balance;
+  }
+
+  /* one drawing: the cloud and the title block stretch to one width (the wider of the two), from the margin line */
+  .nf__drawing {
+    display: grid; gap: var(--s-6); inline-size: fit-content; min-inline-size: min(100%, 24rem); max-inline-size: 100%;
+  }
+
+  /* ── the revision cloud: the box is the drawing's outer edge (the scallops' crowns touch it) ── */
+  .nf__cloud {
+    position: relative; isolation: isolate; display: grid; gap: var(--s-2); min-inline-size: 0;
+    margin-block-start: var(--s-4); /* room for △1 above the corner */
+    padding: var(--s-5) var(--s-6);
+  }
+  :global(html:not(.js)) .nf__cloud { min-block-size: var(--s-9); } /* no path to hold: the cloud still marks the revision */
+  .nf__svg {
+    position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none;
+    overflow: visible; pointer-events: none; z-index: -1;
+  }
+  /* the build's static clouds (one per width class) stretch to the box; the stroke never scales */
+  .nf__svg:not(.is-live) path { vector-effect: non-scaling-stroke; }
+  .nf__svg:not(.is-live) .nf__line { stroke-dasharray: none; }
+  .nf__svg--narrow:not(.is-live) { display: none; }
+  /* with JS the script redraws to the real size before the cloud is shown, then draws it in */
+  :global(html.js) .nf__svg:not(.is-live) { visibility: hidden; }
+  .nf__fill { fill: color-mix(in srgb, var(--blush) 55%, transparent); }
+  .nf__line {
+    fill: none; stroke: var(--rust); stroke-width: var(--lw-border); stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: 0;
+  }
+  :global(html.js) .nf__cloud:not(.is-drawn) .nf__line { stroke-dashoffset: 1; }
+  :global(html.js) .nf__cloud:not(.is-drawn) .nf__fill { opacity: 0; }
+  .nf__cloud.is-drawn .nf__line { transition: stroke-dashoffset var(--dur-6) var(--ease-draft); }
+  .nf__cloud.is-drawn .nf__fill { transition: opacity var(--dur-3) var(--ease-ui) var(--dur-6); }
+  /* △1 sits on the cloud's corner, its left edge on the margin line; the triangle is filled with the page so the
+     scallops pass behind it */
+  .nf__delta {
+    position: absolute; inset-block-start: calc(-1 * var(--s-4)); inset-inline-start: 0;
+    color: var(--rust); line-height: 0;
+  }
+  .nf__delta :global(path) { fill: var(--paper); }
+  .nf__msg { margin: 0; font-family: var(--font-serif); font-size: var(--fs-lede); line-height: var(--lh-lede); }
+  .nf__req { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-4); margin: 0; }
+  .nf__req[hidden] { display: none; }
+  .nf__req-k { color: var(--ink-2); }
+  .nf__path {
+    font-family: var(--font-mono); font-size: var(--fs-lede-sm); font-weight: var(--wt-code); letter-spacing: 0; color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  /* ── the title block: four cells, each at least its contents, sharing the drawing's width (2 × 2 on phones) ── */
+  .nf__tb {
+    display: grid; grid-template-columns: repeat(4, minmax(max-content, 1fr)); margin: 0;
+    border: var(--lw-border) solid var(--ink); background: var(--sheet);
+  }
+  .nf__tb div { display: grid; gap: var(--s-2); align-content: start; padding: var(--s-3) var(--s-5) var(--s-4) var(--s-4); min-inline-size: 0; }
   .nf__tb div + div { border-inline-start: var(--lw-object) solid var(--line-2); }
-  .nf__tb dd { margin: 0; }
+  .nf__tb dt { color: var(--ink-2); }
+  .nf__tb dd { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body); line-height: var(--lh-code); }
+  .nf__tb .nf__code { font-family: var(--font-mono); font-size: var(--fs-body-sm); font-weight: var(--wt-code); color: var(--rust); }
+
+  /* the compact index, then the way back directly under it, then the end sheet at the standard section gap */
+  .nf__index { border-block-start: var(--lw-object) solid var(--line-2); }
+  .nf__index :global(#index) { padding-block-end: 0; }
+  .nf__back { margin-block: 0; padding-block: 0; }
+  .nf__back a { display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: calc(var(--s-7) - var(--s-1)); text-decoration: none; color: var(--ink); }
+  .nf__back a:hover { color: var(--rust-deep); }
+  :global(html[data-page='404'] .endsheet) { margin-block-start: var(--s-8); }
+
+  /* print: the cloud is on paper whole, whatever moment of its draw-in the print was taken at */
+  @media print {
+    .nf__cloud .nf__line { stroke-dashoffset: 0 !important; transition: none !important; }
+    .nf__cloud .nf__fill { opacity: 1 !important; transition: none !important; }
+  }
+
+  @media (max-width: 767.98px) {
+    .nf { padding-block: var(--s-6) var(--s-5); gap: var(--s-5); justify-items: stretch; }
+    .nf__drawing { inline-size: auto; min-inline-size: 0; gap: var(--s-5); }
+    .nf__svg--wide:not(.is-live) { display: none; }
+    .nf__svg--narrow:not(.is-live) { display: block; }
+    .nf__cloud { padding: var(--s-4) var(--s-5); }
+    /* column flow: SHEET · REV. on the first row, TITLE · DRAWN BY on the second */
+    .nf__tb { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; grid-auto-flow: column; }
+    .nf__tb div + div { border-inline-start: 0; }
+    .nf__tb div:nth-child(n + 3) { border-inline-start: var(--lw-object) solid var(--line-2); }
+    .nf__tb div:nth-child(even) { border-block-start: var(--lw-object) solid var(--line-2); }
+    :global(html[data-page='404'] .endsheet) { margin-block-start: var(--s-7); }
+  }
 </style>

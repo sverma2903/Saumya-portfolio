@@ -1,77 +1,206 @@
 ---
 /**
- * EndSheet · OWNER: WP1 (P0 functional stub). The footer title block (SPEC §4.3): her heading (connect / closing),
- * the contact row (email + Copy, LinkedIn ↗, Resume ↗), the title-block row (Drawn by · Location · Local time · Set ·
- * Settings), her copyright and ↑ A-000. P0 wires the three Settings switches to core/prefs.
+ * EndSheet · WP1. The footer as the drawing's title block (SPEC §4.3):
+ *   her line ("I'd love to connect with you!" on Home/About/Play/404; "Let's build the next one together!" on cases)
+ *   the contact row: her address (a mailto link) · Copy (writes it, announces "Copied" for 1.6 s) · LinkedIn ↗ · Resume ↗
+ *   the title block: DRAWN BY · LOCATION · LOCAL TIME (Washington, D.C., on the minute, only while visible) · SET ·
+ *   SETTINGS (Motion, Dusk, Shortcuts — role="switch", persisted, live)
+ *   her copyright · the colophon (narrative chrome, off until approved) · ↑ A-000.
+ * It also sets the running footer every printed page repeats (§4.10: --sv-print-foot / --sv-print-copy, read by the
+ * @page margin boxes in styles/print.css), and loads lazy images before printing so every figure is on paper.
  * Props: { heading: 'connect' | 'closing'; page: PageMeta }.
  */
 import type { PageMeta } from '../../lib/page';
 import { home, labels, links } from '../../content/site';
-import { chrome, narrative } from '../../data/chrome';
+import { chrome, fill, narrative } from '../../data/chrome';
 import { emailAddress } from '../../lib/verbatim';
 import { externalAttrs } from '../../lib/rich';
 import Icon from '../symbols/Icon.astro';
 import Toast from './Toast.astro';
+import PrefSwitch from './PrefSwitch.astro';
 interface Props { heading: 'connect' | 'closing'; page: PageMeta }
 const { heading, page } = Astro.props;
 const t = chrome.wp1.endSheet;
 const colophon = narrative(t.colophon);
+const isHome = page.kind === 'home';
+// the running footer (print): A-101 · Cloudflare R2 Object Storage Redesign · Saumya Verma · saumya-verma.com/cloudflare
+const path = page.kind === 'home' ? '' : page.kind === 'about' ? '/about' : page.kind === 'play' ? '/fun' : page.slug ? `/${page.slug}` : '';
+// A long title wraps the line (print.css gives the page count a fixed cell); the name and the address never split:
+// no-break spaces in the name, a word joiner after each hyphen of the address (both invisible on paper).
+const printFoot = fill(chrome.wp1.print.foot, {
+  sheet: page.kind === '404' ? '—' : page.sheet, title: page.sheetTitle,
+  person: chrome.p0.person.replace(/ /g, '\u00a0'), url: `${chrome.wp1.print.domain}${path}`.replace(/-/g, '-\u2060'),
+});
+const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+const printVars = `:root{--sv-print-foot:${cssString(printFoot)};--sv-print-copy:${cssString(home.copyright)}}`;
 ---
 <footer class="endsheet" role="contentinfo">
-  <div class="shell">
-    <h2 class="endsheet__h t-title" data-v>{home[heading]}</h2>
-    <p class="endsheet__contact t-ui">
-      <a href={links.email} data-v>{emailAddress}</a>
-      <button type="button" class="btn" data-js-only data-copy={emailAddress}><Icon name="copy" />{t.copy}</button>
-      <a class="btn" href={links.linkedin} {...externalAttrs(links.linkedin)}>{t.linkedin}<Icon name="arrow-up-right" /></a>
-      <a class="btn" href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" /></a>
-    </p>
+  <div class="endsheet__in shell">
+    <h2 class="endsheet__h" data-v>{home[heading]}</h2>
+
+    <div class="endsheet__contact">
+      <a class="endsheet__email" href={links.email}><span class="sr-only">{t.emailLabel}: </span><span data-v>{emailAddress}</span></a>
+      <div class="endsheet__acts">
+        <button type="button" class="btn endsheet__copy" data-js-only data-copy={emailAddress} data-copied={t.copied} aria-label={t.copyLabel}>
+          <Icon name="copy" />{t.copy}
+        </button>
+        <a class="btn" href={links.linkedin} {...externalAttrs(links.linkedin)}>{t.linkedin}<Icon name="arrow-up-right" /></a>
+        <a class="btn" href={links.resume} {...externalAttrs(links.resume)}><span data-v>{labels.nav.resume}</span><Icon name="arrow-up-right" /></a>
+      </div>
+    </div>
+
     <dl class="endsheet__tb">
-      <div><dt class="t-label ink-2">{t.drawnBy}</dt><dd>{t.drawnByValue}</dd></div>
-      <div><dt class="t-label ink-2">{t.location}</dt><dd>{t.locationValue}</dd></div>
-      <div><dt class="t-label ink-2">{t.localTime}</dt><dd><time class="t-code" data-clock>—</time></dd></div>
-      <div><dt class="t-label ink-2">{t.set}</dt><dd>{t.setValue}<br />{t.setYears}</dd></div>
-      <div data-js-only>
-        <dt class="t-label ink-2">{t.settings}</dt>
+      <div class="tb-cell">
+        <dt class="t-label">{t.drawnBy}</dt>
+        <dd>{t.drawnByValue}</dd>
+      </div>
+      <div class="tb-cell">
+        <dt class="t-label">{t.location}</dt>
+        <dd>{t.locationValue}</dd>
+      </div>
+      <div class="tb-cell">
+        <dt class="t-label">{t.localTime}</dt>
+        <dd><time class="endsheet__time" data-clock>—</time></dd>
+      </div>
+      <div class="tb-cell">
+        <dt class="t-label">{t.set}</dt>
+        <dd class="endsheet__set"><span class="endsheet__code">{t.setValue}</span><span class="endsheet__years">{t.setYears}</span></dd>
+      </div>
+      <div class="tb-cell tb-cell--settings" data-js-only>
+        <dt class="t-label">{t.settings}</dt>
         <dd class="endsheet__settings">
-          <button type="button" role="switch" aria-checked="true" data-pref-switch="motion" data-on="full" data-off="reduce">{t.motion}</button>
-          <button type="button" role="switch" aria-checked="false" data-pref-switch="theme" data-on="dusk" data-off="vellum">{t.dusk}</button>
-          <button type="button" role="switch" aria-checked="true" data-pref-switch="keys" data-on="on" data-off="off">{t.shortcuts}</button>
+          <PrefSwitch pref="motion" />
+          <PrefSwitch pref="theme" />
+          <PrefSwitch pref="keys" />
         </dd>
       </div>
     </dl>
-    <p class="endsheet__base t-body-sm ink-2">
-      <span data-v>{home.copyright}</span>
-      {colophon && <span class="endsheet__colophon">{colophon}</span>}
-      <a href={page.kind === 'home' ? '#main' : '/'} class="t-code">↑ {t.toTop}</a>
-    </p>
+
+    <div class="endsheet__base">
+      <p class="endsheet__copyright" data-v>{home.copyright}</p>
+      {colophon && <p class="endsheet__colophon">{colophon}</p>}
+      <a class="endsheet__top t-label" href={isHome ? '#main' : '/'} aria-label={isHome ? t.toTopHome : t.toTopOther}><span aria-hidden="true">↑</span> <span class="t-code">{t.toTop}</span></a>
+    </div>
   </div>
   <Toast />
+  <style is:inline media="print" set:html={printVars}></style>
 </footer>
+
 <script>
-  import { get, set, on, type PrefKey, type PrefValues } from '../../scripts/core/prefs';
-  const sync = (b: HTMLElement) => {
-    const key = b.dataset.prefSwitch as PrefKey;
-    b.setAttribute('aria-checked', String(get(key) === b.dataset.on));
-  };
-  document.querySelectorAll<HTMLElement>('[data-pref-switch]').forEach((b) => {
-    sync(b);
-    b.addEventListener('click', () => {
-      const key = b.dataset.prefSwitch as PrefKey;
-      const next = (get(key) === b.dataset.on ? b.dataset.off : b.dataset.on) as PrefValues[PrefKey];
-      set(key, next as never);
-    });
-    on(b.dataset.prefSwitch as PrefKey, () => sync(b));
+  import { startClock } from '../../scripts/core/clock';
+  import { copyText, toast } from '../../scripts/core/copy';
+
+  document.querySelectorAll<HTMLTimeElement>('time[data-clock]').forEach((el) => startClock(el));
+
+  // print (§4.10): a lazy image that was never scrolled to would print as an empty frame — fetch them all first
+  // Print is always ink on paper: Dusk's grounds and light ink never reach the page. The attribute alone is lifted for
+  // the print (prefs are untouched) and put back afterwards.
+  let duskForPrint = false;
+  addEventListener('afterprint', () => {
+    if (duskForPrint) { document.documentElement.dataset.theme = 'dusk'; duskForPrint = false; }
   });
+  addEventListener('beforeprint', () => {
+    const root = document.documentElement;
+    if (root.dataset.theme === 'dusk') { duskForPrint = true; delete root.dataset.theme; }
+    document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = 'eager'; });
+    // external CTAs print their address without the query string (print.css: attr(data-print-url))
+    document.querySelectorAll<HTMLAnchorElement>('a.cta[href^="http"], :is(.cta-row, .case-head__actions) a[href^="http"]').forEach((a) => {
+      try { const u = new URL(a.href); a.dataset.printUrl = u.origin + (u.pathname === '/' ? '' : u.pathname); } catch { /* keep the href */ }
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const ok = await copyText(b.dataset.copy ?? '');
+      if (ok) {
+        toast(b.dataset.copied ?? '', b);
+        b.classList.add('is-done');
+        window.setTimeout(() => b.classList.remove('is-done'), 1600);
+      }
+    }),
+  );
 </script>
+
 <style>
-  .endsheet { margin-block-start: var(--space-chapter); padding-block: var(--s-8) var(--s-6); border-block-start: var(--lw-border) solid var(--ink); background: var(--sheet); }
-  .endsheet__h { margin-block-end: var(--s-5); }
-  .endsheet__contact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-block-end: var(--s-6); }
-  .endsheet__tb { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--s-4); border-block: var(--lw-object) solid var(--line-2); padding-block: var(--s-4); margin: 0; }
-  .endsheet__tb dd { margin: 0; }
-  .endsheet__settings { display: grid; gap: var(--s-1); justify-items: start; }
-  .endsheet__settings button[aria-checked='true']::after { content: ' ●'; color: var(--rust); }
-  .endsheet__settings button[aria-checked='false']::after { content: ' ○'; }
-  .endsheet__base { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-3); margin-block-start: var(--s-4); }
+  .endsheet {
+    margin-block-start: var(--space-chapter);
+    background: var(--sheet); border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .endsheet__in { padding-block: var(--s-8) var(--s-5); display: grid; gap: var(--s-6); }
+
+  /* her line: Newsreader 300, 40 → 72 */
+  .endsheet__h {
+    max-inline-size: 18ch; margin: 0; /* ≥ 1024 her line takes the band (below) */
+    font-family: var(--font-serif); font-size: var(--fs-cover); font-weight: var(--wt-chapter);
+    line-height: var(--lh-cover); letter-spacing: var(--tr-cover); color: var(--ink); text-wrap: balance;
+  }
+
+  /* desktop: room for her line on one line at 72px (the §4.3 wireframe); it still balances if it must break */
+  @media (min-width: 1024px) { .endsheet__h { max-inline-size: 36ch; } }
+
+  /* contact */
+  .endsheet__contact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-6); }
+  .endsheet__email {
+    font-family: var(--font-serif); font-size: var(--fs-lede); font-weight: var(--wt-lede); letter-spacing: var(--tr-lede);
+    line-height: var(--lh-code); color: var(--ink); text-decoration-thickness: var(--lw-object); text-underline-offset: calc(var(--s-1) + var(--lw-cut));
+    text-decoration-color: var(--line-3);
+    overflow-wrap: anywhere;
+  }
+  .endsheet__email:hover { color: var(--rust-deep); text-decoration-color: currentColor; }
+  .endsheet__acts { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+  .endsheet__copy.is-done { border-color: var(--rust); color: var(--rust-deep); }
+
+  /* the title block: outer border in ink, inner rules in line-2. Four one-line cells over a Settings row, so no cell
+     is stretched by the switches (≥ 768) */
+  .endsheet__tb {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0; border: var(--lw-border) solid var(--ink); background: var(--paper);
+  }
+  .tb-cell { display: grid; align-content: start; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-4); min-inline-size: 0; }
+  .tb-cell + .tb-cell { border-inline-start: var(--lw-object) solid var(--line-2); }
+  .tb-cell dt { color: var(--ink-2); }
+  .tb-cell dd {
+    margin: 0; font-family: var(--font-serif); font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--ink);
+  }
+  /* every value in one voice (serif, body-sm, ink); the time in tabular figures; only the sheet range is a code */
+  .endsheet__time { font-variant-numeric: tabular-nums; }
+  .endsheet__set { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); }
+  .endsheet__code {
+    font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); font-variant-numeric: tabular-nums;
+  }
+  .endsheet__years { color: var(--ink-2); }
+
+  /* Settings: its own row — the label, then the three switches side by side, each state right beside its name */
+  .tb-cell--settings {
+    grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--s-6);
+    padding-block: var(--s-2); border-inline-start: 0 !important; border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .endsheet__settings { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-7); }
+  .endsheet__settings :global(.pswitch) { inline-size: auto; grid-template-columns: auto auto; gap: var(--s-3); }
+
+  /* base line */
+  .endsheet__base {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-5);
+    padding-block-start: var(--s-4); border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .endsheet__copyright, .endsheet__colophon { margin: 0; font-family: var(--font-serif); font-size: var(--fs-body-sm); color: var(--ink-2); }
+  .endsheet__colophon { font-style: italic; flex: 1 1 24rem; }
+  .endsheet__top { display: inline-flex; align-items: center; gap: var(--s-1); min-block-size: calc(var(--s-7) - var(--s-1)); text-decoration: none; color: var(--ink); }
+  .endsheet__top:hover { color: var(--rust-deep); }
+  .endsheet__top .t-code { color: var(--rust); }
+
+  @media (max-width: 767.98px) {
+    .endsheet__in { padding-block: var(--s-7) var(--s-4); gap: var(--s-5); }
+    .endsheet__tb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tb-cell:nth-child(3) { border-inline-start: 0; }
+    .tb-cell:nth-child(n + 3) { border-block-start: var(--lw-object) solid var(--line-2); }
+    /* phones: the label over a full-width list of switches (name at the start, state at the end of each row) */
+    .tb-cell--settings { grid-template-columns: minmax(0, 1fr); padding-block: var(--s-3) var(--s-2); }
+    .endsheet__settings { display: grid; gap: 0; }
+    .endsheet__settings :global(.pswitch) { inline-size: 100%; grid-template-columns: minmax(0, 1fr) auto; }
+  }
+  /* print: the end sheet itself is chrome; only the running footer prints, repeated on every page (print.css) */
+  @media print {
+    .endsheet { margin: 0; border: 0; background: none; }
+    .endsheet__in { display: none; }
+  }
 </style>

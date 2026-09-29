@@ -1,34 +1,130 @@
 ---
 /**
- * BottomBar · OWNER: WP1 (P0 functional stub). Below 1024px (SPEC §4.2): Mark (home) · centre cell ("SHEETS", or on
- * cases ▼ LEVEL + elevation; opens the Sheet drawer) · sheet number. 2px rust progress hairline on its top edge.
- * Props: { page: PageMeta }.
+ * BottomBar · WP1. The thumb-reachable title bar below 1024px (SPEC §4.2):
+ *   ▔▔▔▔▔▔▔ (2px rust scroll progress on its top edge)
+ *   [ △○□ ] │ [ ▼ IDEATE  +07:18  ▴ ]  or  [ SHEETS ▴ ] │ [ A-101 ]
+ * - the mark → / (cover sheet); the centre cell opens the Sheet drawer (Drawer.astro) — "SHEETS" on Home/About/Play/404,
+ *   the current level + elevation on cases (live from WP5's `sv:level`; the first level until then);
+ * - the sheet number (Plex Mono 18, view-transition-name: sheetno below 1024 — the title bar carries it above);
+ * - every target ≥ 48 × 48; safe-area aware; the no-JS centre cell is a plain link to /#index.
  */
 import type { PageMeta } from '../../lib/page';
 import { chrome } from '../../data/chrome';
 import Mark from '../symbols/Mark.astro';
+import Datum from '../symbols/Datum.astro';
 import Drawer from './Drawer.astro';
 interface Props { page: PageMeta }
 const { page } = Astro.props;
 const t = chrome.wp1.bottomBar;
+const first = page.kind === 'case' ? page.levels?.[0] : undefined;
 ---
-<nav class="bottombar" aria-label={t.label}>
-  <a class="bottombar__home" href="/" aria-label={t.home}><Mark size={22} class="rust" /></a>
-  <button type="button" class="bottombar__centre t-label-lg" data-drawer-open aria-haspopup="dialog" data-js-only>{t.sheets}</button>
+<nav class="bottombar" aria-label={t.label} data-bottombar>
+  <span class="bottombar__progress" aria-hidden="true"><span data-progress></span></span>
+  <a class="bottombar__home" href="/" aria-label={t.home}><Mark size={24} strokeWidth={1.15} /></a>
+  <button type="button" class="bottombar__centre" data-drawer-open aria-haspopup="dialog" aria-expanded="false" aria-controls="sv-drawer" data-js-only>
+    {first ? (
+      <span class="bottombar__level">
+        <Datum size={10} />
+        <span class="sr-only">{t.level} </span><span class="bottombar__label t-label-lg" data-level-label data-v>{first.label}</span>
+        <span class="bottombar__elev" data-level-elev>{first.elev}</span>
+      </span>
+    ) : (
+      <span class="bottombar__sheets t-label-lg">{t.sheets}</span>
+    )}
+    <svg class="bottombar__caret" width="9" height="6" viewBox="0 0 9 6" aria-hidden="true" focusable="false"><path d="M0.8 5.4 4.5 0.8l3.7 4.6" fill="none" stroke="currentColor" stroke-width="1.25" vector-effect="non-scaling-stroke" /></svg>
+  </button>
   <a class="bottombar__centre bottombar__centre--nojs t-label-lg" href="/#index">{t.sheets}</a>
-  <span class="bottombar__sheet t-code">{page.sheet}</span>
+  <span class="bottombar__sheet sheetno t-code">{page.sheet}</span>
 </nav>
 <Drawer page={page} />
+
+<script>
+  import { listen } from '../../scripts/core/bus';
+  import { rafThrottle } from '../../scripts/core/dom';
+
+  const bar = document.querySelector<HTMLElement>('[data-bottombar]');
+  const fill = bar?.querySelector<HTMLElement>('[data-progress]');
+  const narrow = matchMedia('(max-width: 1023.98px)');
+
+  // 2px rust progress hairline: scroll position through the page (only measured while the bar is shown)
+  const paint = rafThrottle(() => {
+    if (!fill || !narrow.matches) return;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+    fill.style.transform = `scaleX(${p.toFixed(4)})`;
+  });
+  addEventListener('scroll', paint, { passive: true });
+  addEventListener('resize', paint, { passive: true });
+  narrow.addEventListener('change', paint);
+  paint();
+
+  // the live level (cases): ▼ LABEL +MM:SS
+  const label = bar?.querySelector<HTMLElement>('[data-level-label]');
+  const elev = bar?.querySelector<HTMLElement>('[data-level-elev]');
+  if (label && elev) {
+    listen('sv:level', (d) => {
+      if (!d || typeof d.label !== 'string' || !d.label) return;
+      if (label.textContent !== d.label) label.textContent = d.label;
+      if (typeof d.elev === 'string' && elev.textContent !== d.elev) elev.textContent = d.elev;
+    });
+  }
+</script>
+
 <style>
   .bottombar {
     position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bar);
-    display: grid; grid-template-columns: 56px 1fr auto; align-items: center;
-    block-size: calc(var(--bar) + env(safe-area-inset-bottom)); padding-block-end: env(safe-area-inset-bottom); padding-inline-end: var(--m);
+    display: grid; grid-template-columns: var(--bar) minmax(0, 1fr) auto; align-items: stretch;
+    block-size: calc(var(--bar) + env(safe-area-inset-bottom)); padding-block-end: env(safe-area-inset-bottom);
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
     background: var(--sheet); border-block-start: var(--lw-border) solid var(--ink);
+    /* its own group in the page cut (transitions.css): cut like the page, but above a morphing plate */
+    view-transition-name: vt-bottombar;
   }
-  .bottombar__home { display: grid; place-items: center; min-inline-size: 48px; min-block-size: 48px; }
-  .bottombar__centre { justify-self: center; min-block-size: 48px; padding-inline: var(--s-4); text-decoration: none; }
+  /* the progress hairline sits on the ink edge */
+  .bottombar__progress {
+    position: absolute; inset-inline: 0; inset-block-start: calc(-1 * var(--lw-border)); block-size: var(--lw-cut); overflow: hidden; pointer-events: none;
+  }
+  .bottombar__progress > span {
+    display: block; block-size: 100%; background: var(--rust);
+    transform: scaleX(0); transform-origin: 0 50%;
+  }
+
+  .bottombar__home {
+    display: grid; place-items: center; min-inline-size: var(--s-7); min-block-size: var(--s-7); color: var(--rust);
+    border-inline-end: var(--lw-object) solid var(--line-2);
+  }
+  .bottombar__home:hover { color: var(--rust-deep); }
+  .bottombar__home:focus-visible, .bottombar__centre:focus-visible { outline-offset: calc(-1 * var(--s-1)); }
+
+  .bottombar__centre {
+    display: flex; align-items: center; justify-content: center; gap: var(--s-3);
+    min-inline-size: 0; min-block-size: var(--s-7); padding-inline: var(--s-4);
+    color: var(--ink); text-decoration: none; white-space: nowrap;
+  }
+  .bottombar__centre:hover { color: var(--rust-deep); }
+  .bottombar__centre:active { background: var(--paper-2); }
   :global(html.js) .bottombar__centre--nojs { display: none; }
-  .bottombar__sheet { font-size: 1.125rem; }
+  .bottombar__level { display: inline-flex; align-items: center; gap: var(--s-2); min-inline-size: 0; }
+  .bottombar__level :global(.sym-datum) { color: var(--rust); }
+  .bottombar__label { overflow: hidden; text-overflow: ellipsis; }
+  .bottombar__elev {
+    font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: 1; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; margin-inline-start: var(--lw-cut);
+  }
+  .bottombar__caret { flex: none; color: var(--ink-2); }
+  .bottombar__centre[aria-expanded='true'] .bottombar__caret { transform: rotate(180deg); }
+
+  .bottombar__sheet {
+    display: flex; align-items: center; padding-inline: var(--s-4) var(--m);
+    border-inline-start: var(--lw-object) solid var(--line-2);
+    font-size: calc(var(--fs-code) * 1.5); letter-spacing: calc(var(--tr-code) / 2); color: var(--ink); /* Plex Mono 18 (§4.2) */
+    view-transition-name: sheetno;
+  }
+  /* 320 (WCAG reflow): the level label takes the elevation's room (the drawer still lists every elevation) */
+  @media (max-width: 339.98px) {
+    .bottombar__elev { display: none; }
+    .bottombar__centre { padding-inline: var(--s-3); gap: var(--s-2); }
+  }
   @media (min-width: 1024px) { .bottombar { display: none; } }
+  @media print { .bottombar { display: none; } }
 </style>

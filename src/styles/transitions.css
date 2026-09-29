@@ -1,5 +1,130 @@
 /* ==========================================================================
-   transitions.css · OWNER: WP1 (stub created by P0 so Base.astro can import it).
-   SM3 "Cut to sheet": native cross-document View Transitions (see SPEC SM3 for the exact CSS).
-   The .vt-cutline element already exists in Base.astro (an empty, zero-height div until WP1 styles it).
+   transitions.css · WP1. SM3 "Cut to sheet": native cross-document View Transitions (no router, no interception).
+
+   · The new sheet is revealed by a section cut: a clip-path wipe (--dur-4, --ease-draft) with a rust long–short
+     dash line riding its leading edge. Back to the index (the new page is A-000) cuts the other way.
+   · The plate you chose morphs into the case cover (plate-<slug>, same 16:10 box both sides; WP3/WP5 name them),
+     on the cut's curve.
+   · The sheet number rolls like a ticker (sheetno: the title bar's / bottom bar's number, never both rendered), at
+     the moment the cut line crosses it.
+   · Direction and the cut line are CSS-only (html[data-page], :active-view-transition), so they work even when the
+     deferred vt.ts misses `pagereveal`; vt.ts adds html[data-vt] as a belt-and-braces hook and skips the whole
+     transition when Motion is off. Firefox (no cross-document VT) simply navigates.
+   · Reduced motion: vt.ts skips on both sides; the rules at the end also zero every VT animation (no-JS + OS reduce).
+   · Never hard-code values: durations/easings/colours are tokens. Nothing here delays interactivity.
    ========================================================================== */
+
+@view-transition { navigation: auto; }
+
+/* ---------- every group: the page cut's duration; morphs (plates) settle on the pen curve ---------- */
+::view-transition-group(*) {
+  animation-duration: var(--dur-4);
+  animation-timing-function: var(--ease-pen);
+}
+
+/* ---------- root: the section cut. The old sheet stays put; the new one is cut in over it. ---------- */
+/* The bars (TitleBar: vt-titlebar, BottomBar: vt-bottombar; never both rendered) are cut exactly like the root, but as
+   their own groups, so a plate morphing across the viewport passes UNDER them instead of over them. */
+::view-transition-old(root),
+::view-transition-old(vt-titlebar),
+::view-transition-old(vt-bottombar) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root),
+::view-transition-new(vt-titlebar),
+::view-transition-new(vt-bottombar) {
+  /* the cut is drafted, not snapped: the line-draw curve keeps the sweep (and the line on its edge) legible end to end */
+  animation: vt-cut var(--dur-4) var(--ease-draft) both;
+  /* the UA pairs old/new with plus-lighter for its cross-fade; an opaque cut must composite normally */
+  mix-blend-mode: normal;
+}
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(root),
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(vt-titlebar),
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(vt-bottombar) { animation-name: vt-cut-back; }
+
+/* stacking of the groups: plates < bars < the rolling sheet number < the cut line (which cuts through everything) */
+::view-transition-group(.plate) { z-index: var(--z-raised); }
+::view-transition-group(vt-titlebar),
+::view-transition-group(vt-bottombar) { z-index: var(--z-bar); }
+::view-transition-group(sheetno) { z-index: calc(var(--z-bar) + 1); }
+::view-transition-group(vt-cutline) { z-index: calc(var(--z-bar) + 2); }
+
+@keyframes vt-cut      { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@keyframes vt-cut-back { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0); } }
+
+/* ---------- the cut line: exists on every page (Base.astro), rendered only while a transition is active ---------- */
+.vt-cutline {
+  position: fixed;
+  inset: 0 auto 0 0;
+  inline-size: var(--lw-cut);
+  z-index: var(--z-vtline);
+  display: none;
+  pointer-events: none;
+  /* a long–short centre line (14 · 3 · 2 · 3), drawn vertically */
+  background: repeating-linear-gradient(180deg,
+    var(--rust) 0 14px, transparent 14px 17px, var(--rust) 17px 19px, transparent 19px 22px);
+}
+:root:is([data-vt], :active-view-transition) .vt-cutline {
+  display: block;
+  view-transition-name: vt-cutline;
+}
+::view-transition-old(vt-cutline) { animation: none; opacity: 0; }
+::view-transition-new(vt-cutline) { animation: vt-line var(--dur-4) var(--ease-draft) both; mix-blend-mode: normal; }
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(vt-cutline) { animation-name: vt-line-back; }
+/* the line rides exactly on the wipe's leading edge (same curve, same duration) */
+@keyframes vt-line      { from { transform: translateX(0); }     to { transform: translateX(100vw); } }
+@keyframes vt-line-back { from { transform: translateX(100vw); } to { transform: translateX(calc(-1 * var(--lw-cut))); } }
+
+/* ---------- the sheet number rolls (A-000 → A-101 up; back to A-000 down) ---------- */
+::view-transition-group(sheetno) { animation-duration: var(--dur-4); }
+::view-transition-image-pair(sheetno) { overflow: clip; }
+::view-transition-old(sheetno),
+::view-transition-new(sheetno) {
+  /* keep the glyphs' natural width while the group resizes: no horizontal stretch */
+  inline-size: auto;
+  block-size: 100%;
+  mix-blend-mode: normal;
+}
+::view-transition-old(sheetno) { animation: vt-roll-out var(--dur-3) var(--ease-ui) both; }
+::view-transition-new(sheetno) { animation: vt-roll-in var(--dur-3) var(--ease-ui) both; }
+/* the number changes as the cut line reaches it: the roll starts the moment the line meets the number's leading edge
+   (its left edge going forward, its right edge going back), so the new number never shows on the old sheet's side.
+   vt.ts measures that moment (--vt-sheetno-at, a fraction of --dur-4, from the number's position and the --ease-draft
+   curve); until it has, the fallbacks are the title bar's head cell (left edge ≈ 0.17 of the width) and, below 1024,
+   the bottom bar's number at the right edge. */
+:root { --vt-sheetno-fwd: 0.32; --vt-sheetno-back: 0.58; }
+@media (max-width: 1023.98px) { :root { --vt-sheetno-fwd: 0.61; --vt-sheetno-back: 0; } }
+::view-transition-old(sheetno),
+::view-transition-new(sheetno) { animation-delay: calc(var(--dur-4) * var(--vt-sheetno-at, var(--vt-sheetno-fwd))); }
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-old(sheetno),
+:root:is([data-page="home"], [data-vt-dir="back"])::view-transition-new(sheetno) {
+  animation-delay: calc(var(--dur-4) * var(--vt-sheetno-at, var(--vt-sheetno-back)));
+}
+@keyframes vt-roll-out      { to   { transform: translateY(-100%); opacity: 0; } }
+@keyframes vt-roll-in       { from { transform: translateY(100%);  opacity: 0; } }
+@keyframes vt-roll-out-down { to   { transform: translateY(100%);  opacity: 0; } }
+@keyframes vt-roll-in-down  { from { transform: translateY(-100%); opacity: 0; } }
+
+/* ---------- plates: the chosen cover morphs into the case cover (same 16:10 box both sides) ---------- */
+/* Plate.astro writes view-transition-name inline; the class lets one rule style every plate-<slug> group. */
+[style*="view-transition-name: plate-"],
+[style*="view-transition-name:plate-"] { view-transition-class: plate; }
+/* the plate rides the cut's own curve, so it lands as the line passes it instead of arriving before the cut has
+   begun (the pen curve front-loads the move) */
+::view-transition-group(.plate) {
+  animation-duration: var(--dur-4);
+  animation-timing-function: var(--ease-draft);
+}
+::view-transition-old(.plate),
+::view-transition-new(.plate) {
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* ---------- reduced motion / Motion off: no page cut at all ---------- */
+:root[data-motion="reduce"]::view-transition-group(*),
+:root[data-motion="reduce"]::view-transition-old(*),
+:root[data-motion="reduce"]::view-transition-new(*) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion])::view-transition-group(*),
+  :root:not([data-motion])::view-transition-old(*),
+  :root:not([data-motion])::view-transition-new(*) { animation: none !important; }
+}

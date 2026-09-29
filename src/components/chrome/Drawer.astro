@@ -1,42 +1,366 @@
 ---
 /**
- * Drawer · OWNER: WP1 (P0 functional stub). <dialog class="drawer"> sliding up below 1024px (SPEC §4.2): handle + Close,
- * search field (opens the Sheet list), Sheets, and on cases Levels + View toggle + Match line; Settings.
- * P0: Close + the sheet list + (cases) the levels, opened by [data-drawer-open].
+ * Drawer · WP1. The Sheet drawer below 1024px (SPEC §4.2, SM4 mobile): a <dialog> that slides up over 280 ms
+ * (instant under reduced motion) from the bottom title bar's centre cell. Top to bottom:
+ *   grip (drag down past 30% to close) + Close · the search field (opens the Sheet list with its query) ·
+ *   on cases: LEVELS (rows with the reading trace as a hatch swatch, the current floor ▼ + aria-current), the View
+ *   toggle (WP5's ViewToggle) and the Match line to the next sheet · SHEETS · SETTINGS (Motion, Dusk).
+ * Levels come first on case pages: the drawer opens from the level cell, so the floors are what the reader reached for.
+ * Closes with Esc, the scrim, Close, the grip, or following a link; focus returns to the centre cell.
  */
 import type { PageMeta } from '../../lib/page';
-import { chrome } from '../../data/chrome';
+import { labels, links } from '../../content/site';
+import { chrome, fill } from '../../data/chrome';
 import { sheets } from '../../data/sheets';
+import { caseBySlug } from '../../lib/verbatim';
+import { reading } from '../../lib/reading';
 import { externalAttrs } from '../../lib/rich';
+import Icon from '../symbols/Icon.astro';
+import Datum from '../symbols/Datum.astro';
+import Glyphs from '../symbols/Glyphs.astro';
+import MatchLine from '../symbols/MatchLine.astro';
+import ViewToggle from '../case/ViewToggle.astro';
+import PrefSwitch from './PrefSwitch.astro';
 interface Props { page: PageMeta }
 const { page } = Astro.props;
 const t = chrome.wp1.drawer;
+const isCase = page.kind === 'case' && !!page.slug && !!page.levels?.length;
+const r = isCase ? reading(caseBySlug(page.slug!)) : null;
+const minutes = (n: number) => fill(chrome.wp3.index.minutes, { n });
+// Sheets in the spec's drawer order: A-000, A-101…A-106, B-100, C-100, Resume ↗, Architecture Portfolio ↗
+const internal = sheets.filter((s) => !s.external);
+const resume = sheets.find((s) => s.external && s.href === links.resume);
+const arch = sheets.find((s) => s.external && s.href === links.architecture);
+const rows = [
+  { no: 'A-000', title: chrome.wp1.titleBar.coverSheet, hers: false, href: '/', ext: false },
+  ...internal.map((s) => ({ no: String(s.no), title: s.title.text, hers: true, href: s.href, ext: false })),
+  ...[resume, arch].filter(Boolean).map((s) => ({ no: '↗', title: s!.title.text, hers: true, href: s!.href, ext: true })),
+];
+const currentHref = page.kind === 'home' ? '/' : page.kind === 'about' ? '/about' : page.kind === 'play' ? '/fun' : page.slug ? `/${page.slug}` : null;
 ---
-<dialog class="drawer" data-dialog="drawer" aria-label={t.title}>
-  <form method="dialog"><button class="drawer__close t-label" value="close">{t.close}</button></form>
-  <nav aria-label={t.sheets}>
-    <p class="t-label ink-2">{t.sheets}</p>
-    <ul role="list">
-      <li><a href="/"><span class="t-code">A-000</span> {chrome.wp1.titleBar.coverSheet}</a></li>
-      {sheets.map((s) => <li><a href={s.href} {...externalAttrs(s.href)}><span class="t-code">{s.no}</span> {s.title.text}</a></li>)}
-    </ul>
-  </nav>
-  {page.levels && (
-    <nav aria-label={t.levels}>
-      <p class="t-label ink-2">{t.levels}</p>
-      <ol role="list">{page.levels.map((l) => <li><a href={`#${l.id}`}>{l.label} <span class="t-code ink-2">{l.elev}</span></a></li>)}</ol>
+<dialog class="drawer" id="sv-drawer" data-dialog="drawer" aria-labelledby="sv-drawer-t" data-drawer>
+  <div class="drawer__sheet" data-drawer-sheet>
+    <div class="drawer__top">
+      <div class="drawer__grip" data-drawer-grip aria-hidden="true" title={t.handle}><span></span></div>
+      {/* on a case the drawer opens on its Levels: the head names the sheet only ("Sheets" heads its own section below) */}
+      <p id="sv-drawer-t" class="drawer__title t-label"><span class="drawer__sheetno t-code">{page.kind === '404' ? '—' : page.sheet}</span><span class:list={{ 'sr-only': isCase }}>{t.title}</span></p>
+      <form method="dialog" class="drawer__closef">
+        <button class="drawer__close t-label" value="close"><Icon name="close" size={14} />{t.close}</button>
+      </form>
+    </div>
+
+    <label class="drawer__search">
+      <Icon name="search" size={18} />
+      <span class="sr-only">{t.searchLabel}</span>
+      <input type="search" data-drawer-search placeholder={t.search} autocomplete="off" spellcheck="false" enterkeyhint="search" />
+    </label>
+
+    {isCase && r && (
+      <section class="drawer__sec" aria-labelledby="sv-drawer-levels">
+        <h2 id="sv-drawer-levels" class="drawer__h t-label">
+          <span>{t.levels}</span><span class="drawer__h-meta"><span class="t-code">{page.sheet}</span> · <Glyphs text={minutes(r.minutes)} /></span>
+        </h2>
+        <ol class="drawer__levels" role="list" data-drawer-levels data-slug={page.slug}>
+          {page.levels!.map((l, i) => (
+            <li>
+              <a class="lvrow" href={`#${l.id}`} data-level-index={i} aria-current={i === 0 ? 'location' : undefined}>
+                <span class="lvrow__trace" aria-hidden="true"><span></span></span>
+                <span class="lvrow__datum" aria-hidden="true"><Datum size={10} /></span>
+                <span class="lvrow__text">
+                  <span class="lvrow__label t-label-lg" data-v>{l.label}</span>
+                  <span class="lvrow__elev">{l.elev}</span>
+                </span>
+                <span class="lvrow__min t-label"><Glyphs text={minutes(l.minutes)} /></span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        <p class="drawer__sub t-label">{t.view}</p>
+        <ViewToggle minutes={r.minutes} planMinutes={r.planMinutes} class="drawer__view" />
+        {page.next && (
+          <a class="drawer__match" href={page.next.href} data-drawer-nav>
+            <span class="drawer__match-rule t-label" aria-hidden="true"><span>{t.matchLine}</span><MatchLine /></span>
+            <span class="drawer__match-body">
+              <span class="t-label">{fill(t.seeSheet, { no: page.next.sheet })}</span>
+              <span class="drawer__match-title" data-v>{page.next.title}</span>
+            </span>
+            <Icon name="arrow-right" size={18} />
+          </a>
+        )}
+      </section>
+    )}
+
+    <nav class="drawer__sec" aria-labelledby="sv-drawer-sheets">
+      <h2 id="sv-drawer-sheets" class="drawer__h t-label"><span>{t.sheets}</span></h2>
+      <ul class="drawer__sheets" role="list">
+        {rows.map((s) => (
+          <li>
+            <a class="shrow" href={s.href} {...externalAttrs(s.href)} aria-current={s.href === currentHref ? 'page' : undefined} data-drawer-nav={s.ext ? undefined : ''}>
+              <span class="shrow__no t-code">{s.ext ? <Icon name="arrow-up-right" size={14} /> : s.no}</span>
+              {s.hers ? <span class="shrow__t" data-v>{s.title}</span> : <span class="shrow__t">{s.title}</span>}
+              {s.href === currentHref && <span class="shrow__here" aria-hidden="true"><Datum size={10} /></span>}
+            </a>
+          </li>
+        ))}
+      </ul>
     </nav>
-  )}
+
+    <section class="drawer__sec drawer__settings" aria-labelledby="sv-drawer-settings">
+      <h2 id="sv-drawer-settings" class="drawer__h t-label"><span>{t.settings}</span></h2>
+      <PrefSwitch pref="motion" />
+      <PrefSwitch pref="theme" />
+    </section>
+  </div>
 </dialog>
+
 <script>
-  const dlg = document.querySelector<HTMLDialogElement>('dialog.drawer');
-  document.querySelectorAll<HTMLElement>('[data-drawer-open]').forEach((b) => b.addEventListener('click', () => dlg?.showModal()));
-  dlg?.addEventListener('click', (e) => { if (e.target === dlg || (e.target as Element).closest('a')) dlg.close(); });
+  import { listen } from '../../scripts/core/bus';
+  import { focusNoScroll, motionOK } from '../../scripts/core/dom';
+  import { landOn } from '../../scripts/core/shortcuts';
+  import { openPalette } from '../../scripts/palette/open';
+
+  const dlg = document.querySelector<HTMLDialogElement>('dialog[data-drawer]');
+  const sheet = dlg?.querySelector<HTMLElement>('[data-drawer-sheet]');
+  const openers = Array.from(document.querySelectorAll<HTMLElement>('[data-drawer-open]'));
+  const centre = () => openers.find((b) => b.offsetParent !== null) ?? openers[0];
+
+  if (dlg && sheet) {
+    const setExpanded = (v: boolean) => openers.forEach((b) => b.setAttribute('aria-expanded', String(v)));
+
+    /** Close; `instant` skips the slide (used right before navigating away, so the old snapshot has no drawer). */
+    const close = (instant = false) => {
+      if (!dlg.open) return;
+      if (instant) dlg.classList.add('is-instant');
+      dlg.close();
+    };
+
+    openers.forEach((b) => b.addEventListener('click', () => {
+      dlg.classList.remove('is-instant');
+      paintTrace();
+      dlg.showModal();
+      setExpanded(true);
+      // land on the sheet, not in the search field (no keyboard pop-up on phones)
+      focusNoScroll(sheet);
+    }));
+    // focus returns to the centre cell — unless the drawer closed to move the reader somewhere (a level, the list)
+    let keepFocus = false;
+    dlg.addEventListener('close', () => {
+      setExpanded(false);
+      dlg.style.removeProperty('transform');
+      const c = centre();
+      const moved = keepFocus || !!document.querySelector('dialog.palette[open]');
+      keepFocus = false;
+      if (c && !moved) c.focus({ preventScroll: true });
+    });
+    // the scrim: a click that lands on the <dialog> box itself (outside the sheet)
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+
+    // links: close first; in-page levels scroll (smooth for pointers when Motion is on), other sheets navigate
+    dlg.addEventListener('click', (e) => {
+      const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]');
+      if (!a || !dlg.contains(a)) return;
+      const href = a.getAttribute('href') ?? '';
+      if (href.startsWith('#')) {
+        const target = document.getElementById(href.slice(1));
+        if (!target) return;
+        e.preventDefault();
+        keepFocus = true;
+        close(true);
+        history.pushState(null, '', href);
+        // pointer → smooth when Motion is on; a keyboard "click" (detail 0) is instant (§4.9)
+        landOn(target, { block: 'start', smooth: (e as MouseEvent).detail !== 0 && motionOK() });
+        focusNoScroll(document.getElementById(`${target.id}-h`) ?? target);
+      } else if (a.target !== '_blank') {
+        close(true);
+      }
+    });
+
+    // the search field hands its query to the Sheet list (§4.2)
+    const field = dlg.querySelector<HTMLInputElement>('[data-drawer-search]');
+    if (field) {
+      const hand = () => {
+        const q = field.value;
+        field.value = '';
+        close(true);
+        openPalette({ query: q });
+      };
+      field.addEventListener('input', () => { if (field.value.trim()) hand(); });
+      field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); hand(); } });
+    }
+
+    // drag the grip down past 30% of the sheet to close
+    const grip = dlg.querySelector<HTMLElement>('[data-drawer-grip]');
+    if (grip) {
+      let y0 = 0;
+      let dy = 0;
+      let dragging = false;
+      grip.addEventListener('pointerdown', (e) => {
+        dragging = true; y0 = e.clientY; dy = 0;
+        grip.setPointerCapture(e.pointerId);
+        dlg.classList.add('is-dragging');
+      });
+      grip.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        dy = Math.max(0, e.clientY - y0);
+        dlg.style.transform = `translateY(${dy}px)`;
+      });
+      const end = () => {
+        if (!dragging) return;
+        dragging = false;
+        dlg.classList.remove('is-dragging');
+        if (dy > dlg.offsetHeight * 0.3) close();
+        else dlg.style.removeProperty('transform');
+      };
+      grip.addEventListener('pointerup', end);
+      grip.addEventListener('pointercancel', end);
+    }
+
+    // Levels: the current floor (WP5 → sv:level) and the reading trace (sessionStorage 'sv:trace:<slug>', SM4)
+    const list = dlg.querySelector<HTMLElement>('[data-drawer-levels]');
+    const rows = list ? Array.from(list.querySelectorAll<HTMLElement>('[data-level-index]')) : [];
+    listen('sv:level', (d) => {
+      if (!d || typeof d.index !== 'number') return;
+      rows.forEach((row, i) => { if (i === d.index) row.setAttribute('aria-current', 'location'); else row.removeAttribute('aria-current'); });
+    });
+    function paintTrace() {
+      if (!list) return;
+      let trace: unknown = null;
+      try { trace = JSON.parse(sessionStorage.getItem(`sv:trace:${list.dataset.slug}`) ?? 'null'); } catch { trace = null; }
+      rows.forEach((row, i) => {
+        const v = Array.isArray(trace) ? Number(trace[i]) : trace && typeof trace === 'object' ? Number((trace as Record<string, unknown>)[row.getAttribute('href')!.slice(1)]) : 0;
+        row.style.setProperty('--t', String(Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0));
+      });
+    }
+  }
 </script>
+
 <style>
-  .drawer { inline-size: 100%; max-inline-size: 100%; margin-block: auto 0; padding: var(--s-5) var(--m); background: var(--sheet); border: 0; border-block-start: var(--lw-border) solid var(--ink); }
-  .drawer::backdrop { background: var(--scrim); }
-  .drawer ul, .drawer ol { list-style: none; padding: 0; display: grid; gap: var(--s-2); margin-block: var(--s-2) var(--s-5); }
-  .drawer a { text-decoration: none; }
-  .drawer__close { float: inline-end; min-block-size: 44px; padding-inline: var(--s-3); border: var(--lw-object) solid var(--line-3); }
+  /* ── the dialog: a sheet pulled up from the bottom bar ── */
+  .drawer {
+    position: fixed; inset: auto 0 0 0; margin: 0; padding: 0; border: 0;
+    inline-size: 100%; max-inline-size: 100%; max-block-size: min(88svh, 100% - var(--s-7));
+    background: transparent; color: var(--ink); overflow: visible;
+    transform: translateY(100%);
+    transition: transform var(--dur-3) var(--ease-pen), overlay var(--dur-3) allow-discrete, display var(--dur-3) allow-discrete;
+  }
+  .drawer[open] { display: flex; flex-direction: column; transform: none; }
+  @starting-style { .drawer[open] { transform: translateY(100%); } }
+  .drawer::backdrop {
+    background: var(--scrim); opacity: 0;
+    transition: opacity var(--dur-3) var(--ease-ui), overlay var(--dur-3) allow-discrete, display var(--dur-3) allow-discrete;
+  }
+  .drawer[open]::backdrop { opacity: 1; }
+  @starting-style { .drawer[open]::backdrop { opacity: 0; } }
+  .drawer.is-instant, .drawer.is-instant::backdrop { transition: none; }
+
+  .drawer__sheet {
+    display: flex; flex-direction: column; gap: var(--s-5); min-block-size: 0; overflow-y: auto; overscroll-behavior: contain;
+    padding: 0 var(--m) calc(var(--s-5) + env(safe-area-inset-bottom));
+    background: var(--sheet); border-block-start: var(--lw-border) solid var(--ink);
+  }
+  .drawer__sheet:focus { outline: none; }
+  .drawer.is-dragging { transition: none; }
+
+  /* ── top: grip + sheet no. + Close ── */
+  .drawer__top {
+    position: sticky; inset-block-start: 0; z-index: var(--z-raised);
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    padding-block: var(--s-4) var(--s-3); margin-inline: calc(-1 * var(--m)); padding-inline: var(--m);
+    background: var(--sheet); border-block-end: var(--lw-object) solid var(--line-2);
+  }
+  .drawer__grip {
+    position: absolute; inset-block-start: 0; inset-inline: 30%; block-size: var(--s-5);
+    display: grid; place-items: center; cursor: grab; touch-action: none;
+  }
+  .drawer__grip span { inline-size: var(--s-8); block-size: var(--lw-cut); background: var(--line-3); }
+  /* centred on the Close button's box (the grip sits between them, so the title needs no clearance of its own) */
+  .drawer__title { display: flex; align-items: center; align-self: center; gap: var(--s-3); margin: 0; line-height: 1; color: var(--ink-2); }
+  .drawer__sheetno { color: var(--rust); font-size: var(--fs-label-lg); }
+  .drawer__close {
+    display: inline-flex; align-items: center; gap: var(--s-2); min-block-size: calc(var(--s-7) - var(--s-1)); padding-inline: var(--s-3);
+    border: var(--lw-object) solid var(--line-3); color: var(--ink); background: var(--sheet);
+  }
+  .drawer__close:hover { color: var(--rust-deep); border-color: var(--ink); }
+
+  /* ── search field ── */
+  .drawer__search {
+    display: flex; align-items: center; gap: var(--s-3); min-block-size: var(--s-7);
+    padding-inline: var(--s-4); border: var(--lw-border) solid var(--ink); background: var(--paper); color: var(--ink-2);
+  }
+  .drawer__search:focus-within { outline: var(--lw-cut) solid var(--focus); outline-offset: var(--lw-cut); }
+  .drawer__search input {
+    flex: 1 1 auto; min-inline-size: 0; block-size: var(--s-7); border: 0; background: transparent; outline: none;
+    font-family: var(--font-serif); font-size: var(--fs-lede-sm); color: var(--ink);
+  }
+  .drawer__search input::placeholder { color: var(--ink-3); opacity: 1; }
+  .drawer__search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+  /* ── sections ── */
+  .drawer__sec { display: grid; gap: var(--s-2); }
+  .drawer__h {
+    display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3);
+    margin: 0; padding-block-end: var(--s-2); border-block-end: var(--lw-border) solid var(--ink); color: var(--ink-2);
+  }
+  .drawer__h-meta { color: var(--ink-2); }
+  .drawer__h-meta .t-code { color: var(--rust); }
+  .drawer__sub { margin: var(--s-3) 0 0; color: var(--ink-2); }
+  .drawer ul, .drawer ol { list-style: none; margin: 0; padding: 0; }
+
+  /* Levels: floors with their reading trace (SM4) */
+  .lvrow {
+    --t: 0;
+    display: grid; grid-template-columns: calc(var(--s-2) + var(--lw-cut)) calc(var(--s-3) + var(--lw-cut)) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3);
+    min-block-size: var(--s-7); padding-block: var(--s-2); text-decoration: none; color: var(--ink);
+    border-block-end: var(--lw-object) solid var(--line-1);
+  }
+  .lvrow__trace { position: relative; align-self: stretch; border: var(--lw-object) solid var(--line-2); background: var(--paper); overflow: hidden; }
+  .lvrow__trace > span {
+    position: absolute; inset: 0; background: var(--hatch-acc);
+    transform: scaleY(var(--t)); transform-origin: 50% 0;
+  }
+  .lvrow__datum { display: grid; place-items: center; visibility: hidden; }
+  .lvrow[aria-current='location'] .lvrow__datum { visibility: visible; }
+  .lvrow[aria-current='location'] .lvrow__label { color: var(--rust); }
+  .lvrow__text { display: grid; gap: var(--lw-cut); min-inline-size: 0; }
+  .lvrow__elev { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: var(--lh-code); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .lvrow__min { color: var(--ink-3); }
+  .lvrow:hover .lvrow__label { color: var(--rust-deep); }
+
+  /* the View toggle and the Match line */
+  /* the View toggle (WP5's ViewToggle) as two full-width rows: its labels carry minutes and must not wrap mid-phrase */
+  .drawer :global(.drawer__view) { display: grid; grid-template-columns: minmax(0, 1fr); inline-size: 100%; }
+  .drawer :global(.drawer__view button) { min-block-size: var(--s-7); text-align: start; padding-inline: var(--s-4); }
+  .drawer__match {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-2) var(--s-4);
+    margin-block-start: var(--s-3); padding-block: var(--s-3); text-decoration: none; color: var(--ink);
+  }
+  .drawer__match-rule { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-3); color: var(--ink-2); }
+  .drawer__match-body { display: grid; gap: var(--s-1); }
+  .drawer__match-body .t-label { color: var(--rust); }
+  .drawer__match-title { font-family: var(--font-serif); font-size: var(--fs-index); font-weight: var(--wt-index); line-height: var(--lh-index); letter-spacing: var(--tr-index); text-wrap: balance; }
+  .drawer__match :global(.icon) { margin-block-end: calc(var(--s-1) + var(--lw-cut)); }
+  .drawer__match:hover .drawer__match-title { color: var(--rust-deep); }
+
+  /* Sheets */
+  .shrow {
+    display: grid; grid-template-columns: 4.25rem minmax(0, 1fr) auto; align-items: center; gap: var(--s-3);
+    min-block-size: var(--s-7); padding-block: var(--s-2); text-decoration: none; color: var(--ink);
+    border-block-end: var(--lw-object) solid var(--line-1);
+  }
+  .shrow__no { color: var(--ink-2); }
+  .shrow__t { font-family: var(--font-serif); font-size: var(--fs-body); line-height: var(--lh-code); text-wrap: pretty; }
+  .shrow[aria-current='page'] .shrow__no { color: var(--rust); }
+  .shrow:hover .shrow__t { color: var(--rust-deep); }
+  .shrow__here { color: var(--rust); }
+
+  .drawer__settings { gap: 0; }
+  .drawer__settings :global(.pswitch) { min-block-size: var(--s-7); border-block-end: var(--lw-object) solid var(--line-1); }
+
+  /* tablets: a centred sheet, not a full-width slab */
+  @media (min-width: 640px) {
+    .drawer { inline-size: min(100%, 40rem); margin-inline: auto; }
+    .drawer__sheet { border-inline: var(--lw-border) solid var(--ink); }
+  }
+  @media (min-width: 1024px) { .drawer { display: none !important; } }
+  @media print { .drawer { display: none !important; } }
 </style>
