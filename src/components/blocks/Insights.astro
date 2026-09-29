@@ -1,39 +1,129 @@
 ---
 /**
- * Insights · OWNER: WP4a (P0 functional stub). Rows (PFF Test): keynote 01 (chrome), her title, her sub (italic),
- * her items (leader list), her evidence crop on a plate. Plan view: title + sub only (items/img → .plan-hide).
+ * Insights · WP4a (SPEC §6.2 `insights`, PFF Test): one row per insight within the wide area — her text in 7/12
+ * (a keynote tag 01 — hanging in the gutter at ≥ 1600px, where it clears the Levels rail by ≥ 16px, inset beside her
+ * title below that —, her title in Newsreader 440, her sub in italic ink-2, her items as a leader list) beside her
+ * evidence crop in 5/12, on a plate (staging caps). The crops are ONE figure (FIG. c.n), lettered a b c; each opens in
+ * Enlarged detail. Rows are ruled. Below 1024 a row stacks: her text, then the crop at full width (capped), because a
+ * 5/12 crop of a UI screenshot is an unreadable thumbnail on a tablet.
+ * Plan view: title + sub only (items and crops are .plan-hide).
  */
+import LeaderList from './LeaderList.astro';
+import Plate from '../media/Plate.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
 import { fileOf } from '../../lib/staging';
 import { pad2 } from '../../lib/text';
 import { alt } from '../../data/alt';
-import Plate from '../media/Plate.astro';
 interface Props { block: Extract<Block, { t: 'insights' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+let k = 0;
+const rows = block.items.map((it, i) => {
+  const letter = it.img ? (ctx.figLetters?.[k++] ?? '') : '';
+  return { it, i, fig: it.img && ctx.fig ? `${ctx.fig}${letter}` : undefined };
+});
 ---
 <div {...blkAttrs('insights', ctx)}>
   <div class="blk__main">
     <ol class="insights" role="list">
-      {block.items.map((it, i) => (
-        <li class="insight">
+      {rows.map(({ it, i, fig }) => (
+        <li class:list={['insight', { 'insight--img': !!it.img }]}>
           <div class="insight__text">
-            <span class="insight__no t-code ink-3" data-chrome aria-hidden="true">{pad2(i + 1)}</span>
-            <Tag class="insight__t t-index" data-v set:html={rich(it.title)} />
-            {it.sub && <p class="insight__sub t-deck ink-2" data-v set:html={rich(it.sub)} />}
-            <ul class="leaders t-body ink-2 plan-hide">{it.items.map((x) => <li data-v set:html={rich(x)} />)}</ul>
+            <span class="insight__no" aria-hidden="true" data-chrome>{pad2(i + 1)}</span>
+            <Tag class="insight__t" data-v set:html={rich(it.title)} />
+            {it.sub && <p class="insight__sub" data-v set:html={rich(it.sub)} />}
+            <LeaderList items={it.items.map((x) => rich(x))} size="sm" class="insight__items plan-hide" />
           </div>
-          {it.img && <div class="insight__img plan-hide"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} /></div>}
+          {it.img && (
+            <figure class="insight__fig plan-hide">
+              <Plate layers={[it.img]} alt={alt(fileOf(it.img))} fig={fig ? { no: fig } : undefined} />
+              {fig && <figcaption class="insight__cap" data-chrome>{fig}</figcaption>}
+            </figure>
+          )}
         </li>
       ))}
     </ol>
   </div>
 </div>
 <style>
-  .insights { list-style: none; padding: 0; display: grid; gap: var(--s-7); }
-  .insight { display: grid; gap: var(--s-5); grid-template-columns: 7fr 5fr; align-items: start; }
-  @media (max-width: 767.98px) { .insight { grid-template-columns: minmax(0, 1fr); } }
-  .insight__img { max-inline-size: 420px; }
+  .insights { list-style: none; margin: 0; padding: 0; }
+  .insight {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--s-7);
+    align-items: start;
+    padding-block: var(--s-6);
+    border-block-start: var(--lw-object) solid var(--line-2);
+  }
+  .insight:first-child { padding-block-start: var(--s-5); }
+  .insight:last-child { border-block-end: var(--lw-object) solid var(--line-2); }
+  .insight__text { position: relative; min-inline-size: 0; }
+  .insight__no {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: calc(0.5 * var(--fs-lede-sm) * var(--lh-lede) - var(--s-3));   /* centred on her title's first line */
+    display: grid;
+    place-items: center;
+    inline-size: calc(var(--s-5) + var(--s-1));   /* 28 × 24, the keynote tag */
+    block-size: var(--s-5);
+    border: var(--lw-object) solid var(--ink);
+    background: var(--sheet);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    line-height: 1;
+    letter-spacing: var(--tr-code);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .insight__t, .insight__sub, .insight__text :global(.insight__items) { margin-inline-start: calc(var(--s-5) + var(--s-1) + var(--s-4)); }
+  .insight__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-lede-sm);
+    font-weight: var(--wt-h);
+    line-height: var(--lh-lede);
+    letter-spacing: var(--tr-index);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .insight__sub {
+    margin-block-start: var(--s-1);
+    font-family: var(--font-serif);
+    font-size: var(--fs-body);
+    font-style: italic;
+    line-height: var(--lh-lede);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .insight__text :global(.insight__items) { margin-block-start: var(--s-4); }
+  .insight__fig { display: grid; gap: var(--s-2); justify-items: start; min-inline-size: 0; }
+  .insight__fig :global(.plate) { inline-size: 100%; }
+  .insight__cap {
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    line-height: var(--lh-code);
+    letter-spacing: var(--tr-code);
+    color: var(--ink-3);
+  }
+  /* ≥ 1600: the keynote tag hangs in the gutter (as the keynotes in List.astro: 4–8px from her title, ≥ 16px clear of
+     the sticky Levels rail), so her title aligns with the text above. Below that it sits inset, beside her title. */
+  @media (min-width: 1600px) {
+    .insight__no { inset-inline-start: calc(-1 * min(var(--s-5) + var(--s-1) + var(--s-2), var(--gap, var(--s-7)) - var(--s-4))); }
+    .insight__t, .insight__sub, .insight__text :global(.insight__items) { margin-inline-start: 0; }
+  }
+  /* < 1024: a row stacks — her text, then the evidence crop across the column (capped, so a tall crop stays a crop) */
+  @media (max-width: 1023.98px) {
+    .insight { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-5); padding-block: var(--s-5); }
+    .insight__fig { max-inline-size: calc(var(--s-10) * 3 + var(--s-6) + var(--s-1)); }   /* 420px, the staging cap */
+  }
+  @media (max-width: 767.98px) {
+    /* phones: the tag stands above the title, so her text keeps the full measure */
+    .insight__no { position: static; margin-block-end: var(--s-3); }
+    .insight__t, .insight__sub, .insight__text :global(.insight__items) { margin-inline-start: 0; }
+  }
+  :global(html[data-view='plan']) .insight { grid-template-columns: minmax(0, 1fr); }
 </style>

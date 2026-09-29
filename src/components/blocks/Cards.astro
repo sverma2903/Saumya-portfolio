@@ -1,41 +1,263 @@
 ---
 /**
- * Cards · OWNER: WP4a (P0 functional stub). <ul class="cards cards--{variant}" style="--cols:{cols}">:
- * plain = schedule (marks 01…, optional image well, kicker, title, html) · icon = icon well + title + html ·
- * numbered = boxed numeral + title + html. Titles use h{ctx.hl}. Plan view: titles + kickers only (html → .plan-hide).
+ * Cards · WP4a (SPEC §6.2 `cards`). <ul class="cards cards--{variant}">: her cols at ≥ 1024px, 2 at 768–1023, 1 below.
+ * Title-only icon cards (PFF pains, Orbit trio, Orbit MVP, Educademy app logos) keep 2–3 columns on phones.
+ *
+ *  plain    → a SCHEDULE (door/window schedule): bordered cells (outer --lw-border ink, inner --line-2), a chrome mark
+ *             01… top-left (omitted when her kickers already number the cells: "GOAL 1"), an optional image well (--plate; the well takes the pictogram's own aspect when the set
+ *             shares one, so her white canvas IS the well — no seam), her kicker (--fs-label, --acc), her title
+ *             (h{hl}, Newsreader 440), her html (--fs-body-sm, ink-2). A last cell alone in its row spans the row.
+ *  icon     → a square icon well, 112px (104 md, 88 phones) on --plate, her icon contained in it: every tile is the
+ *             same size and her opaque-white canvases disappear into the plate; transparent icons float on it,
+ *             her title (Newsreader 440), her html; a --line-1 rule tops each card; left-aligned.
+ *  numbered → a boxed numeral 01 (Newsreader 300 in a 56px --lw-border square, chrome), her title, her html.
+ *             cols: 1 (Orbit's five concepts) → a vertical list, numeral beside the text.
+ * Icons get the per-file optical scale from media-staging (§6.4) inside an overflow-clipped well: only her empty
+ * canvas margin can leave the well. Icons are not figures (not enlargeable) → plain <img>, lazy, with dims.
+ * Wide when cols ≥ 4, or a plain set with images (lib/blocks-ctx resolveWide); a text-only plain schedule, or an
+ * icon / numbered set with her html, of ≥ 3 columns goes wide at ≥ 1280 (.cards-wide-lg, below).
+ * Columns: hers ≥ 1024; 768–1023: 2, or 3 for an odd set of ≥ 3 columns (no lone card); < 768: 1.
+ * Plan view: titles and kickers only — wells and html are .plan-hide.
  */
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { rich } from '../../lib/rich';
-import { fileOf } from '../../lib/staging';
+import { fileOf, srcOf, stagingOf } from '../../lib/staging';
 import { pad2 } from '../../lib/text';
 import { alt } from '../../data/alt';
-import Plate from '../media/Plate.astro';
 interface Props { block: Extract<Block, { t: 'cards' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const variant = block.variant ?? 'plain';
-const cols = block.cols ?? block.items.length;
+const n = block.items.length;
+const cols = Math.max(1, block.cols ?? n);
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+const titlesOnly = block.items.every((it) => !it.html);
+// her kickers already number a schedule ("GOAL 1"): then our chrome mark 01 would say it twice — drop it
+const marks = variant === 'plain' && !block.items.some((it) => it.kicker);
+const list = variant === 'numbered' && cols === 1;
+// ≥ 3 columns of her body copy held to the 680px text column wrap at ≈ 20–25 characters (6–7-line ragged stacks,
+// orphans) while the notes column beside them is empty: at ≥ 1280 such a set spans text + notes (≈ 968px at 1440,
+// ≈ 40 characters a cell). Text-only plain schedules, and icon / numbered sets with her html; title-only sets and
+// plain schedules with image wells keep their place (the latter are already wide).
+const schedWide = !ctx.wide && !list && cols >= 3 && (
+  (variant === 'plain' && block.items.every((it) => !it.img)) ||
+  ((variant === 'icon' || variant === 'numbered') && !titlesOnly)
+);
+
+// columns per breakpoint: lg (≥ 1024) · md (768–1023) · sm (< 768)
+const lg = cols;
+// md: 2 columns only when they fill their rows; an odd set of a ≥ 3-column layout keeps 3 (a trio stays a trio, five
+// read 3 + 2) instead of leaving one card alone beside an empty cell
+const md = list ? 1 : cols >= 3 && n % 2 === 1 ? 3 : Math.min(cols, 2);
+const sm = list ? 1 : variant === 'icon' && titlesOnly ? (n % 3 === 0 ? 3 : 2) : 1;
+// a schedule's last cell spans what is left of its row (the bordered grid never shows an empty cell)
+const span = (c: number) => (n % c === 0 ? 1 : c - ((n - 1) % c));
+const lastSpan = `--_sp-lg: ${span(lg)}; --_sp-md: ${span(md)}; --_sp-sm: ${span(sm)}`;
+
+// image wells: the pictogram's own aspect when the whole set shares one (within 2%)
+const imgs = block.items.map((it) => it.img).filter((m): m is NonNullable<typeof m> => !!m);
+const aspects = imgs.map((m) => m.w / m.h);
+const sharedAspect = aspects.length > 0 && aspects.every((a) => Math.abs(a / aspects[0] - 1) < 0.02) ? aspects[0] : null;
+const icon = (m: NonNullable<(typeof block.items)[number]['img']>) => {
+  const file = fileOf(m);
+  const a = m.w / m.h;
+  const scale = stagingOf(file).scale ?? 1;
+  return {
+    file, a, scale, src: srcOf(file),
+    // icon wells: the icon size is the height; the width follows her icon's aspect
+    box: `--_a: ${a.toFixed(4)}; --_s: ${scale}`,
+  };
+};
 ---
-<div {...blkAttrs('cards', ctx)}>
+<div {...blkAttrs('cards', ctx, schedWide && 'cards-wide-lg')}>
   <div class="blk__main">
-    <ul class={`cards cards--${variant}`} style={`--cols: ${cols}`} role="list">
-      {block.items.map((it, i) => (
-        <li class="card">
-          {variant !== 'icon' && <span class="card__no t-code ink-3" data-chrome aria-hidden="true">{pad2(i + 1)}</span>}
-          {it.img && <div class="card__well"><Plate layers={[it.img]} alt={alt(fileOf(it.img))} frame="bare" /></div>}
-          {it.kicker && <p class="card__kicker t-label rust" data-v>{it.kicker}</p>}
-          <Tag class="card__title t-index" data-v set:html={rich(it.title)} />
-          {it.html && <p class="card__html t-body-sm ink-2 plan-hide" data-v set:html={rich(it.html)} />}
-        </li>
-      ))}
+    <ul
+      class:list={['cards', `cards--${variant}`, { 'cards--list': list, 'cards--titles': titlesOnly, 'cards--shared': !!sharedAspect }]}
+      role="list"
+      style={`--_c-lg: ${lg}; --_c-md: ${md}; --_c-sm: ${sm}${sharedAspect ? `; --_well-a: ${sharedAspect.toFixed(4)}` : ''}`}
+    >
+      {block.items.map((it, i) => {
+        const im = it.img ? icon(it.img) : null;
+        return (
+          <li class="card" style={variant === 'plain' && i === n - 1 ? lastSpan : undefined}>
+            {marks && <span class="card__mark" aria-hidden="true" data-chrome>{pad2(i + 1)}</span>}
+            {variant === 'numbered' && <span class="card__num" aria-hidden="true" data-chrome>{pad2(i + 1)}</span>}
+            {im && (
+              <div class:list={['card__well', 'plan-hide', variant === 'plain' ? 'card__well--plain' : 'card__well--icon']} style={im.box}>
+                <img src={im.src} width={it.img!.w} height={it.img!.h} alt={alt(im.file)} loading="lazy" decoding="async" />
+              </div>
+            )}
+            <div class="card__body">
+              {it.kicker && <p class="card__kicker" data-v>{it.kicker}</p>}
+              <Tag class="card__t" data-v set:html={rich(it.title)} />
+              {it.html && <p class="card__html plan-hide" data-v set:html={rich(it.html)} />}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   </div>
 </div>
 <style>
-  .cards { list-style: none; padding: 0; display: grid; gap: var(--s-5); grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
-  @media (max-width: 1023.98px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 767.98px) { .cards { grid-template-columns: minmax(0, 1fr); } }
-  .card { display: grid; gap: var(--s-2); align-content: start; border-block-start: var(--lw-object) solid var(--line-1); padding-block-start: var(--s-3); }
-  .card__well { max-inline-size: 112px; }
+  .cards {
+    --_c: var(--_c-sm);
+    --_icon: calc(var(--s-9) - var(--s-2));     /* 88px icon wells on phones */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--_c), minmax(0, 1fr));
+  }
+  @media (min-width: 768px) { .cards { --_c: var(--_c-md); --_icon: calc(var(--s-9) + var(--s-2)); } }      /* 104 */
+  @media (min-width: 1024px) { .cards { --_c: var(--_c-lg); --_icon: calc(var(--s-10) - var(--s-4)); } }    /* 112 */
+
+  .card { min-inline-size: 0; display: flex; flex-direction: column; }
+  .card__body { display: flex; flex-direction: column; gap: var(--s-2); }
+  .card__t {
+    font-family: var(--font-serif);
+    font-size: var(--fs-body);
+    font-weight: var(--wt-h);                /* 440 */
+    line-height: var(--lh-lede);
+    letter-spacing: var(--tr-lede);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .card__html {
+    font-family: var(--font-serif);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .card__kicker {
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: var(--wt-label);
+    line-height: var(--lh-label);
+    letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--acc);
+  }
+
+  /* ── plain: a schedule ─────────────────────────────────────────────── */
+  /* the inner rules are the 1px grid gaps showing the rule colour through; cells are --sheet (no clipping, so a
+     focus ring inside a cell is never cut) */
+  .cards--plain {
+    gap: var(--lw-object);
+    border: var(--lw-border) solid var(--ink);
+    background: var(--line-2);
+  }
+  .cards--plain > .card {
+    padding: var(--s-4) var(--s-5) var(--s-5);
+    background: var(--sheet);
+  }
+  .cards--plain > .card:last-child { grid-column: span var(--_sp-sm, 1); }
+  @media (min-width: 768px) { .cards--plain > .card:last-child { grid-column: span var(--_sp-md, 1); } }
+  @media (min-width: 1024px) { .cards--plain > .card:last-child { grid-column: span var(--_sp-lg, 1); } }
+  .card__mark {
+    align-self: start;
+    margin-block-end: var(--s-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    line-height: var(--lh-code);
+    letter-spacing: var(--tr-code);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+  }
+  .card__well--plain {
+    position: relative;
+    overflow: hidden;
+    margin-block-end: var(--s-4);
+    block-size: var(--s-10);                 /* 128px; the pictogram contained */
+    background: var(--plate);
+    outline: var(--lw-object) solid var(--line-1);
+    outline-offset: calc(-1 * var(--lw-object));
+  }
+  .cards--shared .card__well--plain { block-size: auto; aspect-ratio: var(--_well-a); }
+  .card__well--plain img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: contain;
+    transform: scale(var(--_s, 1));
+  }
+  @media (max-width: 767.98px) {
+    .card__well--plain { block-size: calc(var(--s-10) - var(--s-4)); }     /* 112px */
+  }
+
+  /* ── icon ──────────────────────────────────────────────────────────── */
+  .cards--icon { gap: var(--s-6) var(--s-5); }
+  .cards--icon > .card {
+    padding-block-start: var(--s-4);
+    border-block-start: var(--lw-object) solid var(--line-1);
+  }
+  .card__well--icon {
+    position: relative;
+    overflow: hidden;
+    align-self: flex-start;
+    inline-size: var(--_icon);                 /* SPEC: a square well, max 112px — every tile identical, titles align */
+    isolation: isolate;                        /* the icon's multiply blends with the plate only */
+    max-inline-size: 100%;
+    aspect-ratio: 1;
+    margin-block-end: var(--s-4);
+    background: var(--plate);
+    outline: var(--lw-object) solid var(--line-1);
+    outline-offset: calc(-1 * var(--lw-object));
+  }
+  /* her icon sits inside the plate with a real margin: art that runs to its canvas edge (a clock, a gear) floats
+     instead of touching the well outline; opaque-white canvases still vanish into the plate (multiply) */
+  .card__well--icon { padding: var(--s-3); }
+  .card__well--icon img {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: contain;                       /* her icon whole inside the square */
+    transform: scale(var(--_s, 1));
+    mix-blend-mode: multiply;                  /* her opaque-white canvas takes the plate's tone: no seam (file untouched) */
+  }
+
+  /* ── numbered ──────────────────────────────────────────────────────── */
+  .cards--numbered { gap: var(--s-6) var(--s-5); }
+  .card__num {
+    display: grid;
+    place-items: center;
+    inline-size: calc(var(--s-7) + var(--s-2));     /* 56px */
+    aspect-ratio: 1;
+    margin-block-end: var(--s-4);
+    border: var(--lw-border) solid var(--ink);
+    font-family: var(--font-serif);
+    font-size: calc(var(--fs-stat) * 0.6);           /* Newsreader 300 · 36px at 1440 */
+    font-weight: var(--wt-stat);
+    line-height: 1;
+    letter-spacing: var(--tr-stat);
+    font-variant-numeric: tabular-nums lining-nums;
+    color: var(--ink);
+  }
+  /* cols: 1 → a vertical list: numeral beside her text, hairlines between */
+  .cards--list { gap: 0; }
+  .cards--list > .card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--s-5);
+    align-items: start;
+    padding-block: var(--s-5);
+    border-block-start: var(--lw-object) solid var(--line-1);
+  }
+  .cards--list > .card:last-child { border-block-end: var(--lw-object) solid var(--line-1); }
+  .cards--list .card__num { margin-block-end: 0; }
+  .cards--list .card__body { padding-block-start: var(--s-1); }
+  @media (max-width: 767.98px) {
+    .card__num { inline-size: var(--s-7); font-size: calc(var(--fs-stat) * 0.7); }
+    .cards--list > .card { column-gap: var(--s-4); }
+  }
+
+  /* ≥ 3-column sets of her body copy: span text + notes at ≥ 1280 (see schedWide) */
+  @media (min-width: 1280px) {
+    :global(.blk.cards-wide-lg:not(.blk--nested) > .blk__main) { grid-column: text-start / notes-end; }
+  }
+
+  @media print {
+    .cards { break-inside: avoid; }
+  }
 </style>

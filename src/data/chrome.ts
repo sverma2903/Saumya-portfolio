@@ -216,8 +216,19 @@ export const chrome = {
   /** WP4a · text and data blocks */
   wp4a: {
     permalink: 'Permalink',
+    /** the detail bubble's accessible name. It starts with the bubble's visible text, written as the spec writes the
+     *  bubble ("1/A-101": the two numbers are adjacent spans, so assistive tech and axe read them as one run), then
+     *  says where the link goes (WCAG 2.5.3 label in name, 2.4.4 link purpose). */
+    permalinkLabel: '{n}/{sheet}, permalink to {title}',
     itemsOmitted: '+ {n} items omitted',
+    itemOmitted: '+ {n} item omitted',
     rev: 'Rev.',
+    /** the revision cloud's delta, for assistive tech ("Rev. 1") */
+    revNo: 'Rev. {n}',
+    /** stats: the sidenote marker's accessible name */
+    sidenote: 'Note {n}',
+    /** CAD layout tabs (Educademy personas): the tablist's name */
+    tabs: '{fig}, layout tabs',
   },
 
   /** WP4b · media system + Enlarged detail */

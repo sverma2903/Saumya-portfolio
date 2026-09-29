@@ -1,6 +1,7 @@
 ---
 /**
- * Lede · OWNER: WP4a (P0 functional stub). <p class="lede lede--{sm|md|lg}" data-v>; her <mark> is the ochre band.
+ * Lede · WP4a. <p class="lede lede--{sm|md|lg}" data-v> (SPEC §6.2 `lede`): md → --fs-lede (380), sm → --fs-lede-sm,
+ * lg → --fs-lede-lg (330) at max 20ch. Ink. Her <mark> is the ochre band (base.css); her <strong> is 620.
  * Plan view: keep.
  */
 import type { Block } from '../../lib/blocks';
@@ -9,11 +10,18 @@ import { rich } from '../../lib/rich';
 interface Props { block: Extract<Block, { t: 'lede' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const size = block.size ?? 'md';
-const role = size === 'lg' ? 't-lede-lg' : size === 'sm' ? 't-lede-sm' : 't-lede';
 ---
 <div {...blkAttrs('lede', ctx)}>
-  <p class={`lede lede--${size} ${role} blk__main`} data-v set:html={rich(block.html)} />
+  <p class={`blk__main lede lede--${size}`} data-v set:html={rich(block.html)} />
 </div>
 <style>
-  .lede--lg { max-inline-size: 20ch; }
+  .lede {
+    font-family: var(--font-serif);
+    color: var(--ink);
+    text-wrap: pretty;
+    hanging-punctuation: first;
+  }
+  .lede--md { font-size: var(--fs-lede); font-weight: var(--wt-lede); line-height: var(--lh-lede); letter-spacing: var(--tr-lede); }
+  .lede--sm { font-size: var(--fs-lede-sm); font-weight: var(--wt-lede-sm); line-height: var(--lh-lede-sm); letter-spacing: var(--tr-lede-sm); }
+  .lede--lg { font-size: var(--fs-lede-lg); font-weight: var(--wt-lede-lg); line-height: var(--lh-lede-lg); letter-spacing: var(--tr-lede-lg); max-inline-size: 20ch; text-wrap: balance; }
 </style>

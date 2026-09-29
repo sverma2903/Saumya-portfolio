@@ -1,30 +1,160 @@
 ---
 /**
- * Tabs · OWNER: WP4a (P0 functional stub). CAD layout tabs (Educademy personas): full-width persona images with sheet
- * tabs (role=tablist, roving tabindex) along the bottom edge; inactive panels hidden. P0 renders the no-JS version:
- * every panel stacked with her label as its title. Print: all panels. Plan view: keep.
+ * Tabs · WP4a (SPEC §6.2 `tabs`): CAD layout tabs for Educademy's personas. The figure is wide; each persona image
+ * renders at the full wide width (her grey persona text needs it). Sheet tabs with her labels (Parent · Teacher ·
+ * Student) hang from the bottom edge of the sheet like CAD layout tabs: the active tab is continuous with the sheet
+ * (--plate, no top rule), the others sit behind it (--paper-2). scripts/case/tabs.ts runs the WAI-ARIA pattern.
+ * One figure (FIG. c.n), lettered a b c (chrome); every panel opens in Enlarged detail.
+ * No JS / print: every panel, stacked, each under her label as its heading. With JS (html.js, before first paint)
+ * only the first panel shows, so there is no layout shift when the script arrives. Plan view: keep.
  */
+import Plate from '../media/Plate.astro';
 import type { Block } from '../../lib/blocks';
 import { blkAttrs, type BlockCtx } from '../../lib/blocks-ctx';
 import { fileOf } from '../../lib/staging';
 import { alt } from '../../data/alt';
-import Plate from '../media/Plate.astro';
+import { chrome, fill } from '../../data/chrome';
 interface Props { block: Extract<Block, { t: 'tabs' }>; ctx: BlockCtx }
 const { block, ctx } = Astro.props;
 const Tag = `h${ctx.hl}` as 'h3' | 'h4';
+const tid = (i: number) => `${ctx.id}-tab${i}`;
+const pid = (i: number) => `${ctx.id}-panel${i}`;
+const letter = (i: number) => ctx.figLetters?.[i] ?? '';
+const listLabel = fill(chrome.wp4a.tabs, { fig: ctx.fig ?? '' }).replace(/^,\s*/, '');
 ---
 <div {...blkAttrs('tabs', ctx)}>
-  <div class="blk__main tabs">
-    {block.items.map((it, i) => (
-      <div class="tabs__panel">
-        <Tag class="tabs__label t-label-lg" data-v>{it.label}</Tag>
-        <Plate layers={[it.media]} alt={alt(fileOf(it.media))} fig={ctx.fig ? { no: `${ctx.fig}${ctx.figLetters?.[i] ?? ''}` } : undefined} />
+  <div class="blk__main tabs" data-tabs>
+    <div class="tabs__bar">
+      <div class="tabs__list" role="tablist" aria-label={listLabel} data-js-only>
+        {block.items.map((it, i) => (
+          <button type="button" class="tabs__tab" role="tab" id={tid(i)} aria-controls={pid(i)} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>
+            {letter(i) && <span class="tabs__code" aria-hidden="true" data-chrome>{letter(i)}</span>}<span class="tabs__name" data-v>{it.label}</span>
+          </button>
+        ))}
       </div>
-    ))}
-    {ctx.fig && <p class="t-code ink-3" data-chrome>{ctx.fig}</p>}
+      {ctx.fig && <p class="tabs__fig" data-chrome>{ctx.fig}</p>}
+    </div>
+    <div class="tabs__sheet">
+      {block.items.map((it, i) => (
+        <div class="tabs__panel" id={pid(i)} data-panel>
+          <Tag class="tabs__label" data-v>{it.label}</Tag>
+          <Plate layers={[it.media]} alt={alt(fileOf(it.media))} fig={ctx.fig ? { no: `${ctx.fig}${letter(i)}` } : undefined} />
+        </div>
+      ))}
+    </div>
   </div>
+  <script>
+    // inside the block root: a script rendered between blocks would break the .blk + .blk rhythm (base.css)
+    import { initTabs } from '../../scripts/case/tabs';
+    initTabs();
+  </script>
 </div>
 <style>
-  .tabs { display: grid; gap: var(--s-6); }
-  .tabs__panel { display: grid; gap: var(--s-3); }
+  /* the tablist comes first in the DOM (WAI-ARIA: Tab moves from the active tab into its panel) and is drawn at the
+     sheet's bottom edge, where CAD layout tabs hang */
+  .tabs { display: flex; flex-direction: column; }
+  .tabs__sheet { order: 0; display: grid; gap: var(--s-6); }
+  .tabs__bar { order: 1; }
+  .tabs__panel { display: grid; gap: var(--s-3); min-inline-size: 0; }
+  .tabs__panel:focus-visible { outline-offset: var(--s-1); }
+  .tabs__label {
+    font-family: var(--font-sans);
+    font-size: var(--fs-label-lg);
+    font-weight: var(--wt-label-lg);
+    line-height: var(--lh-label-lg);
+    letter-spacing: var(--tr-label-lg);
+    font-variation-settings: var(--wdth-label);
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  /* with JS the tabs name the panels and only one panel shows (set before first paint: no shift) */
+  :global(html.js) .tabs__label { display: none; }
+  :global(html.js) .tabs:not(.is-ready) .tabs__panel + .tabs__panel { display: none; }
+  /* with JS the panels share one sheet: a --plate mat the active tab continues into (her persona PNGs are a light
+     grey of their own, so the mat — not the image — is what the tab is cut from) */
+  :global(html.js) .tabs__sheet {
+    gap: 0;
+    padding: var(--s-4);
+    background: var(--plate);
+    border: var(--lw-object) solid var(--line-3);
+  }
+
+  .tabs__bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin-block-start: var(--s-3);
+  }
+  :global(html.js) .tabs__bar { margin-block-start: calc(-1 * var(--lw-object)); }   /* the tabs hang from the mat's bottom edge */
+  .tabs__list { display: flex; flex-wrap: wrap; }
+  .tabs__tab {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    min-block-size: calc(var(--s-7) - var(--s-1));   /* 44px target */
+    padding: var(--s-2) var(--s-4) var(--s-3);
+    /* one outline at the mat/tab joint: no tab draws a top edge. An inactive tab hangs just below the mat's bottom
+       edge (that edge is its top); the active tab starts ON it and covers it between its own sides, so its side
+       borders run on from the mat's edge pixel-for-pixel (no nick, no overlap at the corners) */
+    margin-block-start: var(--lw-object);
+    margin-inline-end: calc(-1 * var(--lw-object));
+    border: var(--lw-object) solid var(--line-2);
+    border-block-start: 0;
+    background: var(--paper-2);
+    color: var(--ink-2);
+    font-family: var(--font-sans);
+    font-size: var(--fs-ui);
+    font-weight: var(--wt-ui);
+    line-height: var(--lh-ui);
+    font-variation-settings: var(--wdth-ui);
+    transition: color var(--dur-1) var(--ease-ui), background-color var(--dur-1) var(--ease-ui);
+  }
+  .tabs__tab:hover { color: var(--ink); background: var(--sheet); }
+  .tabs__tab[aria-selected='true'] {
+    position: relative;
+    z-index: var(--z-raised);
+    color: var(--ink);
+    background: var(--plate);
+    margin-block-start: 0;
+    padding-block-start: calc(var(--s-2) + var(--lw-object));   /* same bottom edge as the inactive tabs */
+    border-color: var(--line-3);                  /* continuous with the sheet's mat above */
+    font-weight: var(--wt-label);
+  }
+  .tabs__tab:focus-visible { outline-offset: calc(var(--s-1) / 2); }
+  .tabs__code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-code-sm);
+    font-weight: var(--wt-code-sm);
+    letter-spacing: var(--tr-code-sm);
+    color: var(--ink-3);
+  }
+  .tabs__tab[aria-selected='true'] .tabs__code { color: var(--rust); }
+  .tabs__fig {
+    padding-block-start: var(--s-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-code);
+    font-weight: var(--wt-code);
+    letter-spacing: var(--tr-code);
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  /* Dusk: the sheet stays a light print (--plate never inverts), so the active tab, a piece of it, takes the dark
+     ground colour as its ink (--paper is the dark ground in Dusk: ≈ 16:1 on --plate) */
+  :global(html[data-theme='dusk']) .tabs__tab[aria-selected='true'],
+  :global(html[data-theme='dusk']) .tabs__tab[aria-selected='true'] .tabs__code { color: var(--paper); }
+  @media (max-width: 767.98px) {
+    :global(html.js) .tabs__sheet { padding: var(--s-2); }
+    .tabs__bar { flex-wrap: wrap; row-gap: 0; }
+    .tabs__list { flex: 1 1 100%; flex-wrap: nowrap; }
+    .tabs__tab { flex: 1 1 0; justify-content: center; min-inline-size: 0; padding-inline: var(--s-2); }
+    .tabs__fig { flex: 1 1 100%; text-align: end; padding-block-start: var(--s-2); }
+  }
+  @media print {
+    .tabs__panel[hidden], :global(html.js) .tabs:not(.is-ready) .tabs__panel + .tabs__panel { display: grid !important; }
+    .tabs__label { display: block !important; }
+    .tabs__sheet { gap: 6mm !important; padding: 0 !important; background: none !important; border: 0 !important; }
+    .tabs__list { display: none !important; }
+    .tabs__bar { margin: 0 !important; }
+  }
 </style>
