@@ -1,7 +1,20 @@
 ---
-/** LegacyAnchors · OWNER: WP5 (P0 functional stub). Framer-era aliases: empty <span id> at the top of the chapter (§5.2.9). */
+/**
+ * LegacyAnchors · WP5. Framer-era section anchors (SPEC §5.2.9): an empty <span id> at the top of the target chapter,
+ * so /cloudflare#research lands on Empathize with no JS. Absolutely placed at the chapter's top edge (the chapter is
+ * position: relative), so the span never takes a cell of the chapter grid, and it lands exactly like the chapter id.
+ */
 import { aliasesFor } from '../../data/legacy-anchors';
 interface Props { slug: string; sectionId: string }
 const { slug, sectionId } = Astro.props;
 ---
-{aliasesFor(slug, sectionId).map((a) => <span id={a} class="legacy-anchor" aria-hidden="true"></span>)}
+{aliasesFor(slug, sectionId).map((a) => <span id={a} class="legacy-anchor" aria-hidden="true" data-alias-of={sectionId}></span>)}
+
+<style>
+  .legacy-anchor {
+    position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 1px; block-size: 1px;
+    scroll-margin-block-start: var(--s-5);
+    pointer-events: none;
+  }
+  @media (max-width: 767.98px) { .legacy-anchor { scroll-margin-block-start: var(--s-3); } }
+</style>

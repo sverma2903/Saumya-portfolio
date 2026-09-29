@@ -9,6 +9,12 @@
  *   "Surfacing the S3 API endpoint", "Adding a shortcut link to the token creation flow",
  *   "Make per-bucket token creation easy to find."
  */
+import type { Block, CaseStudy } from '../lib/blocks';
+import { blockId, splitChildId } from '../lib/ids';
+import { boldPieces } from '../lib/planview';
+import { normalize, stripHtml } from '../lib/text';
+import { findBlock } from '../lib/verbatim';
+
 export interface Decision {
   considered: string;
   decided: string;
@@ -81,3 +87,57 @@ export const THREE_CHANGES = [
   'Adding a shortcut link to the token creation flow',
   'Make per-bucket token creation easy to find.',
 ] as const;
+
+// ─────────────────────────── build-time resolution (WP5) ───────────────────────────
+
+/** Where a decision lives: the block its `decided` half is in (else its `considered` half), SPEC SM5b. */
+export interface DecisionAnchor {
+  id: string;            // block id (lib/ids.ts) — the LEVEL link's target
+  sectionId: string;
+  sectionIndex: number;  // 0-based
+  sectionLabel: string;  // her label, the LEVEL cell's text
+}
+export interface ResolvedDecision extends Decision {
+  no: number;                 // 1-based (D-01…)
+  anchor: DecisionAnchor | null;
+  /** `plus: 'three-changes'`: her <strong> lead-ins of the list that follows the decided sentence, read from her content */
+  plusItems: string[];
+}
+
+/** Every top-level block and split child of a case, by id, in document order. */
+function blockIndex(cs: CaseStudy): Map<string, { block: Block; sectionIndex: number; i: number }> {
+  const out = new Map<string, { block: Block; sectionIndex: number; i: number }>();
+  cs.sections.forEach((s, si) => s.blocks.forEach((b, i) => {
+    const id = blockId(s.id, i);
+    out.set(id, { block: b, sectionIndex: si, i });
+    if (b.t === 'split') {
+      b.left.forEach((c, j) => out.set(splitChildId(id, 'l', j), { block: c, sectionIndex: si, i }));
+      b.right.forEach((c, j) => out.set(splitChildId(id, 'r', j), { block: c, sectionIndex: si, i }));
+    }
+  }));
+  return out;
+}
+
+/** Her first qualifying bold piece of each item of the first `list` after `id` in the same chapter (normalised). */
+function leadIns(cs: CaseStudy, id: string): string[] {
+  const at = blockIndex(cs).get(id);
+  if (!at) return [];
+  const blocks = cs.sections[at.sectionIndex].blocks;
+  const list = blocks.slice(at.i + 1).find((b): b is Extract<Block, { t: 'list' }> => b.t === 'list');
+  if (!list) return [];
+  return list.items.map((item) => normalize(stripHtml(boldPieces(item)[0] ?? ''))).filter(Boolean);
+}
+
+/** The case's Decision schedule with anchors and plus items resolved at build time (SPEC SM5b). */
+export function resolveDecisions(cs: CaseStudy): ResolvedDecision[] {
+  return (decisions[cs.slug] ?? []).map((row, k) => {
+    const at = findBlock(cs, row.decided) ?? findBlock(cs, row.considered);
+    const anchor = at ? { id: at.id, sectionId: at.sectionId, sectionIndex: at.sectionIndex, sectionLabel: at.sectionLabel } : null;
+    let plusItems: string[] = [];
+    if (row.plus === 'three-changes') {
+      const derived = at ? leadIns(cs, at.id) : [];
+      plusItems = derived.length ? derived : [...THREE_CHANGES];
+    }
+    return { ...row, no: k + 1, anchor, plusItems };
+  });
+}

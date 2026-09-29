@@ -294,6 +294,8 @@ export const chrome = {
       levels: '{n} levels',
       sheetInfo: '{no} · {n} levels · ≈ {m} min',
       levelMeta: 'Level {nn} · {elev} · ≈ {m} min',
+      /** the cover plate's figure label (Enlarged detail, "Enlarge {fig}") */
+      coverFig: '{no} · Cover',
     },
     view: {
       label: 'View',
@@ -301,6 +303,8 @@ export const chrome = {
       plan: 'Plan · bold only',
       sectionShort: 'Section',
       planShort: 'Plan',
+      /** the single-key shortcut shown beside "View" in the Levels rail (hidden when shortcuts are off) */
+      key: 'V',
     },
     keyPlan: {
       title: 'Key plan',
@@ -316,6 +320,8 @@ export const chrome = {
       decided: 'Decided',
       level: 'Level',
       rowNo: 'D-{nn}',
+      /** accessible name of the LEVEL link (her section label stays the visible text) */
+      source: '{label}, source of {no}',
     },
     levels: {
       title: 'Levels',
@@ -326,6 +332,8 @@ export const chrome = {
       nextSheet: 'Next sheet',
       open: 'Open sheet {no}',
       toIndex: 'A-000 Drawing index',
+      /** the base of the building section: the whole case read, as an elevation */
+      end: 'End',
     },
     plan: {
       omitted: 'Omitted: {counts}',

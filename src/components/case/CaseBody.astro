@@ -1,7 +1,17 @@
 ---
 /**
- * CaseBody · OWNER: WP5 (P0 functional stub). The case reading grid (SPEC §2.5): rail · text (≤680px) · notes, with
- * every chapter a subgrid and every block a subgrid row. The Levels rail sits in the rail column (≥1024).
+ * CaseBody · WP5. The case reading grid (SPEC §2.5): Levels rail · text (≤ 680px) · notes.
+ *
+ * ≥ 1280  [full] side [rail] var(--rail) [gap] ≥ var(--gap) [text] ≤ 680 [gap] ≥ var(--gap) [notes] var(--notes) side [full]
+ *         The spec's tracks and clamps, aligned to the shell: `side` is the shell's margin (--m, or the centring margin
+ *         once the viewport passes --maxw), so the rail starts on the same line as the title bar's brand, the back link
+ *         and the h1, and the notes end on the plate's right edge. The leftover width goes to the two gaps (they never
+ *         drop below --gap), which keeps the text column exactly where the spec's centred grid puts it.
+ * 1024–1279  rail 184 · 32 · text (1fr); notes fold under their block (base.css). Chapters keep text at the measure.
+ *            (SPEC: 168; 184 is the rail's own minimum at ≥ 1280, where the View toggle's caps labels fit one line —
+ *            the text column is still ≥ 728px at 1024.)
+ * < 1024  one column; the rail becomes the bottom bar's level pill + the Sheet drawer (WP1).
+ * Chapters are their own grids (not subgrids; P0-NOTES §7.1: content-visibility's layout containment forbids subgrid).
  */
 import type { CaseStudy } from '../../lib/blocks';
 import type { ChapterCtx } from '../../lib/blocks-ctx';
@@ -11,31 +21,43 @@ import Levels from './Levels.astro';
 interface Props { cs: CaseStudy; chapters: ChapterCtx[]; reading: CaseReading; sheetNo: string; next: { href: string; no: string; title: string } }
 const { cs, chapters, reading, sheetNo, next } = Astro.props;
 ---
-<div class="case-body">
-  <aside class="case-body__rail" style={`grid-row: 1 / span ${chapters.length}`}>
+<div class="case-body" data-case-body>
+  <div class="case-body__rail" style={`grid-row: 1 / span ${chapters.length}`}>
     <Levels reading={reading} sheetNo={sheetNo} next={next} />
-  </aside>
+  </div>
   {chapters.map((ch) => <Chapter cs={cs} chapter={ch} level={reading.sections[ch.index]} sheetNo={sheetNo} />)}
 </div>
+
 <style>
   .case-body {
-    --rail: clamp(184px, 14vw, 224px);
+    /* the rail is never narrower than 184px: its View toggle's caps labels (FULL TEXT, BOLD ONLY) fit one line each */
+    --_rail-min: 184px;
+    --rail: clamp(var(--_rail-min), 14vw, 224px);
     --notes: clamp(208px, 17vw, 280px);
     --gap: clamp(32px, 3vw, 56px);
+    /* chapters (descendants) resolve the side margin against this box with cqi; here, 100% is the same width */
+    container-type: inline-size;
     display: grid;
     grid-template-columns:
-      [full-start] minmax(var(--m), 1fr)
-      [rail-start] var(--rail) [rail-end] var(--gap)
-      [text-start] minmax(0, 680px) [text-end] var(--gap)
+      [full-start] max(var(--m), calc((100% - var(--maxw)) / 2 + var(--m)))
+      [rail-start] var(--rail) [rail-end gutter-start] minmax(var(--gap), 1fr)
+      [text-start] minmax(0, var(--measure)) [text-end] minmax(var(--gap), 1fr)
       [notes-start] var(--notes) [notes-end]
-      minmax(var(--m), 1fr) [full-end];
+      max(var(--m), calc((100% - var(--maxw)) / 2 + var(--m))) [full-end];
   }
-  .case-body__rail { grid-column: rail; }
+  /* The rail starts level with the first chapter's section mark. It never serves as the scroll anchor: it is sticky,
+     so when a content-visibility chapter above the reader renders at its real height, an anchor inside the rail
+     would not move and the browser would not compensate — the page would jump (seen on deep links). */
+  .case-body__rail { grid-column: rail; margin-block-start: var(--space-chapter); overflow-anchor: none; }
   @media (max-width: 1279.98px) {
-    .case-body { grid-template-columns: [full-start] var(--m) [rail-start] 168px [rail-end] 32px [text-start] minmax(0,1fr) [text-end notes-start notes-end] var(--m) [full-end]; }
+    .case-body {
+      --gap: var(--s-6);
+      grid-template-columns: [full-start] var(--m) [rail-start] var(--_rail-min) [rail-end gutter-start] var(--gap) [text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end];
+    }
   }
   @media (max-width: 1023.98px) {
-    .case-body { grid-template-columns: [full-start] var(--m) [rail-start rail-end text-start] minmax(0,1fr) [text-end notes-start notes-end] var(--m) [full-end]; }
+    .case-body { grid-template-columns: [full-start] var(--m) [rail-start rail-end gutter-start text-start] minmax(0, 1fr) [text-end notes-start notes-end] var(--m) [full-end]; }
     .case-body__rail { display: none; }
   }
+  @media print { .case-body__rail { display: none; } }
 </style>

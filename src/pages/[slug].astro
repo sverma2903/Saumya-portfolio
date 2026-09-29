@@ -1,7 +1,10 @@
 ---
 /**
- * /cloudflare … /educademy · Sheets A-101…A-106 · OWNER: WP5. P0 minimal: the full component tree as stubs —
- * CaseHeader (6 s) → KeyPlan + DecisionSchedule (60 s) → CaseBody (Levels + Chapters) → MatchLineNext → End sheet.
+ * /cloudflare … /educademy · Sheets A-101…A-106 · WP5 (SPEC §5.2).
+ * Order: CaseHeader (the 6-second layer) → KeyPlan + DecisionSchedule (the 60-second layer) → CaseBody (the Levels
+ * rail + her chapters, SM4/SM5) → MatchLineNext → the End sheet ("Let's build the next one together!", Base).
+ * One module (scripts/case/index.ts) drives Levels, Plan view and citations; it is rendered after the article so no
+ * <script> ever sits between two blocks (the §6.1 rhythm is sibling-based).
  */
 import Base from '../layouts/Base.astro';
 import CaseHeader from '../components/case/CaseHeader.astro';
@@ -11,7 +14,6 @@ import CaseBody from '../components/case/CaseBody.astro';
 import MatchLineNext from '../components/case/MatchLineNext.astro';
 import { cases, links } from '../content/site';
 import { COVERS, accentStyle, deckOf, nextCase, sheetBySlug } from '../data/sheets';
-import { decisions } from '../data/decisions';
 import { chrome } from '../data/chrome';
 import { chapterCtxs } from '../lib/blocks-ctx';
 import { keyplan } from '../lib/keyplan';
@@ -68,9 +70,13 @@ const jsonLd = [
 >
   <article class="case" data-case={slug}>
     <CaseHeader cs={cs} sheetNo={sheet.no} reading={r} deck={deck.text} cover={cover} />
-    <KeyPlan stops={stops} seconds={r.sections.map((s) => s.sec)} />
-    <DecisionSchedule cs={cs} rows={decisions[slug] ?? []} />
+    <KeyPlan stops={stops} seconds={r.sections.map((s) => s.sec)} sheetNo={sheet.no} minutes={r.minutes} />
+    <DecisionSchedule cs={cs} />
     <CaseBody cs={cs} chapters={chapters} reading={r} sheetNo={sheet.no} next={{ href: next.href, no: next.no, title: next.title.text }} />
     <MatchLineNext next={next} />
   </article>
+  <script>
+    import '../scripts/case/index';
+  </script>
 </Base>
+
