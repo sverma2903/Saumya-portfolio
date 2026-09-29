@@ -1,34 +1,63 @@
 ---
 /**
- * Plate · P0 minimal → WP4b completes (SPEC §6.3). The box every piece of her media sits in.
+ * Plate · WP4b (SPEC §6.3). The box every piece of her media sits in. P0 shipped the minimal version; this is the
+ * complete one. Her files are shown byte-for-byte: a plate only FRAMES them (mats, bezels, a browser bar, a stage),
+ * never filters, re-encodes, crops (beyond the documented §6.4 exceptions) or covers them at rest.
  *
  * interface PlateProps {
- *   layers: Media[];            // bottom → top (Orbit: backdrop, laptop). A layer may carry its own `pad`/`fit`
- *                               //   (LayerMedia = Media & { pad?: number; fit?: 'contain' | 'fill' }; see plateLayers()).
- *   stage?: string;             // CSS background (her stage), default none
+ *   layers: LayerMedia[];       // bottom → top (Orbit: backdrop, laptop); a layer may carry its own pad/fit
+ *   stage?: string;             // CSS background (her stage)
  *   aspect?: number;            // box w/h; default = first layer's native aspect
  *   fit?: 'contain' | 'fill';   // 'fill' only for a layer whose native aspect == box aspect
- *   pad?: number;               // % inset for contained layers (stage margin); default 0
- *   frame?: Frame;              // default from media-staging.ts, else 'plate'
- *   vt?: string;                // view-transition-name
- *   dims?: boolean;             // hover/focus dimension strings (covers only) — WP4b
+ *   pad?: number;               // % inset for contained layers (stage margin)
+ *   frame?: Frame;              // default: media-staging.ts, else 'plate'
+ *   vt?: string;                // view-transition-name (on the root)
+ *   dims?: boolean;             // hover/focus dimension strings (covers only)
  *   priority?: 'high' | 'auto' | 'lazy';
- *   fig?: { no: string; caption?: string };   // enables the Enlarged-detail button + figure meta
- *   alt: string;                // from data/alt.ts; '' only for decorative duplicates
+ *   fig?: { no: string; caption?: string; capId?: string };  // the Enlarged-detail trigger + figure meta
+ *   alt: string;                // data/alt.ts; '' only for decorative duplicates
+ *   // WP4b additions (all optional; existing callers are unaffected)
+ *   controls?: boolean;         // GIF/video controls (default on, except decorative bare plates: alt '' + no fig/dims)
+ *   loop?: boolean;             // videos loop as ambient (default); the walkthrough player passes false
+ *   managed?: boolean;          // false → the page-wide GIF/video managers leave it to its host (the walkthroughs)
+ *   describedBy?: string;       // id of her adjacent text: the recording's text alternative (§7.1, 1.2.1)
+ *   zoom?: 'deep' | 'soft';     // overrides the staging zoom (a media block's own `zoom: true` → 'deep': 1:1 emphasised)
+ *   class?: string;
  * }
  *
- * P0 behaviour: staged plates (stage or aspect given, or several layers) are a fixed-aspect box with contained,
- * padded layers; otherwise the media renders at its natural aspect. Every <img>/<video> carries width/height from
- * dims.json. P0 gives GIFs/videos a real src (lazy) so pages are complete; WP4b replaces this with the managers
- * (data-src + <noscript> twins, placeholders, pause controls).
+ * DOM (the hooks scripts/media/* and the Enlarged detail read):
+ *   .plate[data-plate data-file data-kind data-state data-fig-no data-cap-id data-zoom data-native data-fmt data-size data-src-orig]
+ *     [browser → .brw: bar (controls + loop hairline) + view window]
+ *     .plate__mat          the frame surround: plate hairline · print border · "before" surround · device bezel
+ *       .plate__view       the exact aspect box ([data-ph-host data-state]); stage colour; placeholder, media, poster canvas
+ *       button.plate__open [data-fig] the Enlarged-detail trigger over the media
+ *     controls · hairline  outside the view (the hover overlay on bare/plain plates is the one exception, per §6.3)
+ *   GIFs and videos never carry `src` in the HTML (except the page's LCP plate): the managers mount them from data-src.
+ *   Each has a <noscript> twin with a real src.
  */
 import type { Media } from '../../lib/blocks';
 import type { Frame } from '../../data/media-staging';
 import { facts, fileOf, stagingOf } from '../../lib/staging';
-import { chrome, fill } from '../../data/chrome';
+import { chrome, fill as fillTpl } from '../../data/chrome';
 import { stripHtml } from '../../lib/text';
+import { rich } from '../../lib/rich';
+import FrameBrowser from './Frame.astro';
+import Placeholder from './Placeholder.astro';
+import MediaControls from './MediaControls.astro';
+import DimString from './DimString.astro';
+import Icon from '../symbols/Icon.astro';
+import { clock, containRect, enlargeable, factAttrs, kindOf, r4, wantsPlaceholder } from './media-lib';
 
 export type LayerMedia = Media & { pad?: number; fit?: 'contain' | 'fill' };
+
+/** Frames that are a DEVICE around her screen (a bezel, or the clip that removes a baked white canvas). */
+const DEVICE_FRAMES: Frame[] = ['phone', 'phone-baked', 'phone-video', 'bezel-dark'];
+// ---- device bezels around FLAT screens (phone, bezel-dark) ----
+// The ring is padding and the outer corner radius is r% of the device's width. Her screens run content into their
+// square corners (PFF's "Reject" button sits in one), so nothing may round or cover them: the ring must be at least
+// R·(1 − 1/√2) wide for a square screen corner to clear the rounded outer edge. p = 4.4 ≥ 0.293 × 13 ✓ and
+// p = 3.6 ≥ 0.293 × 12 ✓.
+const BEZEL: Partial<Record<Frame, { p: number; r: number }>> = { phone: { p: 4.4, r: 13 }, 'bezel-dark': { p: 3.6, r: 12 } };
 interface Props {
   layers: LayerMedia[];
   stage?: string;
@@ -39,69 +68,297 @@ interface Props {
   vt?: string;
   dims?: boolean;
   priority?: 'high' | 'auto' | 'lazy';
-  fig?: { no: string; caption?: string };
+  fig?: { no: string; caption?: string; capId?: string };
   alt: string;
+  controls?: boolean;
+  loop?: boolean;
+  managed?: boolean;
+  describedBy?: string;
+  zoom?: 'deep' | 'soft';
   class?: string;
 }
-const { layers, stage, aspect, fit = 'contain', pad = 0, frame, vt, dims = false, priority = 'lazy', fig, alt, class: cls } = Astro.props;
+const {
+  layers, stage, aspect, fit = 'contain', pad = 0, frame, vt, dims = false, priority = 'lazy', fig, alt,
+  loop = true, managed = true, describedBy, zoom, class: cls,
+} = Astro.props;
+
 const first = layers[0];
+const top = layers[layers.length - 1];
 const staged = !!stage || aspect != null || layers.length > 1;
-const f0 = facts(first);
-const boxAspect = aspect ?? f0.aspect;
-const resolvedFrame: Frame = frame ?? stagingOf(first).frame ?? 'plate';
-const cap = !staged ? stagingOf(first).cap : undefined;
+const ft = facts(top);
+const stTop = stagingOf(top);
+const boxAspect = aspect ?? facts(first).aspect;
+// A device frame (a CSS bezel, or the clip that removes the white canvas baked around a phone) belongs to the FILE:
+// a caller's generic 'bare' — or no frame at all — never strips it. Any other explicit frame still wins ('browser').
+const fileFrame = stTop.frame;
+const device: Frame | undefined = fileFrame && DEVICE_FRAMES.includes(fileFrame) ? fileFrame : undefined;
+const resolvedFrame: Frame = device && (frame == null || frame === 'bare') ? device : frame ?? stagingOf(first).frame ?? 'plate';
+// on a staged plate (her stage around it: Play's pinned plates, a card) the device wraps the LAYER, not the stage box
+const devInStage = staged && !!device && resolvedFrame === device;
+const matFrame: Frame = devInStage ? 'bare' : resolvedFrame;
+const kinds = layers.map((l) => kindOf(l));
+const motionKind = kinds.includes('gif') ? 'gif' : kinds.includes('video') ? 'video' : 'image';
+const moving = motionKind !== 'image';
+const audio = kindOf(top) === 'video' && !!stTop.video?.audio;
+const cap = !staged ? stTop.cap : undefined;
 const loading = priority === 'lazy' ? 'lazy' : 'eager';
-const styles = [
-  staged ? `aspect-ratio: ${boxAspect}` : '',
+const canEnlarge = !!fig && enlargeable(top);
+// every GIF/video carries Pause (WCAG 2.2.2), decorative duplicates included; inside a link or button (a home card)
+// plates.ts removes the controls and the managers keep that media still instead (it never loops unstoppably)
+const controls = moving && (Astro.props.controls ?? true);
+const ctlVariant: 'bar' | 'below' | 'overlay' = matFrame === 'browser' ? 'bar' : matFrame === 'phone-baked' ? 'below' : 'overlay';
+const secs = stTop.gif?.secs ?? stTop.video?.secs;
+const m = chrome.wp4b.media;
+const soundLabel = audio ? fillTpl(m.playSound, { t: clock(secs ?? 0) }) : '';
+
+// ---- the view: the exact aspect box (staged: the stage box; natural: the file itself) ----
+const viewAspect = staged ? boxAspect : ft.w / ft.h;
+const clipBaked = resolvedFrame === 'phone-baked'
+  ? stTop.outline
+    ? `clip-path: polygon(${stTop.outline})`
+    : stTop.clip
+      ? `clip-path: inset(${stTop.clip} round ${stTop.radius ?? 13}% / ${r4((stTop.radius ?? 13) * (ft.w / ft.h))}%)`
+      : ''
+  : stTop.corners ? `clip-path: ${stTop.corners}` : '';
+const viewStyle = [
+  `aspect-ratio: ${staged ? r4(boxAspect) : `${ft.w} / ${ft.h}`}`,
   stage ? `background: ${stage}` : '',
-  vt ? `view-transition-name: ${vt}` : '',
-  cap ? `max-inline-size: ${cap}px` : '',
+  devInStage ? '' : clipBaked,
 ].filter(Boolean).join('; ');
-const enlargeLabel = fig ? fill(chrome.wp4b.media.enlargeLabel, { fig: fig.no }) + (fig.caption ? `: ${stripHtml(fig.caption)}` : alt ? `: ${alt}` : '') : undefined;
+
+// ---- the bezel as the mat of a natural plate (its padding % is of the plate's own width = the device's) ----
+const bz = BEZEL[resolvedFrame];
+const matStyle = bz && !devInStage
+  ? (() => {
+      const p = bz.p / 100;
+      const outerH = (1 - 2 * p) * (ft.h / ft.w) + 2 * p; // outer height in units of the outer width
+      return `padding: ${bz.p}%; border-radius: ${bz.r}% / ${r4(bz.r / outerH)}%`;
+    })()
+  : undefined;
+
+// ---- a device on a stage: the wrapper is the device's outer box, contained in the stage box with the layer's pad ----
+// Bezels: outer aspect ao = 1 / ((1 − 2p)/a + 2p) for a ring of p × the device width; the ring is padding, whose % is
+// of the VIEW's width (the containing block), so it is p × the device's width-share. Clips sit on the media's own box.
+const devStyle = devInStage
+  ? (() => {
+      const a = ft.w / ft.h;
+      const lp = top.pad ?? pad;
+      if (bz) {
+        const p = bz.p / 100;
+        const ao = 1 / ((1 - 2 * p) / a + 2 * p);
+        const rc = containRect(ao, boxAspect, lp);
+        return `left: ${r4(rc.l)}%; top: ${r4(rc.t)}%; inline-size: ${r4(rc.w)}%; block-size: ${r4(rc.h)}%; padding: ${r4(bz.p * rc.w / 100)}%; border-radius: ${bz.r}% / ${r4(bz.r * ao)}%`;
+      }
+      const rc = containRect(a, boxAspect, lp);
+      return [`left: ${r4(rc.l)}%; top: ${r4(rc.t)}%; inline-size: ${r4(rc.w)}%; block-size: ${r4(rc.h)}%`, clipBaked].filter(Boolean).join('; ');
+    })()
+  : undefined;
+
+const rootStyle = [
+  cap ? `max-inline-size: ${cap}px` : '',
+  vt ? `view-transition-name: ${vt}` : '',
+  secs ? `--_secs: ${secs}s` : '',
+].filter(Boolean).join('; ');
+
+const enlargeLabel = fig
+  ? fillTpl(m.enlargeLabel, { fig: fig.no }) + (fig.caption ? `: ${stripHtml(fig.caption)}` : alt ? `: ${alt}` : '')
+  : undefined;
+// the drafting X: heavy media only. A bare staged plate (a cover) never gets one: its stage IS its loading state;
+// transparent files never get one (it would show through them)
+const showPh = !(staged && matFrame === 'bare') && layers.some((l) => wantsPlaceholder(l));
+const coverIsDuplicate = canEnlarge && controls; // then the controls carry the visible, focusable Enlarge
+
+/** per-layer geometry inside a staged box (a device-wrapped top layer fills its wrapper instead) */
+const layerStyle = (layer: LayerMedia): string | undefined => {
+  if (!staged || (devInStage && layer === top)) return undefined;
+  const lp = layer.pad ?? pad;
+  const lf = layer.fit ?? fit;
+  return `inset: ${lp}%; inline-size: ${100 - 2 * lp}%; block-size: ${100 - 2 * lp}%; object-fit: ${lf === 'fill' ? 'fill' : 'contain'}`;
+};
+const topStyle = layerStyle(top);
+// the dimension strings measure the TOP layer's rendered box, in % of the view
+const dimRect = staged ? containRect(ft.aspect, viewAspect, top.pad ?? pad) : { l: 0, t: 0, w: 100, h: 100 };
+const lcpGif = priority === 'high' && kindOf(top) === 'gif';
+
+const Wrap = dims ? DimString : Fragment;
+const wrapProps = dims ? { part: 'wrap' as const } : {};
+const Win = matFrame === 'browser' ? FrameBrowser : Fragment;
+const Dev = devInStage ? 'span' : Fragment;
+const rootAttrs = {
+  'data-plate': '',
+  'data-file': fileOf(top),
+  'data-kind': motionKind,
+  'data-state': moving ? 'idle' : undefined,
+  'data-managed': managed ? undefined : 'host',
+  'data-fig-no': fig?.no,
+  'data-cap-id': fig?.capId,
+  'data-zoom': zoom ?? stTop.zoom,
+  ...factAttrs(ft),
+};
 ---
-<div class:list={['plate', `plate--${resolvedFrame}`, { 'plate--staged': staged, 'plate--natural': !staged }, cls]} style={styles || undefined} data-plate data-file={fileOf(first)} data-dims={dims ? '' : undefined}>
-  {layers.map((layer, i) => {
-    const f = facts(layer);
-    const lp = layer.pad ?? pad;
-    const lf = layer.fit ?? fit;
-    const isTop = i === layers.length - 1;
-    const layerStyle = staged ? `inset: ${lp}%; inline-size: ${100 - 2 * lp}%; block-size: ${100 - 2 * lp}%; object-fit: ${lf === 'fill' ? 'fill' : 'contain'}` : undefined;
-    return f.kind === 'video' ? (
-      <video
-        class:list={['plate__media', { plate__layer: staged }]}
-        style={layerStyle}
-        src={f.remote ? f.src : `${f.src}#t=0.001`}
-        width={f.w}
-        height={f.h}
-        muted={!stagingOf(layer).video?.audio}
-        playsinline
-        controls
-        preload={f.remote ? 'none' : 'metadata'}
-        aria-label={isTop ? alt || undefined : undefined}
-      ></video>
-    ) : (
-      <img
-        class:list={['plate__media', { plate__layer: staged }]}
-        style={layerStyle}
-        src={f.src}
-        width={f.w}
-        height={f.h}
-        alt={isTop ? alt : ''}
-        loading={loading}
-        decoding="async"
-        fetchpriority={priority === 'high' && isTop ? 'high' : undefined}
-      />
-    );
-  })}
-  {fig && <button type="button" class="plate__open" data-fig data-js-only aria-label={enlargeLabel}></button>}
-</div>
+<Wrap {...wrapProps}>
+  <div class:list={['plate', `plate--${matFrame}`, `plate--${motionKind}`, devInStage && `plate--dev-${device}`, { 'plate--staged': staged, 'plate--natural': !staged }, cls]} style={rootStyle || undefined} {...rootAttrs}>
+    <Win>
+      {controls && ctlVariant === 'bar' && <MediaControls slot="tools" variant="bar" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
+      {controls && ctlVariant === 'bar' && secs && <MediaControls slot="progress" part="progress" variant="bar" secs={secs} />}
+      <div class="plate__mat" style={matStyle}>
+        <div class="plate__view" style={viewStyle} data-ph-host={devInStage ? undefined : ''} data-state={moving && !devInStage ? 'idle' : undefined}>
+          {showPh && <Placeholder media={top} />}
+          {layers.map((layer, i) => {
+            const f = facts(layer);
+            const k = kinds[i];
+            const isTop = i === layers.length - 1;
+            // a device on a stage: this layer (and its poster canvas) sits inside the device's box
+            const D = isTop && devInStage ? 'span' : Fragment;
+            // the device's screen is the placeholder host: the drafting X shows ON the screen while it is idle/loading
+            const dp = isTop && devInStage
+              ? { class: `plate__dev plate__dev--${device}`, style: devStyle, 'data-ph-host': '', 'data-state': moving ? 'idle' : undefined }
+              : {};
+            const devCanvas = isTop && devInStage && k === 'gif';
+            const devPh = isTop && devInStage && wantsPlaceholder(layer);
+            const st = stagingOf(layer);
+            const style = layerStyle(layer);
+            const la = isTop ? alt : '';
+            // an <img alt=""> is presentational: it may carry a description only once it has a name (alt.ts drafts, WP7)
+            const desc = isTop && (la || k === 'video') ? describedBy : undefined;
+            if (k === 'video') {
+              const sound = !!st.video?.audio;
+              return (
+                <D {...dp}>
+                  {devPh && <Placeholder media={layer} />}
+                  <video class="plate__media" style={style} width={f.w} height={f.h} data-vid data-src={f.remote ? f.src : `${f.src}#t=0.001`} muted={!sound} playsinline preload="none" loop={loop && !sound} disablepictureinpicture aria-label={la || undefined} aria-describedby={desc}></video>
+                  <noscript><video class="plate__media plate__media--ns" style={style} src={f.src} width={f.w} height={f.h} controls playsinline preload="metadata" muted={!sound}></video></noscript>
+                </D>
+              );
+            }
+            if (k === 'gif') {
+              return (
+                <D {...dp}>
+                  {devPh && <Placeholder media={layer} />}
+                  {lcpGif && isTop ? (
+                    <Fragment>
+                      <img class="plate__media" style={style} width={f.w} height={f.h} data-gif src={f.src} alt={la} decoding="async" fetchpriority="high" data-poster={st.gif?.poster} data-frames={st.gif?.frames} aria-describedby={desc} />
+                      {/* motion off: hold the LCP GIF still before it can paint (the preload has fetched it; the manager shows its poster) */}
+                      <script is:inline>(function(){var i=document.currentScript.previousElementSibling;if(document.documentElement.dataset.motion==='reduce'&&i){i.dataset.src=i.getAttribute('src');i.removeAttribute('src')}})()</script>
+                    </Fragment>
+                  ) : (
+                    <img class="plate__media" style={style} width={f.w} height={f.h} data-gif data-src={f.src} alt={la} decoding="async" data-poster={st.gif?.poster} data-frames={st.gif?.frames} aria-describedby={desc} />
+                  )}
+                  {/* the LCP GIF already has a real src: without JS it renders itself, so it has no twin */}
+                  {!(lcpGif && isTop) && <noscript><img class="plate__media plate__media--ns" style={style} src={f.src} width={f.w} height={f.h} alt={la} loading="lazy" decoding="async" /></noscript>}
+                  {devCanvas && <canvas class="plate__poster" hidden aria-hidden="true"></canvas>}
+                </D>
+              );
+            }
+            return <D {...dp}>{devPh && <Placeholder media={layer} />}<img class="plate__media" style={style} src={f.src} width={f.w} height={f.h} alt={la} loading={loading} decoding="async" fetchpriority={priority === 'high' && isTop ? 'high' : undefined} /></D>;
+          })}
+          {motionKind === 'gif' && !(devInStage && kindOf(top) === 'gif') && <canvas class="plate__poster" style={topStyle} hidden aria-hidden="true"></canvas>}
+          {audio && (
+            <button type="button" class="plate__sound" data-mc-sound data-js-only aria-label={soundLabel}>
+              <Icon name="play" class="plate__sound-i" /><span aria-hidden="true">{soundLabel}</span>
+            </button>
+          )}
+          {dims && <DimString part="lines" rect={dimRect} w={ft.w} h={ft.h} />}
+        </div>
+        {controls && ctlVariant === 'overlay' && <MediaControls variant="overlay" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
+        {canEnlarge && (
+          <button type="button" class="plate__open" data-fig data-js-only aria-label={enlargeLabel} tabindex={coverIsDuplicate ? '-1' : undefined} aria-hidden={coverIsDuplicate ? 'true' : undefined}></button>
+        )}
+      </div>
+    </Win>
+    {controls && ctlVariant !== 'bar' && secs && <MediaControls part="progress" variant={ctlVariant} secs={secs} />}
+    {controls && ctlVariant === 'below' && <MediaControls variant="below" fig={fig?.no} enlarge={canEnlarge} audio={audio} />}
+    {fig?.caption && !fig.capId && <template data-cap set:html={rich(fig.caption)} />}
+    {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+       that breaks the `+` spacing rules between blocks */}
+    <script>
+      import '../../scripts/media/plates';
+    </script>
+  </div>
+</Wrap>
 <style>
   .plate { position: relative; min-inline-size: 0; }
   .plate--staged { inline-size: 100%; }
-  .plate__layer { position: absolute; }
-  .plate--natural > .plate__media { inline-size: 100%; block-size: auto; }
-  .plate--plate { background-color: var(--plate); outline: var(--lw-object) solid var(--line-2); outline-offset: -1px; }
-  .plate--print { background: var(--plate); padding: 8px; box-shadow: var(--shadow-plate); }
-  .plate--before { background: var(--before); padding: 16px; }
-  .plate__open { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; cursor: zoom-in; background: transparent; }
+  .plate__mat { position: relative; }
+  .plate__view { position: relative; inline-size: 100%; }
+  .plate__media, .plate__poster {
+    position: absolute; inset: 0;
+    display: block; inline-size: 100%; block-size: 100%;
+    max-inline-size: none;
+  }
+  /* media without pixels yet (a managed GIF/video before it mounts, or parked): its alt stays in the a11y tree,
+     the drafting X shows through */
+  .plate__media:is(img, video):not([src]) { opacity: 0; }
+  :global(html:not(.js)) .plate__media[data-src] { display: none; }
+  .plate__poster { z-index: var(--z-raised); }
+
+  /* ---------- frames (§6.3) ---------- */
+  /* plate: her white artefact on a --plate mat; the hairline sits OUTSIDE the file (never over her edge pixels) */
+  .plate--plate .plate__mat { background: var(--plate); box-shadow: 0 0 0 var(--lw-object) var(--line-2); }
+  /* print: photographs as prints — an 8px --plate border and a soft shadow; the aspect never changes */
+  .plate--print .plate__mat { background: var(--plate); padding: var(--s-2); box-shadow: var(--shadow-plate); }
+  /* before: her intentionally dated material on a --before surround. --before alone is the paper's own value (it read
+     as nothing, and her screenshot as 16px mis-indented), so the surround is drawn as material: the 45° hatch of
+     existing work over --before, with an object-line edge */
+  .plate--before .plate__mat {
+    background: var(--hatch-45), var(--before); padding: var(--s-4);
+    box-shadow: 0 0 0 var(--lw-object) var(--line-2);
+  }
+  /* phone / bezel-dark: a device ring around her flat screen (geometry inline: her square corners are never hidden) */
+  .plate--phone .plate__mat { background: var(--bezel); }
+  .plate--bezel-dark .plate__mat { background: var(--bezel-dark); }
+  /* the device's metal band: a hairline rim outside the ring, so a dark device still reads on Dusk's dark paper */
+  :is(.plate--phone, .plate--bezel-dark) .plate__mat { box-shadow: 0 0 0 var(--lw-object) var(--line-2); }
+  /* phone-video: the baked device's white canvas corners are clipped (≈ 10 px, §6.4) */
+  .plate--phone-video .plate__view { clip-path: inset(0 round 5% / 2.3%); }
+  /* phone-baked: clipped to the device silhouette (inline polygon), sized BY HEIGHT so the phones read as one size */
+  .plate--phone-baked { inline-size: fit-content; max-inline-size: 100%; margin-inline: auto; }
+  .plate--phone-baked { --_ph: min(480px, 72svh); } /* component geometry: a baked phone's height outside a walkthrough */
+  .plate--phone-baked .plate__view { block-size: var(--ph, var(--_ph)); inline-size: auto; }
+  /* a device on a stage (Play's pinned plates, a card): the device box sits in the stage like the layer would; its
+     media fills the content box (the ring is padding), and a GIF's poster canvas overlaps it (one grid cell) */
+  .plate__dev { position: absolute; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }
+  .plate__dev > :global(:is(.plate__media, .plate__poster, .ph)) { position: relative; inset: auto; grid-area: 1 / 1; }
+  .plate__dev > :global(.ph) { block-size: auto; z-index: var(--z-raised); }
+  .plate__dev--phone { background: var(--bezel); box-shadow: 0 0 0 var(--lw-object) var(--line-2); }
+  .plate__dev--bezel-dark { background: var(--bezel-dark); box-shadow: 0 0 0 var(--lw-object) var(--line-2); }
+  .plate__dev--phone-video { clip-path: inset(0 round 5% / 2.3%); }
+  /* browser: the mat is the window's glass */
+  .plate--browser .plate__mat { background: var(--plate); }
+  /* soft: logo material composed on white — a pure-white sheet (its white canvas vanishes, as on her white site), a
+     hairline, and the breathing room a logo sheet gives its marks */
+  .plate--soft .plate__mat { background: var(--white); box-shadow: 0 0 0 var(--lw-object) var(--line-2); padding: var(--s-5); }
+
+  /* ---------- the Enlarged-detail trigger covers the media (never the controls) ---------- */
+  .plate__open {
+    position: absolute; inset: 0; z-index: var(--z-raised);
+    inline-size: 100%; block-size: 100%;
+    cursor: zoom-in;
+    background: transparent;
+  }
+
+  /* the Teachable video's unplayed state: a centred "Play · 0:48 · sound" on the bezel (a click plays with sound) */
+  .plate__sound {
+    /* just below the centre, so the drafting X's file label (dims · format · size, centred) stays readable above it */
+    position: absolute; inset: calc(50% + var(--s-5)) auto auto 50%; translate: -50% 0; z-index: calc(var(--z-raised) + 1);
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    min-block-size: var(--hit); padding: var(--s-2) var(--s-4);
+    font-family: var(--font-sans); font-size: var(--fs-label-lg); font-weight: var(--wt-label-lg);
+    font-variation-settings: var(--wdth-label); letter-spacing: var(--tr-label-lg); text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ink); background: var(--sheet);
+    border: var(--lw-border) solid var(--ink);
+  }
+  .plate__sound:hover { color: var(--rust-deep); }
+  .plate__sound :global(.plate__sound-i) { inline-size: var(--s-4); block-size: var(--s-4); }
+  :global(.plate[data-played]) .plate__sound { display: none; }
+  /* before its first play, the sound video offers only "Play · 0:48 · sound"; then Pause, Restart and Mute appear */
+  .plate:has(.plate__sound):not([data-played]) :global(:is(.mc, .mprog)) { display: none; }
+
+  @media (forced-colors: active) {
+    .plate--plate .plate__mat, .plate--before .plate__mat, .plate--print .plate__mat { outline: var(--lw-object) solid CanvasText; }
+  }
+  @media print {
+    .plate__open, .plate__poster, .plate__sound { display: none; }
+  }
 </style>

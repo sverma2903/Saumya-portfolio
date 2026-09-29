@@ -1,16 +1,60 @@
 ---
 /**
- * Placeholder · OWNER: WP4b (P0 stub). The drafting X shown while media is idle/loading/parked (SPEC §6.3):
- * exact aspect (dims.json), --plate background, two 1px --line-2 diagonals, a centred mono label
- * '2662 × 1716 · GIF · 6.2 MB' (data-chrome, aria-hidden). Fades out over 160ms when the pixels decode.
+ * Placeholder · WP4b (SPEC §6.3). The drafting X — the void symbol a draughtsman draws where something will be built —
+ * shown while heavy media is idle, loading or parked, and while a GIF is paused without a poster frame.
+ *
+ *   · fills its box exactly (the host box carries the file's aspect from dims.json, so CLS is 0)
+ *   · --plate ground, two 1px --line-2 diagonals, a centred mono label '2662 × 1716 · GIF · 6.2 MB' that masks the
+ *     lines where it crosses them (drafting convention); aria-hidden + data-chrome
+ *   · an optional state line ('Paused') under the label, written by the media scripts
+ *   · fades out over --dur-2 when the host plate reaches data-state="ready"/"playing" (instant under reduced motion)
+ *
+ * Props: media (the file), fill (default true: absolutely fills the positioned host; false: sizes itself by aspect).
  */
 import type { Media } from '../../lib/blocks';
 import { dimsLabel, facts } from '../../lib/staging';
-interface Props { media: Media }
-const { media } = Astro.props;
+interface Props { media: Media | string; fill?: boolean; class?: string }
+const { media, fill = true, class: cls } = Astro.props;
 const f = facts(media);
 ---
-<span class="ph" style={`aspect-ratio: ${f.aspect}`} aria-hidden="true" data-chrome><span class="ph__l t-code-sm">{dimsLabel(media)}</span></span>
+<span class:list={['ph', { 'ph--fill': fill }, cls]} style={fill ? undefined : `aspect-ratio: ${f.w} / ${f.h}`} aria-hidden="true" data-chrome data-ph>
+  <svg class="ph__x" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><path d="M0 0L100 100M100 0L0 100" vector-effect="non-scaling-stroke" /></svg>
+  <span class="ph__l"><span class="ph__dims">{dimsLabel(media)}</span><span class="ph__state" data-ph-state></span></span>
+</span>
 <style>
-  .ph { display: grid; place-items: center; inline-size: 100%; background: var(--plate); color: var(--ink-3); }
+  .ph {
+    display: grid; place-items: center;
+    inline-size: 100%;
+    background: var(--plate);
+    color: var(--print-ink);           /* drawn ON a print: never themed (the X stays legible in Dusk) */
+    pointer-events: none;
+    /* the void never reaches past its box: on a plate narrower than its label (a bare About plate at 320) the label
+       wraps inside it, and anything still wider is clipped, never pushed into the page's scroll width */
+    overflow: hidden;
+    transition: opacity var(--dur-2) var(--ease-ui), visibility 0s linear var(--dur-2);
+  }
+  .ph--fill { position: absolute; inset: 0; block-size: 100%; }
+  .ph__x { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
+  .ph__x path { fill: none; stroke: var(--print-line); stroke-width: var(--lw-dim); }
+  .ph__l {
+    position: relative;
+    display: grid; justify-items: center; gap: var(--s-1);
+    padding: var(--s-1) var(--s-2);
+    background: var(--plate);        /* the label masks the X where it crosses it */
+    font-family: var(--font-mono); font-size: var(--fs-code-sm); font-weight: var(--wt-code-sm);
+    line-height: var(--lh-code-sm); letter-spacing: var(--tr-code-sm); font-variant-numeric: tabular-nums;
+    max-inline-size: 100%; text-align: center; text-wrap: balance;
+  }
+  .ph__state:empty { display: none; }
+  .ph__state {
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label);
+    letter-spacing: var(--tr-label); font-variation-settings: var(--wdth-label); text-transform: uppercase;
+    color: var(--print-ink);
+  }
+  /* the host reveals its pixels: the void fades away and stops taking space in the paint (still no layout change) */
+  :global(:is([data-state="ready"], [data-state="playing"])) > .ph { opacity: 0; visibility: hidden; }
+  /* no JS: nothing would ever hide it, and it could show through a transparent file → never render it */
+  :global(html:not(.js)) .ph { display: none; }
+  @media print { .ph { display: none; } }
+  @media (forced-colors: active) { .ph__x path { stroke: CanvasText; } }
 </style>

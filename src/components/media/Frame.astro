@@ -1,9 +1,55 @@
 ---
 /**
- * Frame · OWNER: WP4b (P0 stub). The CSS frames of SPEC §6.3 (browser, phone, phone-baked, phone-video,
- * bezel-dark, print, before). P0: a pass-through wrapper.
+ * Frame · WP4b (SPEC §6.3 "Frames"). The one frame that needs its own DOM: `browser`, the BRW frame for her
+ * chrome-less desktop captures (Cloudflare workflows, PFF walkthroughs, the W4 section cut):
+ *
+ *   · a bar in --sheet tinted toward the case accent (color-mix 30% --acc-soft), three --line-3 dots,
+ *     and NO URL text — inventing an address would be adding content
+ *   · --r-frame top corners, a 1px --line-2 border around bar + view
+ *   · slot "tools": the media controls sit on the bar's right, like browser toolbar buttons
+ *   · slot "progress": a GIF/video loop hairline runs along the bar's bottom edge, like a page-load bar
+ *   so no control and no hairline ever sits on her pixels.
+ *
+ * Every other frame (plate, bare, soft, phone, phone-baked, phone-video, bezel-dark, print, before) is pure CSS on the
+ * Plate. The default slot is the view: whatever box the host puts in it (Plate's view, the player's panels, the
+ * Compare stage).
  */
-interface Props { frame?: string }
-const { frame = 'plate' } = Astro.props;
+interface Props { class?: string }
+const { class: cls } = Astro.props;
 ---
-<div class={`frame frame--${frame}`}><slot /></div>
+<div class:list={['brw', cls]}>
+  <div class="brw__bar">
+    <span class="brw__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="brw__tools"><slot name="tools" /></span>
+    <slot name="progress" />
+  </div>
+  <div class="brw__view"><slot /></div>
+</div>
+<style>
+  .brw {
+    /* component geometry: the bar is one toolbar row (fine pointer), taller for a coarse one */
+    --_bar: 28px;
+    position: relative;
+    border: var(--lw-object) solid var(--line-2);
+    border-radius: var(--r-frame) var(--r-frame) 0 0;
+    background: var(--plate);
+  }
+  @media (pointer: coarse) { .brw { --_bar: 36px; } }
+  .brw__bar {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+    block-size: var(--_bar);
+    padding-inline: var(--s-3) var(--s-1);
+    background: color-mix(in srgb, var(--acc-soft) 30%, var(--sheet));
+    border-block-end: var(--lw-object) solid var(--line-2);
+    border-radius: calc(var(--r-frame) - var(--lw-object)) calc(var(--r-frame) - var(--lw-object)) 0 0;
+  }
+  .brw__dots { display: flex; gap: var(--s-2); flex: none; }
+  .brw__dots i { inline-size: var(--s-2); block-size: var(--s-2); border-radius: var(--r-dot); background: var(--line-3); }
+  .brw__tools { display: flex; align-items: center; min-inline-size: 0; block-size: 100%; }
+  .brw__view { position: relative; }
+  @media (forced-colors: active) {
+    .brw__dots i { background: CanvasText; }
+    .brw__bar { border-block-end-color: CanvasText; }
+  }
+</style>

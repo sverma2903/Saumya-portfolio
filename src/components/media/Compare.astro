@@ -1,14 +1,262 @@
 ---
 /**
- * Compare · OWNER: WP4b (P0 stub). Section cut A–A: her wireframe beneath her final screen, with peel and loupe
- * (SPEC SM6a). P0: the no-JS `.compare--static` version — both images stacked, whole and unfiltered.
+ * Compare · WP4b (SPEC SM6a). Section cut A–A: her real wireframe beneath her final screen — the one truly aligned pair
+ * in the portfolio (Cloudflare W4: lR8M0Y final 3456×2366 / iaZFTm wireframe 3456×2534, measured offsets in staging).
+ *
+ *   cut mode    her final screen in its browser frame; over its left --x lies her wireframe, printed on the same sheet.
+ *               At the seam the wireframe film curls back (a 36px CSS curl, highlight + --shadow-peel) and a rust
+ *               long–short dash seam runs between two section heads A. A native range input drives --x: pointer,
+ *               touch (touch-action: pan-y), keyboard and screen reader ("42% wireframe").
+ *   loupe mode  (button "Loupe", key U) the seam hides; a circle — the ○ of her mark — reveals the wireframe beneath
+ *               the final (r 120px, 90px on phones). With a keyboard or no pointer it drifts once through the KPI
+ *               cards, the map, the table and parks on the chart (≤ 4.6 s, paused offscreen; none with Motion off).
+ *   labels      her own words: the Ideate caption under the wireframe, her W4 title for the final; cross-reference
+ *               "← FIG. 4.7 · Ideate" (built from figures.ts, never copied from the spec).
+ *   no JS       an inline oninput keeps the range working before the module loads; with JS off entirely the two
+ *               files simply stack, whole (.cmp is static without html.js).
+ * Integrity: both files whole and unfiltered; the wireframe's bottom ~6 % falls outside the frame in THIS view only
+ * (§6.4 exception 3) — the complete file is FIG. 4.7 and opens in Enlarged detail.
  */
 import type { Media } from '../../lib/blocks';
-import Plate from './Plate.astro';
-interface Props { final: Media; under: Media; alt: string; underAlt?: string }
-const { final, under, alt, underAlt = '' } = Astro.props;
+import type { BlockCtx } from '../../lib/blocks-ctx';
+import { facts, fileOf, stagingOf } from '../../lib/staging';
+import { figuresOf } from '../../lib/figures';
+import { caseBySlug } from '../../lib/verbatim';
+import { rich } from '../../lib/rich';
+import { stripHtml } from '../../lib/text';
+import { chrome, fill } from '../../data/chrome';
+import FrameBrowser from './Frame.astro';
+import SectionHead from '../symbols/SectionHead.astro';
+import Icon from '../symbols/Icon.astro';
+import { factAttrs } from './media-lib';
+
+interface Props {
+  final: Media;
+  under: Media;
+  ctx: BlockCtx;
+  alt: string;
+  underAlt?: string;
+  describedBy?: string;
+  /** id of her title for this figure (the right-hand label and the detail's context) */
+  titleId?: string;
+}
+const { final, under, ctx, alt, underAlt = '', describedBy, titleId } = Astro.props;
+const ff = facts(final);
+const fu = facts(under);
+const c = stagingOf(final).compare!;
+const cs = caseBySlug(ctx.slug);
+const figs = figuresOf(cs);
+const self = figs.find((f) => f.id === ctx.id);
+const underFig = figs.find((f) => f.t === 'media' && f.items.some((x) => fileOf(x) === fileOf(under)));
+// her words for the two labels: the wireframe's Ideate caption, and this workflow's title
+const block = cs.sections.flatMap((s) => s.blocks).find((b) => b.t === 'feature' && b.media.length === 1 && fileOf(b.media[0]) === fileOf(final));
+const finalTitle = block && block.t === 'feature' ? block.title : undefined;
+const underCaption = underFig?.caption;
+const m = chrome.wp4b.media;
+const k = chrome.wp4b.compare;
+const start = c.start;
+// the wireframe's measured offset, in % of its own box (translate %)
+const tx = Math.round((c.dx / fu.w) * 1e5) / 1e3;
+const ty = Math.round((c.dy / fu.h) * 1e5) / 1e3;
+const fig = ctx.fig ?? self?.no ?? '';
+const enlargeLabel = `${fill(m.enlargeLabel, { fig })}${alt ? `: ${alt}` : finalTitle ? `: ${stripHtml(finalTitle)}` : ''}`;
 ---
-<div class="compare compare--static">
-  <Plate layers={[final]} alt={alt} />
-  <Plate layers={[under]} alt={underAlt} />
+<div
+  class="cmp"
+  data-compare
+  data-mode="cut"
+  style={`--x: ${start}%`}
+  data-plate
+  data-kind="image"
+  data-file={ff.file}
+  data-fig-no={fig}
+  data-cap-id={titleId}
+  data-zoom="deep"
+  {...factAttrs(ff)}
+>
+  <div class="cmp__draw">
+    <div class="cmp__rail" aria-hidden="true"><span class="cmp__head"><SectionHead letter="A" dir="left" size={30} /></span></div>
+    <FrameBrowser class="cmp__frame">
+      <Fragment slot="tools">
+        <button type="button" class="cmp__mode" data-compare-mode aria-pressed="false" data-js-only>
+          <span class="cmp__mode-i" aria-hidden="true"></span>{m.loupe}
+        </button>
+        <button type="button" class="cmp__enlarge" data-fig data-mc-enlarge data-js-only aria-label={enlargeLabel}><Icon name="enlarge" size={16} /></button>
+      </Fragment>
+      <div class="cmp__stage plate__view" data-cmp-stage>
+        <img class="cmp__final" src={ff.src} width={ff.w} height={ff.h} alt={alt} loading="lazy" decoding="async" aria-describedby={alt ? describedBy : undefined} />
+        <div class="cmp__under" aria-hidden="true">
+          <img src={fu.src} width={fu.w} height={fu.h} alt={underAlt} loading="lazy" decoding="async" style={`translate: ${tx}% ${ty}%`} />
+        </div>
+        <span class="cmp__curl" aria-hidden="true"></span>
+        <span class="cmp__ring" aria-hidden="true"></span>
+        <input
+          class="cmp__range"
+          type="range" min="0" max="100" step="1" value={start}
+          aria-label={k.peel}
+          aria-valuetext={fill(k.peelValue, { n: start })}
+          data-t-value={k.peelValue}
+          oninput="this.closest('[data-compare]').style.setProperty('--x',this.value+'%')"
+        />
+      </div>
+    </FrameBrowser>
+    <div class="cmp__rail" aria-hidden="true"><span class="cmp__head"><SectionHead letter="A" dir="left" size={30} /></span></div>
+    <svg class="cmp__seam" aria-hidden="true" focusable="false"><line x1="50%" y1="0" x2="50%" y2="100%" /></svg>
+  </div>
+  <div class="cmp__foot">
+    <p class="cmp__labels">
+      {underCaption && <span class="cmp__label cmp__label--under"><span class="cmp__key" data-chrome aria-hidden="true">{k.section}</span><span data-v set:html={rich(underCaption)} /></span>}
+      {finalTitle && <span class="cmp__label cmp__label--final" data-v set:html={rich(finalTitle)} />}
+    </p>
+    <p class="cmp__cap" data-chrome>
+      <span class="cmp__no">{fig}</span>
+      {underFig && (
+        <a class="cmp__xref" href={`#${underFig.id}`}><Icon name="arrow-left" size={13} />{fill(m.figRef, { fig: underFig.no, level: underFig.sectionLabel })}</a>
+      )}
+    </p>
+  </div>
+  {/* the module script renders where it is written (once per page): inside the root, so it never becomes a sibling
+     that breaks the `+` spacing rules between blocks */}
+  <script>
+    import '../../scripts/media/compare';
+  </script>
 </div>
+<style>
+  @property --r { syntax: '<length>'; inherits: true; initial-value: 0px; }
+  .cmp {
+    /* component geometry: the SectionHead's size, the loupe radius (smaller on phones), the film's curl width */
+    --_head: 30px;
+    --_lr: 120px;
+    --_curl: 36px;
+    --lx: 33%; --ly: 47%;
+    position: relative;
+  }
+  .cmp__draw { position: relative; }
+  .cmp__rail { position: relative; block-size: var(--_head); }
+  @media (max-width: 767.98px) { .cmp { --_lr: 90px; } }
+
+  /* ---------- the stage: the final screen, and the wireframe film over its left --x ---------- */
+  .cmp__stage { position: relative; overflow: hidden; background: var(--plate); touch-action: pan-y; }
+  .cmp__final { display: block; inline-size: 100%; block-size: auto; }
+  .cmp__under {
+    position: absolute; inset: 0; overflow: hidden;
+    clip-path: inset(0 calc(100% - var(--x)) 0 0);
+  }
+  .cmp__under img { display: block; inline-size: 100%; block-size: auto; max-inline-size: none; }
+
+  /* the peel: 36px of drafting film curling back at the seam (highlight + a soft shadow cast on the final) */
+  .cmp__curl {
+    position: absolute; inset-block: 0; inset-inline-start: var(--x); inline-size: var(--_curl); pointer-events: none;
+    background: linear-gradient(90deg,
+      color-mix(in srgb, var(--detail-bg) 20%, transparent),
+      color-mix(in srgb, var(--plate) 70%, transparent) 32%,
+      var(--plate) 52%,
+      color-mix(in srgb, var(--detail-bg) 14%, transparent) 100%);
+    box-shadow: var(--shadow-peel);
+    border-radius: 0 calc(var(--_curl) / 2) calc(var(--_curl) / 2) 0 / 0 50% 50% 0;
+  }
+  /* the cut line: the rust centre line (--dash-center, long–short), from head to head, riding --x */
+  .cmp__seam {
+    position: absolute; inset-block: var(--_head);
+    inset-inline-start: var(--x); inline-size: calc(2 * var(--lw-cut)); block-size: calc(100% - 2 * var(--_head));
+    translate: -50% 0; overflow: visible;
+    pointer-events: none;
+  }
+  .cmp__seam line { stroke: var(--rust); stroke-width: var(--lw-cut); stroke-dasharray: var(--dash-center); }
+  /* the heads ride the seam, but never past the drawing's edges: at 0 % / 100 % a centred head would be cut in half by
+     the sheet's (paint-contained) edge, so there it stays whole, just inside, still touching the cut line */
+  .cmp__head {
+    position: absolute; inset-block-start: 0;
+    inset-inline-start: clamp(calc(var(--_head) / 2), var(--x), calc(100% - var(--_head) / 2)); translate: -50% 0;
+    block-size: var(--_head); overflow: visible;
+    color: var(--rust); line-height: 0; pointer-events: none;
+  }
+
+  /* the range IS the control: invisible, over the whole stage (keyboard, screen reader, single pointer, touch) */
+  .cmp__range {
+    position: absolute; inset: 0; z-index: var(--z-raised);
+    inline-size: 100%; block-size: 100%; margin: 0;
+    opacity: 0; cursor: ew-resize; touch-action: pan-y;
+    -webkit-appearance: none; appearance: none; background: transparent;
+  }
+  .cmp__range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; inline-size: var(--lw-cut); block-size: 100vh; }
+  .cmp__range::-moz-range-thumb { inline-size: var(--lw-cut); block-size: 100vh; border: 0; }
+  /* its focus shows on the drawing: the seam thickens and the heads fill */
+  .cmp:has(.cmp__range:focus-visible) .cmp__seam line { stroke-width: calc(2 * var(--lw-cut)); }
+  .cmp:has(.cmp__range:focus-visible) .cmp__stage { outline: var(--lw-cut) solid var(--focus); outline-offset: var(--s-1); }
+
+  /* ---------- loupe ---------- */
+  .cmp__ring { display: none; }
+  .cmp[data-mode="loupe"] .cmp__under { clip-path: circle(var(--r) at var(--lx) var(--ly)); }
+  .cmp[data-mode="loupe"] :is(.cmp__curl, .cmp__seam, .cmp__head, .cmp__range) { display: none; }
+  .cmp[data-mode="loupe"] .cmp__rail { visibility: hidden; }
+  .cmp[data-mode="loupe"] { --r: var(--_lr); }
+  .cmp[data-mode="loupe"] .cmp__stage { cursor: none; }
+  .cmp[data-mode="loupe"] .cmp__ring {
+    display: block; position: absolute; z-index: var(--z-raised); pointer-events: none;
+    inset-inline-start: var(--lx); inset-block-start: var(--ly);
+    inline-size: calc(2 * var(--r)); block-size: calc(2 * var(--r)); translate: -50% -50%;
+    border: var(--lw-border) solid var(--rust); border-radius: var(--r-dot);
+    box-shadow: 0 0 0 var(--lw-object) color-mix(in srgb, var(--plate) 80%, transparent);
+  }
+  /* four drafting ticks just outside the ring (N E S W) */
+  .cmp[data-mode="loupe"] .cmp__ring::before {
+    content: ''; position: absolute; inset: calc(-1 * var(--s-3));
+    background:
+      linear-gradient(var(--rust), var(--rust)) 0 50% / var(--s-2) var(--lw-border) no-repeat,
+      linear-gradient(var(--rust), var(--rust)) 100% 50% / var(--s-2) var(--lw-border) no-repeat,
+      linear-gradient(var(--rust), var(--rust)) 50% 0 / var(--lw-border) var(--s-2) no-repeat,
+      linear-gradient(var(--rust), var(--rust)) 50% 100% / var(--lw-border) var(--s-2) no-repeat;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html:not([data-motion="reduce"])) .cmp { transition: --r var(--dur-3) var(--ease-pen); }
+  }
+
+  /* ---------- bar tools ---------- */
+  .cmp__mode, .cmp__enlarge {
+    position: relative; display: inline-flex; align-items: center; gap: var(--s-2);
+    block-size: var(--_bar); padding-inline: var(--s-2);
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .cmp__enlarge { inline-size: var(--_bar); padding: 0; justify-content: center; }
+  .cmp__mode::before, .cmp__enlarge::before { content: ''; position: absolute; inset: 50% auto auto 50%; inline-size: var(--hit); block-size: var(--hit); translate: -50% -50%; }
+  .cmp__mode:hover, .cmp__enlarge:hover { color: var(--rust); }
+  .cmp__mode[aria-pressed="true"] { color: var(--rust); }
+  .cmp__mode-i { inline-size: var(--s-3); block-size: var(--s-3); border: var(--lw-border) solid currentColor; border-radius: var(--r-dot); }
+  .cmp__mode[aria-pressed="true"] .cmp__mode-i { background: currentColor; }
+
+  /* ---------- labels and caption ---------- */
+  .cmp__foot { display: grid; gap: var(--s-2); margin-block-start: var(--s-2); }
+  .cmp__labels { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-4); margin: 0; }
+  .cmp__label { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--ink-2); }
+  .cmp__label--final { text-align: end; }
+  .cmp__key {
+    margin-inline-end: var(--s-2); font-style: normal;
+    font-family: var(--font-sans); font-size: var(--fs-label); font-weight: var(--wt-label); letter-spacing: var(--tr-label);
+    font-variation-settings: var(--wdth-label); text-transform: uppercase; color: var(--rust);
+  }
+  .cmp__cap { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3); margin: 0; }
+  .cmp__no { font-family: var(--font-mono); font-size: var(--fs-code); font-weight: var(--wt-code); letter-spacing: var(--tr-code); color: var(--ink-2); }
+  /* inline-block: its baseline is its text's, so it sits on the FIG number's baseline (an inline-flex box would take
+     the arrow's bottom edge as its baseline); ≥ 24px tall for the pointer (2.5.8) */
+  .cmp__xref { display: inline-block; font-family: var(--font-mono); font-size: var(--fs-code-sm); letter-spacing: var(--tr-code-sm); color: var(--rust); text-decoration: none; min-block-size: var(--s-5); }
+  .cmp__xref :global(svg) { vertical-align: middle; margin-inline-end: var(--s-1); }
+  .cmp__xref:hover { color: var(--rust-deep); text-decoration: underline; }
+
+  /* ---------- no JS at all: the two files, whole, one above the other, parted by the cut line A–A ---------- */
+  :global(html:not(.js)) .cmp__rail { display: none; }
+  :global(html:not(.js)) .cmp__under { position: static; clip-path: none; border-block-start: var(--lw-cut) dashed var(--rust); }
+  :global(html:not(.js)) .cmp__under img { translate: none !important; }
+  :global(html:not(.js)) :is(.cmp__curl, .cmp__seam, .cmp__range, .cmp__ring) { display: none; }
+  :global(html:not(.js)) .cmp__stage { overflow: visible; }
+  :global(html:not(.js)) .cmp__foot { margin-block-start: var(--s-3); }
+  @media print {
+    .cmp__rail { display: none; }
+    .cmp__under { position: static; clip-path: none; border-block-start: var(--lw-cut) dashed var(--rust); }
+    .cmp__under img { translate: none !important; }
+    .cmp__curl, .cmp__seam, .cmp__range, .cmp__ring, .cmp__head, .cmp__mode, .cmp__enlarge { display: none; }
+  }
+  @media (forced-colors: active) { .cmp__seam line { stroke: Highlight; } .cmp__curl { display: none; } }
+</style>
